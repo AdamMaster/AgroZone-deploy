@@ -7,3 +7,9 @@ client/.env
 
 # Volumes/данные, которые живут только на сервере
 nginx/certs
+
+# Черновики/личные заметки и временная папка с кредами — не для GitHub
+temp/
+ROADMAP.md
+TODO-messages.md
+правки.txt
