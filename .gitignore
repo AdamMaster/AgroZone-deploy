@@ -1,0 +1,9 @@
+# Прод-секреты — не должны попасть в git ни при каких обстоятельствах
+.env
+.env.prod
+.env.production
+server/.env
+client/.env
+
+# Volumes/данные, которые живут только на сервере
+nginx/certs

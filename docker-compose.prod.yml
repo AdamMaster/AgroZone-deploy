@@ -1,0 +1,121 @@
+# Прод-стек на одной Selectel Cloud Server VM. Всё внутри общей docker-сети
+# app-network — наружу через nginx смотрят только 80/443, всё остальное
+# (postgres/redis/api/фронт) доступно только другим контейнерам по имени
+# сервиса, портов на хосте не публикует.
+#
+# Перед первым запуском см. DEPLOY.md — там по шагам: сборка, миграции,
+# первый выпуск TLS-сертификата.
+
+services:
+  db:
+    image: postgres:15.2
+    container_name: postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  dredis:
+    image: redis:7.0
+    container_name: dredis
+    restart: always
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a ${REDIS_PASSWORD} ping | grep PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: agrozone-server
+    restart: always
+    env_file:
+      - ./server/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      dredis:
+        condition: service_healthy
+    volumes:
+      # Кэш ONNX-модели эмбеддингов — переживает пересборки образа, не
+      # перекачивается с HuggingFace Hub при каждом деплое (см. Dockerfile).
+      - embeddings_cache:/app/.cache/transformers
+    networks:
+      - app-network
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        # NEXT_PUBLIC_*/SERVER_URL запекаются в бандл на этапе `next build`
+        # (см. client/Dockerfile) — берём из client/.env через переменные
+        # окружения хоста ($ниже — синтаксис docker-compose интерполяции).
+        SERVER_URL: ${CLIENT_SERVER_URL}
+        NEXT_PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY: ${NEXT_PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY}
+        NEXT_PUBLIC_2GIS_KEY: ${NEXT_PUBLIC_2GIS_KEY}
+        NEXT_PUBLIC_DADATA_KEY: ${NEXT_PUBLIC_DADATA_KEY}
+    container_name: agrozone-client
+    restart: always
+    depends_on:
+      - server
+    networks:
+      - app-network
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: agrozone-nginx
+    restart: always
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - certbot_www:/var/www/certbot
+      - certbot_conf:/etc/letsencrypt
+    depends_on:
+      - client
+      - server
+    networks:
+      - app-network
+
+  # Разовый выпуск сертификата — см. DEPLOY.md ("docker compose run --rm
+  # certbot certonly ..."). Как отдельный долгоживущий сервис для
+  # автопродления можно включить позже (certbot renew раз в ~12ч) — на
+  # первый деплой сегодня не критично, Let's Encrypt сертификат живёт 90 дней.
+  certbot:
+    image: certbot/certbot
+    container_name: agrozone-certbot
+    volumes:
+      - certbot_www:/var/www/certbot
+      - certbot_conf:/etc/letsencrypt
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  embeddings_cache:
+  certbot_www:
+  certbot_conf:
+
+networks:
+  app-network:
+    driver: bridge
