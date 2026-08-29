@@ -41,8 +41,9 @@ Cloud Server, Ubuntu 22.04/24.04. По ресурсам не экономьте 
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER   # перелогиниться после этого
 
-# Клонировать репозиторий (или залить архивом/rsync — как удобнее)
-git clone <ваш-репозиторий> agro-zone
+# Клонировать репозиторий вместе с сабмодулями (client/server —
+# отдельные репо, без --recurse-submodules код внутри них не подтянется)
+git clone --recurse-submodules <ваш-репозиторий> agro-zone
 cd agro-zone
 ```
 
@@ -139,6 +140,49 @@ docker compose -f docker-compose.prod.yml --env-file .env restart nginx
 - Оплата продвижения объявления (ЮKassa) — вебхук должен достучаться до
   `https://api.example.ru/...`, а не до `localhost` (см. комментарии в
   `ad-bumps.controller.ts` — вы уже знали про это ограничение).
+
+## 6.5. Обновление после первого деплоя (важно: git submodules!)
+
+Репозиторий — монорепо с сабмодулями (`client`, `server` — отдельные
+репозитории, тут только указатели на их коммиты). Из-за этого обычные
+`git clone` / `git pull` **не подтягивают код сабмодулей** — сервер может
+неделями катить один и тот же старый коммит client/server, даже если вы
+видите новый коммит в самом монорепо (ровно так один раз и случилось:
+фикс Suspense/useSearchParams был закоммичен и запушен в `client`, а
+монорепо продолжало указывать на коммит до фикса, пока указатель явно не
+запушили).
+
+**Первый клон на сервере** — сразу тяните сабмодули:
+
+```bash
+git clone --recurse-submodules <ваш-репозиторий> agro-zone
+```
+
+**Каждый следующий релиз** (после того как локально запушили фикс/фичу
+и в `client`/`server`, и, если менялся указатель, в самом монорепо):
+
+```bash
+cd agro-zone
+git pull
+git submodule update --init --recursive   # <-- вот это легко забыть
+
+# дальше как обычно
+docker compose -f docker-compose.prod.yml --env-file .env build
+docker compose -f docker-compose.prod.yml --env-file .env up -d
+```
+
+Проверить, что сабмодули реально на нужных коммитах (сверить с тем, что
+локально в `git log -1` внутри `client`/`server`):
+
+```bash
+git submodule status
+```
+
+Если после `docker compose build` ошибка на клиенте всё та же — почти
+наверняка сабмодуль не обновился. `git submodule status` со звёздочкой
+(`+`) перед хэшем значит "рабочая копия сабмодуля не совпадает с тем, что
+записано в индексе монорепо" — тогда `git submodule update --init
+--recursive` ещё раз.
 
 ## 7. На будущее (не сегодня, но держите в уме)
 
