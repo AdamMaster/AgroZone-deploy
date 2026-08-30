@@ -66,10 +66,12 @@ services:
       dockerfile: Dockerfile
       args:
         # NEXT_PUBLIC_*/SERVER_URL запекаются в бандл на этапе `next build`
-        # (см. client/Dockerfile) — берём из client/.env через переменные
-        # окружения хоста ($ниже — синтаксис docker-compose интерполяции).
+        # (см. client/Dockerfile) — берём из КОРНЕВОГО .env (~/agro-zone/.env,
+        # тот что передаётся через --env-file .env), НЕ из client/.env —
+        # client/.env в билд-контекст вообще не попадает (см. .dockerignore).
+        # $ниже — синтаксис docker-compose интерполяции.
         SERVER_URL: ${CLIENT_SERVER_URL}
-        NEXT_PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY: ${NEXT_PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY}
+        NEXT_PUBLIC_YANDEX_CAPTCHA_CLIENT_KEY: ${NEXT_PUBLIC_YANDEX_CAPTCHA_CLIENT_KEY}
         NEXT_PUBLIC_2GIS_KEY: ${NEXT_PUBLIC_2GIS_KEY}
         NEXT_PUBLIC_DADATA_KEY: ${NEXT_PUBLIC_DADATA_KEY}
     container_name: agrozone-client
