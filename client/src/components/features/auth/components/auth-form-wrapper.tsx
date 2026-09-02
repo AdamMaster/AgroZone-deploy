@@ -51,7 +51,7 @@ export const AuthFormWrapper = ({
         </div>
       )}
 
-      <div>{isShowSocial && <AuthSocials />}</div>
+      {/* <div>{isShowSocial && <AuthSocials />}</div> */}
       {isShowSocial && socialsFooterNotice && (
         <p className='text-muted-foreground mt-3 text-xs'>{socialsFooterNotice}</p>
       )}
