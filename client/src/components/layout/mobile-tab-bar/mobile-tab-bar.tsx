@@ -60,7 +60,7 @@ export const MobileTabBar = () => {
 
   return (
     <nav
-      className='fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around border-t bg-neutral-800 pb-[env(safe-area-inset-bottom)] md:hidden'
+      className='fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around bg-white pb-[env(safe-area-inset-bottom)] md:hidden dark:bg-neutral-800'
       aria-label='Основная навигация'
     >
       {TABS.map(tab => {
@@ -73,12 +73,12 @@ export const MobileTabBar = () => {
             href={tab.href}
             onClick={handleClick}
             className={cn(
-              'flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] text-white',
-              isActive && 'text-primary text-primary-light'
+              'flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-gray-500',
+              isActive && 'dark:text-primary text-secondary'
             )}
           >
             <span className='relative inline-flex'>
-              <Icon className={cn('size-5', isActive ? 'text-primary-light' : 'text-white')} />
+              <Icon className={cn('size-5', isActive ? 'dark:text-primary text-secondary' : 'text-gray-500')} />
               {tab.href === PROFILE_HREF && user && <ProfileTabBadge />}
             </span>
             {tab.label}

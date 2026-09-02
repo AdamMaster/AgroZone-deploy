@@ -10,14 +10,13 @@ import { useConversations } from '../../messages/hooks'
 
 const items = [
   { label: 'Личные данные', icon: User, id: 'general', href: '/profile/settings/general' },
-  { label: 'Персонализация', icon: Palette, id: 'personalization', href: '/profile/settings/personalization' },
   { label: 'Безопасность', icon: Shield, id: 'security', href: '/profile/settings/security' },
   { label: 'Мои объявления', icon: Layers, id: 'ads', href: '/profile/settings/ads' },
   { label: 'Сообщения', icon: MessageCircle, id: 'messages', href: '/profile/settings/messages' },
   { label: 'Избранное', icon: Heart, id: 'favorites', href: '/profile/settings/favorites' },
-  // { label: 'Организация', icon: Building2, id: 'company', href: '/profile/settings/company' },
   { label: 'Уведомления', icon: Bell, id: 'notifications', href: '/profile/settings/notifications' },
-  { label: 'Премиум', icon: Crown, id: 'premium', href: '/profile/settings/premium' }
+  { label: 'Премиум', icon: Crown, id: 'premium', href: '/profile/settings/premium' },
+  { label: 'Персонализация', icon: Palette, id: 'personalization', href: '/profile/settings/personalization' }
 ]
 
 export const SettingsNav = () => {

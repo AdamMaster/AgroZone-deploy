@@ -85,15 +85,6 @@ export const Header = () => {
                   </DropdownMenu>
                 </div>
               ) : isAdFormPage || isAdDetailPage ? null : (
-                // showCompactHeader && 'md:hidden' — иначе на десктопе для
-                // страницы объявления/продвижения эта строка поиска
-                // рендерится одновременно с десктопным блоком чуть ниже
-                // (showCompactHeader && ...) — получались два сирчбара
-                // подряд (см. обсуждение с пользователем, реальный скрин).
-                // На обычных страницах (showCompactHeader === false, тот
-                // нижний блок вообще не рендерится) эта строка — единственный
-                // поиск и на мобильном, и на десктопе, поэтому md:hidden
-                // вешаем только когда есть кому её продублировать.
                 <SearchBar className={cn('grow', showCompactHeader && 'md:hidden')} />
               )}
               {showCompactHeader && (

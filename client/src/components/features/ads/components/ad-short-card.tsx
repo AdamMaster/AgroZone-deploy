@@ -249,7 +249,7 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
             </Button>
             {ad.status === 'PUBLISHED' && (
               <DropdownMenu>
-                <DropdownMenuTrigger className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border!'>
+                <DropdownMenuTrigger className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'>
                   <Ellipsis className='size-5' />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className='w-40' align='end'>
@@ -266,7 +266,7 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
             )}
             {ad.status === 'PENDING' && (
               <DropdownMenu>
-                <DropdownMenuTrigger className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border!'>
+                <DropdownMenuTrigger className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'>
                   <Ellipsis className='size-5' />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className='w-40' align='end'>
@@ -281,7 +281,7 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
             )}
             {ad.status === 'REJECTED' && (
               <DropdownMenu>
-                <DropdownMenuTrigger className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border!'>
+                <DropdownMenuTrigger className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'>
                   <Ellipsis className='size-5' />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className='w-40' align='end'>
@@ -296,7 +296,7 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
             )}
             {ad.status === 'ARCHIVED' && (
               <DropdownMenu>
-                <DropdownMenuTrigger className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border!'>
+                <DropdownMenuTrigger className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'>
                   <Ellipsis className='size-5' />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className='w-40' align='end'>
@@ -308,7 +308,7 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
             )}
             {ad.status === 'DRAFT' && (
               <DropdownMenu>
-                <DropdownMenuTrigger className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border!'>
+                <DropdownMenuTrigger className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'>
                   <Ellipsis className='size-5' />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className='w-40' align='end'>

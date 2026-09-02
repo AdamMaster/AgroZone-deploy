@@ -147,7 +147,7 @@ export const ContentAds = () => {
       <Link
         href='/ads/create'
         className={cn(
-          'hover:bg-primary-foreground l-4 fixed right-4 bottom-[calc(3.5rem+env(safe-area-inset-bottom)+1rem)] z-30 flex h-12 items-center justify-center gap-3 rounded-lg bg-neutral-800 px-5 text-white shadow-lg transition-all duration-300 md:hidden',
+          'hover:bg-primary-foreground l-4 dark:bg-secondary bg-secondary fixed right-4 bottom-[calc(3.5rem+env(safe-area-inset-bottom)+1rem)] z-30 flex h-12 items-center justify-center gap-3 rounded-lg px-5 text-white shadow-lg transition-all duration-300 md:hidden',
           isFabVisible ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-20 opacity-0'
         )}
         aria-label='Разместить объявление'

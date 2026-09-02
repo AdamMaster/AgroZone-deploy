@@ -11,6 +11,7 @@ import {
   Layers,
   Lock,
   MessageCircle,
+  Palette,
   Shield,
   ShieldCheck,
   User
@@ -33,7 +34,8 @@ const ACCOUNT_ITEMS: ProfileMenuItem[] = [
   { label: 'Мои объявления', href: '/profile/settings/ads', icon: Layers },
   { label: 'Сообщения', icon: MessageCircle, href: '/profile/settings/messages' },
   { label: 'Избранное', icon: Heart, href: '/profile/settings/favorites' },
-  { label: 'Уведомления', icon: Bell, href: '/profile/settings/notifications' }
+  { label: 'Уведомления', icon: Bell, href: '/profile/settings/notifications' },
+  { label: 'Персонализация', href: '/profile/settings/personalization', icon: Palette }
 ]
 
 const PREMIUM_ITEM: ProfileMenuItem = { label: 'Премиум', href: '/profile/settings/premium', icon: Crown }

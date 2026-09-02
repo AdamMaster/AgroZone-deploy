@@ -17,8 +17,6 @@ import {
 
 import { useProfile } from '@/shared/hooks'
 
-import { cn } from '@/lib/utils'
-
 import { UserRole } from '../../auth/types'
 import { useTwoFactorMutation } from '../hooks/use-two-factor-mutation'
 
@@ -82,7 +80,7 @@ export const ContentSecurity = () => {
             <Heading level={5} className='mb-4'>
               Удаление аккаунта
             </Heading>
-            <Field className='rounded-lg border border-red-100 bg-red-50 px-4 py-4'>
+            <Field className='rounded-lg border bg-gray-50 px-4 py-4'>
               <div className='flex items-center justify-between gap-4'>
                 <div className='space-y-0.5'>
                   <Label>Удалить аккаунт</Label>
