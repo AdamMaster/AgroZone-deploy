@@ -41,12 +41,17 @@ export const UserButton = ({ className, user }: UserButtonProps) => {
     router.push('/profile/settings/favorites')
   }
 
+  const onPersonalizationClick = () => {
+    router.push('/profile/settings/personalization')
+  }
+
   const list = [
     { id: 'general', text: 'Личные данные', onClick: () => onPersonalDataClick() },
     { id: 'security', text: 'Безопасность', onClick: () => onSecurityClick() },
     { id: 'ads', text: 'Мои объявления', onClick: () => onMyAdsClick() },
     { id: 'messages', text: 'Сообщения', onClick: () => onMessagesClick() },
-    { id: 'favorites', text: 'Избранное', onClick: () => onMyFavoritesClick() }
+    { id: 'favorites', text: 'Избранное', onClick: () => onMyFavoritesClick() },
+    { id: 'personalization', text: 'Персонализация', onClick: () => onPersonalizationClick() }
   ]
 
   return (

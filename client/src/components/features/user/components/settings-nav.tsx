@@ -15,8 +15,8 @@ const items = [
   { label: 'Сообщения', icon: MessageCircle, id: 'messages', href: '/profile/settings/messages' },
   { label: 'Избранное', icon: Heart, id: 'favorites', href: '/profile/settings/favorites' },
   { label: 'Уведомления', icon: Bell, id: 'notifications', href: '/profile/settings/notifications' },
-  { label: 'Премиум', icon: Crown, id: 'premium', href: '/profile/settings/premium' },
-  { label: 'Персонализация', icon: Palette, id: 'personalization', href: '/profile/settings/personalization' }
+  { label: 'Персонализация', icon: Palette, id: 'personalization', href: '/profile/settings/personalization' },
+  { label: 'Премиум', icon: Crown, id: 'premium', href: '/profile/settings/premium' }
 ]
 
 export const SettingsNav = () => {
