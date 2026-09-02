@@ -1,13 +1,12 @@
 'use client'
 
+import { useAppModal, useWelcomeBannerStore } from '@/store'
 import { X } from 'lucide-react'
 import Link from 'next/link'
 
 import { Button } from '@/components/ui'
 
 import { useMounted, useProfile } from '@/shared/hooks'
-
-import { useAppModal, useWelcomeBannerStore } from '@/store'
 
 // Приветственный баннер на главной для новых посетителей — сайт только
 // запускается, объявлений пока немного. Задача баннера — не извиняться за
@@ -44,8 +43,11 @@ export const WelcomeBanner = () => {
       </button>
       <div className='flex flex-col items-start gap-3 pr-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4'>
         <p className='text-sm text-gray-700 dark:text-neutral-200'>
-          <span className='font-medium text-gray-900 dark:text-white'>agro-zone.ru запускается.</span> Станьте одним из
-          первых продавцов — разместите объявление бесплатно на весь срок публикации.
+          <span className='font-semibold text-gray-900 dark:text-white'>AgroZone</span> только начинает свой путь.
+          Разместите объявление{' '}
+          <span className='font-semibold text-gray-900 dark:text-white'>бесплатно на весь срок публикации</span> и
+          станьте одним из первых участников{' '}
+          <span className='font-semibold text-gray-900 dark:text-white'>AgroZone</span>.
         </p>
         {user ? (
           <Button render={<Link href='/ads/create' />} size='lg' className='w-full shrink-0 sm:w-auto'>
