@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils'
 
 import { UserAvatar } from '../../user/components'
 import { AD_PRICE_HIGHLIGHT_CLASS } from '../constants/ad-services.constants'
-import { useAd, useAddFavorite, useArchiveAd, useRemoveAd, useRemoveFavorite } from '../hooks'
+import { useAd, useAdCounters, useAddFavorite, useArchiveAd, useRemoveAd, useRemoveFavorite } from '../hooks'
 import { IAd, ICategoryFeature } from '../types/ad.types'
 import { AdBadgeChip } from './ad-badge-chip'
 import { AdCountersPanel } from './ad-counters-panel'
@@ -198,6 +198,8 @@ export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = 
   const isPriceHighlighted = isFutureDate(ad.priceHighlightUntil) || isSellerPremium
   const isBadgeShown = isFutureDate(ad.badgeUntil) && !!ad.badge
 
+  const { counters } = useAdCounters(ad.id)
+
   return (
     <div className='max-w-[950px]'>
       <BumpStatusHandler adId={ad.id} />
@@ -285,6 +287,23 @@ export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = 
         <>
           <div className='hidden sm:block'>
             <AdViewsStats adId={ad.id} />
+            {counters && (
+              <div className='mb-6 flex gap-6 text-sm text-gray-500 dark:text-gray-400'>
+                <span>
+                  Всего просмотров:{' '}
+                  <span className='font-medium text-gray-900 dark:text-white'>
+                    {counters.viewsTotal}
+                    {counters.viewsToday > 0 && (
+                      <span className='font-medium text-primary'> (+{counters.viewsToday})</span>
+                    )}
+                  </span>
+                </span>
+                <span>
+                  В избранном:{' '}
+                  <span className='font-medium text-gray-900 dark:text-white'>{counters.favoritesCount}</span>
+                </span>
+              </div>
+            )}
           </div>
           <div className='sm:hidden'>
             <div className='mb-3 flex flex-col gap-1'>
