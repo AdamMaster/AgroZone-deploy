@@ -45,6 +45,7 @@ COPY --from=build /app/prisma ./prisma
 # строку подключения к базе и падает с 'datasource url is required',
 # хотя переменная окружения POSTGRES_URI при этом реально задана.
 COPY --from=build /app/prisma.config.ts ./prisma.config.ts
+COPY --from=build /app/tsconfig.json ./tsconfig.json
 COPY --from=build /app/certs ./certs
 
 # Кэш ONNX-модели эмбеддингов (env.cacheDir в embeddings.service.ts =
