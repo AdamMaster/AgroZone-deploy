@@ -74,11 +74,11 @@ export const MobileTabBar = () => {
             onClick={handleClick}
             className={cn(
               'flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-gray-500',
-              isActive && 'dark:text-primary text-secondary'
+              isActive && 'dark:text-primary text-gray-950'
             )}
           >
             <span className='relative inline-flex'>
-              <Icon className={cn('size-5', isActive ? 'dark:text-primary text-secondary' : 'text-gray-500')} />
+              <Icon className={cn('size-5', isActive ? 'dark:text-primary text-gray-950' : 'text-gray-500')} />
               {tab.href === PROFILE_HREF && user && <ProfileTabBadge />}
             </span>
             {tab.label}
