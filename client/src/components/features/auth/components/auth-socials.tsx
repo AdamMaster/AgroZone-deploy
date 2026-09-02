@@ -28,10 +28,10 @@ export const AuthSocials = () => {
   return (
     <>
       <div className='grid grid-cols-2 gap-4'>
-        <Button size='lg' variant='outline' className='text-sm font-medium' onClick={() => onClick('google')}>
+        {/* <Button size='lg' variant='outline' className='text-sm font-medium' onClick={() => onClick('google')}>
           <FaGoogle className='mr-1 size-4' />
           Google
-        </Button>
+        </Button> */}
         <Button size='lg' variant='outline' className='text-sm font-medium' onClick={() => onClick('yandex')}>
           <FaYandex className='mr-1 size-4' />
           Яндекс
