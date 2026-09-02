@@ -1,0 +1,8 @@
+export { Header } from './header/header'
+export { Footer } from './footer/footer'
+export { StaticPagePlaceholder } from './static-page/static-page-placeholder'
+export { Container } from './container'
+export { CookieConsentBanner } from './cookie-consent/cookie-consent-banner'
+export { MobileTabBar } from './mobile-tab-bar/mobile-tab-bar'
+export { LegalPageLayout } from './legal-page/legal-page-layout'
+export { LegalSection } from './legal-page/legal-section'

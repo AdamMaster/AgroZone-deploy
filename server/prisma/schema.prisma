@@ -1,0 +1,895 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [pg_trgm]
+}
+
+model User {
+  id          String      @id @default(uuid())
+  phones      UserPhone[]
+  password    String?
+  email       String?     @unique
+  displayName String?     @map("display_name")
+  picture     String?
+
+  type     UserType @default(INDIVIDUAL)
+  bio      String?  @db.Text
+  location String?
+
+  // Факт подтверждения ИП/компании через ИНН (DaData) — заполняются только
+  // после успешной проверки в UserService.verifyBusiness, никогда напрямую
+  // из формы настроек. businessName — готовое к показу название из ответа
+  // DaData (например "ИП Иванов И.И." или "ООО РОМАШКА"), businessInn —
+  // ИНН, по которому проверка проходила (может отличаться от текущего, если
+  // пользователь позже сменил тип продавца вручную — см.
+  // UserService.update). businessVerifiedAt — null, пока не подтверждено.
+  businessInn        String?   @map("business_inn")
+  businessName       String?   @map("business_name")
+  businessVerifiedAt DateTime? @map("business_verified_at")
+
+  role UserRole @default(REGULAR)
+
+  premiumUntil DateTime? @map("premium_until")
+
+  isVerified         Boolean @default(false) @map("is_verified")
+  isTwoFactorEnabled Boolean @default(false) @map("is_two_factor_enabled")
+
+  // Момент, когда пользователь дал согласие на обработку персональных
+  // данных (152-ФЗ) — проставляется при регистрации (чекбокс на форме email
+  // /SMS-регистрации, обязателен к отметке; для OAuth-регистрации согласие
+  // подразумевается уведомлением рядом с кнопками Google/Яндекс на форме,
+  // см. AuthFormWrapper). null означает, что согласие не зафиксировано
+  // (не должно происходить для новых аккаунтов после этого изменения).
+  personalDataConsentAt DateTime? @map("personal_data_consent_at")
+
+  deletedAt DateTime? @map("deleted_at")
+
+  method   AuthMethod
+  accounts Account[]
+  tokens   Token[]
+
+  ads       Ad[]
+  favorites Favorite[]
+
+  conversationsAsBuyer  Conversation[] @relation("ConversationsAsBuyer")
+  conversationsAsSeller Conversation[] @relation("ConversationsAsSeller")
+  sentMessages          Message[]
+
+  blockedUsers   BlockedUser[] @relation("BlockerOf")
+  blockedByUsers BlockedUser[] @relation("BlockedBy")
+
+  adReports AdReport[]
+
+  adBumps AdBump[]
+
+  premiumPurchases PremiumPurchase[]
+
+  adServicePurchases AdServicePurchase[]
+
+  notifications Notification[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model UserPhone {
+  id String @id @default(uuid())
+
+  phone String @unique
+
+  isPrimary Boolean @default(false)
+
+  isVerified Boolean @default(false)
+
+  userId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@map("user_phones")
+}
+
+model Account {
+  id String @id @default(uuid())
+
+  type              String
+  provider          String
+  providerAccountId String @map("provider_account_id")
+
+  refreshToken String? @map("refresh_token")
+  accessToken  String? @map("access_token")
+  expiresAt    Int     @map("expires_at")
+
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String? @map("user_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Token {
+  id String @id @default(uuid())
+
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String? @map("user_id")
+
+  phone     String?
+  email     String?
+  token     String
+  type      TokenType
+  expiresIn DateTime  @map("expires_in")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([token, type])
+  @@index([phone, type])
+  @@index([userId])
+  @@index([token])
+  @@map("tokens")
+}
+
+model Category {
+  id          String  @id @default(uuid())
+  name        String
+  description String? // 👈 Новое поле
+
+  priceUnits PriceUnit[] @default([ITEM]) @map("price_units")
+
+  slug     String
+  path     String[] @default([])
+  fullPath String   @unique @map("full_path")
+
+  code String @unique
+
+  iconId String? @map("icon_id")
+
+  parentId String?    @map("parent_id")
+  parent   Category?  @relation("CategoryToCategory", fields: [parentId], references: [id], onDelete: Cascade)
+  children Category[] @relation("CategoryToCategory")
+
+  level     Int @default(0)
+  sortOrder Int @default(0)
+
+  categoryFeatures CategoryFeature[]
+
+  ads Ad[]
+
+  // Раньше тут был один Float[] embedding на всю категорию (см. git-историю
+  // и обсуждение с пользователем), посчитанный по name + всему description
+  // разом. Это не сработало: description после обогащения через GigaChat —
+  // это список из 15-25 обиходных названий/сортов ("ель обыкновенная, туя
+  // западная, кедр сибирский, ..."), а mean pooling усредняет вклад каждого
+  // слова в один вектор — "туя" в списке из 25 пород даёт вклад ~1/25, сигнал
+  // тонет, и поиск по "туи" не находил "Саженцы хвойных пород", хотя туя
+  // западная прямо была в описании. Заменили на CategoryTerm ниже — по
+  // отдельному вектору на каждый термин, и берём максимум при поиске вместо
+  // среднего (см. CategoriesService.searchBySemantic и
+  // scripts/precompute-category-embeddings.ts).
+  terms CategoryTerm[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([parentId, slug])
+  @@index([parentId])
+  @@index([slug])
+  @@index([fullPath])
+  @@index([code])
+  @@map("categories")
+}
+
+// Один термин (название категории ИЛИ одно слово/фраза-синоним из
+// обогащённого description) — свой собственный эмбеддинг. Семантический
+// поиск категории (CategoriesService.searchBySemantic) сравнивает запрос со
+// ВСЕМИ терминами и берёт максимум по каждой категории — так запрос "туи"
+// напрямую сравнивается с термином "туя западная", а не размывается
+// усреднением с 24 другими соснами/елями в одном векторе категории (см.
+// комментарий у Category.terms выше). Отдельная таблица, а не Float[][] в
+// Category — сравнение остаётся плоским списком строк, дешевле для брутфорс
+// косинуса в коде, чем городить вложенные массивы.
+model CategoryTerm {
+  id String @id @default(uuid())
+
+  categoryId String   @map("category_id")
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  term String
+
+  embedding Float[] @default([])
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([categoryId])
+  @@map("category_terms")
+}
+
+model CategoryFeature {
+  id String @id @default(uuid())
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  name        String
+  label       String
+  description String?
+
+  type FeatureType
+
+  required   Boolean @default(false)
+  filterable Boolean @default(true)
+
+  placeholder String?
+
+  // Единица измерения (для type = NUMBER). Раньше была только одна
+  // строка unit — этого хватало для полей с фиксированной единицей
+  // ("Объём контейнера" -> "л"), но не для полей, где продавец сам
+  // выбирает из нескольких вариантов ("Мощность" -> кВт ИЛИ л.с.), и
+  // seed.ts такие случаи вообще не сохранял (unit оставался null).
+  // units — единственный источник правды на клиенте теперь: первый
+  // элемент массива считается канонической единицей (та, в которой
+  // значение реально хранится в Ad.features — конвертация из
+  // выбранной пользователем единицы происходит на клиенте перед
+  // сохранением, см. dynamic-field.tsx), последующие — альтернативы,
+  // которые можно выбрать при вводе. unit (старое поле) оставлен для
+  // обратной совместимости и не используется новым кодом напрямую.
+  unit  String?
+  units String[] @default([])
+
+  options Json?
+
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([categoryId, sortOrder])
+  @@map("category_features")
+}
+
+enum FeatureType {
+  TEXT
+  NUMBER
+  BOOLEAN
+  SELECT
+  MULTI_SELECT
+}
+
+model Ad {
+  id          String    @id @default(uuid())
+  slug        String    @unique @default("")
+  title       String
+  description String    @db.Text
+  price       BigInt?
+  unit        PriceUnit @default(ITEM)
+  images      String[]
+  address     String
+  phone       String
+  features    Json      @default("{}")
+  lat         Float
+  lng         Float
+
+  // Регион объявления — берётся из того же ответа DaData, которым уже
+  // геокодируется address/lat/lng (см. AddressInput), без отдельного
+  // запроса. region — для отображения ("Кабардино-Балкарская Респ."),
+  // regionIsoCode — стабильный ISO 3166-2:RU код (например "RU-KB"),
+  // именно по нему фильтруем в каталоге (AdsService.findAll) — он не
+  // зависит от вариаций написания названия региона.
+  region        String?
+  regionIsoCode String? @map("region_iso_code")
+
+  // Более узкий уровень, чем регион — конкретный город ИЛИ (если это не
+  // город, а посёлок/село) населённый пункт; из того же DaData-ответа.
+  // locality — для отображения ("г. Нальчик" / "с. Верх-Ирмень"),
+  // localityFiasId — стабильный ФИАС-идентификатор для точного фильтра
+  // (у городов/сёл нет ISO-кода, в отличие от региона).
+  locality       String?
+  localityFiasId String? @map("locality_fias_id")
+
+  categoryPath String[] @default([]) @map("category_path")
+  seoPath      String   @map("seo_path")
+
+  userId String @map("user_id")
+  user   User?  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  categoryId String     @map("category_id")
+  category   Category   @relation(fields: [categoryId], references: [id])
+  favorites  Favorite[]
+
+  conversations Conversation[]
+  reports       AdReport[]
+  bumps         AdBump[]
+  views         AdView[]
+  viewsDaily    AdViewDaily[]
+
+  status AdStatus @default(PENDING)
+
+  rejectionReason String?   @map("rejection_reason")
+  expiresAt       DateTime? @map("expires_at")
+  publishedAt     DateTime? @map("published_at")
+
+  // Когда объявление в последний раз ушло в статус ARCHIVED — null, если
+  // никогда (или уже вышло из архива обратно). НЕ переиспользуем updatedAt
+  // для этого — он сбивается любым другим изменением объявления, а не
+  // только уходом в архив. Нужен, чтобы AdsArchivePurgeWorker мог считать
+  // "объявление лежит в архиве больше 30 дней" именно от момента архивации,
+  // а не от последнего редактирования (см. AdsService.archive/activate/draft/publishDraft
+  // и AdsArchivePurgeWorker).
+  archivedAt DateTime? @map("archived_at")
+
+  // Время последнего платного "поднятия" объявления (см. AdBumpsService) —
+  // null, если ни разу не поднимали. Используется вместо createdAt в
+  // сортировке каталога по умолчанию (COALESCE(bumped_at, created_at) —
+  // см. AdsService.findAll), чтобы поднятое объявление всплывало в топ
+  // ленты ровно как только что созданное, и естественно "тонуло" по мере
+  // появления более новых/свежеподнятых объявлений — без отдельного поля
+  // "закреплено" и без фоновых задач на снятие закрепления.
+  bumpedAt DateTime? @map("bumped_at")
+
+  // До какого момента активна платная услуга "Поднять объявление"
+  // (см. AdBumpsService/AdAutoBumpWorker) — null или дата в прошлом, если
+  // услуга не куплена/закончилась. Пока это поле в будущем, фоновый воркер
+  // раз в сутки сам обновляет bumpedAt — источник истины именно тут, а не
+  // в отдельных записях AdBump (та же схема, что и User.premiumUntil vs
+  // PremiumPurchase: AdBump — история платежей, bumpServiceUntil — текущее
+  // состояние). Повторная покупка ПРОДЛЕВАЕТ это поле (складывает 7 дней
+  // поверх текущего значения, если оно ещё не истекло), а не перезаписывает.
+  bumpServiceUntil DateTime? @map("bump_service_until")
+
+  // До какого момента активна платная услуга "Выделить цену" — тот же
+  // принцип, что у bumpServiceUntil (повторная покупка складывает 7 дней
+  // поверх текущего значения, если оно ещё не истекло). В отличие от
+  // bumpServiceUntil, фоновому воркеру тут делать нечего — это чисто
+  // визуальный флаг, читает его фронт напрямую (AdShortCard/AdDetail),
+  // чтобы условно стилизовать цену.
+  priceHighlightUntil DateTime? @map("price_highlight_until")
+
+  // Значок на объявлении ("Срочно"/"Торг уместен"/"Новинка", см. AdBadge)
+  // и до какого момента он активен. Один активный значок за раз, не
+  // массив — сознательно не стали разрешать выбирать несколько сразу (см.
+  // обсуждение). Повторная покупка НЕ складывается лесенкой, как у двух
+  // услуг выше: если продавец меняет значок, пока старый ещё активен, это
+  // просто замена (новые badge + badgeUntil), а не сложение сроков.
+  badge      AdBadge?  @map("badge")
+  badgeUntil DateTime? @map("badge_until")
+
+  // Комбинированные покупки услуг "Поднять/Выделить цену/Значок" одним
+  // платежом — см. AdServicePurchase.
+  servicePurchases AdServicePurchase[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([status, expiresAt])
+  // Под AdsArchivePurgeWorker: выборка архивных объявлений живых аккаунтов
+  // старше 30 дней (архив удалённых аккаунтов ищется через User.deletedAt).
+  @@index([status, archivedAt])
+  @@index([userId])
+  @@index([categoryId])
+  // Под фильтр каталога: выбрана категория + сортировка/диапазон по цене.
+  @@index([categoryId, price])
+  @@index([phone])
+  @@index([regionIsoCode])
+  @@index([localityFiasId])
+  @@map("ads")
+}
+
+// "Срочно" / "Торг уместен" / "Новинка" — только субъективные пометки
+// продавца о самой сделке, никогда факты о цене (см. обсуждение, почему
+// сюда осознанно не попала "Скидка" — это отдельный автоматический
+// признак на основе реальной истории цены, не значок, который можно
+// просто купить).
+enum AdBadge {
+  URGENT
+  NEGOTIABLE
+  NEW
+}
+
+model Favorite {
+  id String @id @default(uuid())
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  adId String @map("ad_id")
+  ad   Ad     @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, adId]) // Ограничение: юзер не может добавить одно объявление дважды
+  @@index([userId])
+  @@index([adId])
+  @@map("favorites")
+}
+
+enum AdReportReason {
+  SCAM
+  WRONG_CATEGORY
+  PROHIBITED_ITEM
+  DUPLICATE
+  SPAM
+  OTHER
+}
+
+// PENDING — ещё не разобрана модератором; REVIEWED — разобрана, меры приняты
+// (например, объявление отклонено отдельным действием в очереди модерации);
+// DISMISSED — разобрана и признана необоснованной. Порядок значений важен:
+// используется для сортировки "новые жалобы сверху" (см. AdReportsService.findAll).
+enum AdReportStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+}
+
+// Жалоба на объявление — модерация контента (не то же самое, что
+// блокировка юзера в чате, см. BlockedUser: там про отношения между двумя
+// людьми, здесь про сам контент объявления, и жалоба должна быть видна
+// модератору вне зависимости от того, переписывался ли жалующийся с
+// продавцом). Одна жалоба от одного юзера на одно объявление — чтобы нельзя
+// было накрутить счётчик жалоб самому себе спамом кликов.
+model AdReport {
+  id String @id @default(uuid())
+
+  adId String @map("ad_id")
+  ad   Ad     @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  reason  AdReportReason
+  comment String?        @db.Text
+  status  AdReportStatus @default(PENDING)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([adId, userId])
+  @@index([adId])
+  @@index([userId])
+  @@index([status])
+  @@map("ad_reports")
+}
+
+// PENDING — платёж создан в ЮKassa, ждём подтверждения по вебхуку;
+// SUCCEEDED — оплата прошла, объявление поднято (Ad.bumpedAt проставлен
+// в той же транзакции — см. AdBumpsService.handleWebhook); CANCELED —
+// платёж отменён/просрочен на стороне ЮKassa. Статус выставляется только
+// на основании повторного запроса к API ЮKassa по platformId, а не на
+// основании тела вебхука (его в теории можно подделать).
+enum AdBumpStatus {
+  PENDING
+  SUCCEEDED
+  CANCELED
+}
+
+// Один платный "разовый подъём" объявления в топ ленты. Каждая попытка —
+// отдельная запись (в отличие от AdReport с @@unique — тут юзер может
+// поднимать одно и то же объявление сколько угодно раз, было бы за что
+// платить).
+model AdBump {
+  id String @id @default(uuid())
+
+  adId String @map("ad_id")
+  ad   Ad     @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // В копейках — как и Ad.price устроен через BigInt, чтобы не иметь дела
+  // с плавающей точкой в деньгах. Для ЮKassa конвертируется в строку с
+  // двумя знаками после запятой (см. AdBumpsService).
+  amount Int
+
+  status AdBumpStatus @default(PENDING)
+
+  // id платежа в ЮKassa — приходит в ответ на создание платежа, по нему же
+  // сверяем вебхук. Уникален — на один AdBump не может быть двух платежей
+  // ЮKassa одновременно.
+  yookassaPaymentId String? @unique @map("yookassa_payment_id")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  paidAt    DateTime? @map("paid_at")
+
+  @@index([adId])
+  @@index([userId])
+  @@index([status])
+  @@map("ad_bumps")
+}
+
+// Статистика просмотров — приватная, видит только владелец объявления и
+// админ (см. AdsService.getViewStatsForOwner/getViewStatsForAdmin), поэтому
+// не денормализуем счётчик прямо на Ad — читается редко, писать на каждый
+// публичный просмотр в саму широкую таблицу Ad было бы гораздо дороже (у
+// каждого UPDATE там пришлось бы переписывать всю строку с текстовыми
+// полями объявления, и это лишняя блокировка на самом горячем публичном
+// эндпоинте — см. AdsService.findOne).
+//
+// AdView — сырые события, максимум сутки данных: один посетитель считается
+// один раз в день (@@unique), AdViewsRollupWorker каждую ночь сворачивает
+// вчерашние строки в AdViewDaily и удаляет их отсюда — таблица никогда не
+// растёт бесконечно.
+model AdView {
+  id String @id @default(uuid())
+
+  adId String @map("ad_id")
+  ad   Ad     @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  // "user:{id}" для залогиненных, "anon:{sha256(ip+ua)}" для анонимов —
+  // сырой IP не храним (персональные данные, 152-ФЗ), хэша достаточно для
+  // дедупа (см. computeViewerKey в ads/utils/viewer-key.util.ts). Сам
+  // владелец объявления в эту таблицу не попадает вовсе — не считаем
+  // просмотром, когда он смотрит своё же объявление (см. AdsService.findOne).
+  viewerKey String @map("viewer_key")
+
+  // Без времени — только день, ради дедупа "один посетитель — один
+  // засчитанный просмотр в сутки".
+  viewDate DateTime @map("view_date") @db.Date
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([adId, viewerKey, viewDate])
+  @@index([viewDate])
+  @@map("ad_views")
+}
+
+// Свёрнутые дневные суммы — постоянное хранилище статистики (в отличие от
+// AdView). Максимум одна строка на объявление в день, живёт вместе с
+// объявлением (Cascade) — отдельно чистить не нужно, всё уйдёт само при
+// физическом удалении объявления (см. AdsArchivePurgeWorker).
+model AdViewDaily {
+  id String @id @default(uuid())
+
+  adId String @map("ad_id")
+  ad   Ad     @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  date  DateTime @db.Date
+  views Int      @default(0)
+
+  @@unique([adId, date])
+  @@map("ad_views_daily")
+}
+
+enum PremiumPurchaseStatus {
+  PENDING
+  SUCCEEDED
+  CANCELED
+}
+
+// Разовая покупка премиум-статуса на 30 дней (см. User.premiumUntil) — по
+// структуре и логике оплаты почти copy-paste AdBump: тот же одноразовый
+// чекаут в ЮKassa, та же перепроверка статуса вместо доверия вебхуку.
+// Отличие от AdBump — это не привязано к конкретному объявлению (платит
+// сам юзер за себя), и продление СКЛАДЫВАЕТ дни поверх текущего
+// premiumUntil, а не перезаписывает его (см. PremiumService.reconcilePayment).
+//
+// isRecurring/yookassaPaymentMethodId — задел под будущее автосписание:
+// ЮKassa подтвердила, что рекуррентные платежи для магазина доступны на
+// проде, но не в тестовом режиме, поэтому сам код автосписания пока не
+// пишем (не на чем проверить) — просто резервируем под него поля, чтобы
+// не переделывать схему, когда дойдём до этого на проде.
+model PremiumPurchase {
+  id String @id @default(uuid())
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // В копейках, как и AdBump.amount.
+  amount Int
+
+  status PremiumPurchaseStatus @default(PENDING)
+
+  yookassaPaymentId String? @unique @map("yookassa_payment_id")
+
+  isRecurring             Boolean @default(false) @map("is_recurring")
+  yookassaPaymentMethodId String? @map("yookassa_payment_method_id")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  paidAt    DateTime? @map("paid_at")
+
+  @@index([userId])
+  @@index([status])
+  @@map("premium_purchases")
+}
+
+enum AdServiceType {
+  BUMP
+  PRICE_HIGHLIGHT
+  BADGE
+}
+
+enum AdServicePurchaseStatus {
+  PENDING
+  SUCCEEDED
+  CANCELED
+}
+
+// Единая страница "Поднять просмотры" (см. AdServicesService) — продавец
+// выбирает переключателями любой набор из трёх услуг (поднятие, выделение
+// цены, значок) и платит ОДНИМ платежом за всё выбранное, а не отдельно
+// за каждую. services — какие услуги входят в эту покупку ('BUMP' |
+// 'PRICE_HIGHLIGHT' | 'BADGE'), badge — какой именно значок выбран, если
+// 'BADGE' среди services (иначе null).
+//
+// Специально НЕ переиспользует AdBump/его таблицу — тот остаётся
+// самостоятельным для случаев точечной покупки одного поднятия (см.
+// AdBumpsService), а тут именно "пакет" из произвольного набора услуг.
+// AdServicesService.reconcilePayment при успехе применяет эффект каждой
+// услуги из массива к соответствующему полю Ad (bumpServiceUntil /
+// priceHighlightUntil / badge+badgeUntil) в одной транзакции — та же
+// логика продления "лесенкой", что и в AdBumpsService/PremiumService.
+model AdServicePurchase {
+  id String @id @default(uuid())
+
+  adId String @map("ad_id")
+  ad   Ad     @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // В копейках, как и AdBump.amount — сумма ВСЕХ выбранных услуг разом,
+  // считается на сервере из AD_SERVICE_PRICES_KOPECKS (см. константы),
+  // никогда не принимается от клиента.
+  amount Int
+
+  services AdServiceType[]
+
+  badge AdBadge?
+
+  status AdServicePurchaseStatus @default(PENDING)
+
+  yookassaPaymentId String? @unique @map("yookassa_payment_id")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  paidAt    DateTime? @map("paid_at")
+
+  @@index([adId])
+  @@index([userId])
+  @@index([status])
+  @@map("ad_service_purchases")
+}
+
+// Диалог между покупателем и продавцом ПО КОНКРЕТНОМУ объявлению — не
+// просто "переписка между двумя юзерами", а именно пара (объявление,
+// покупатель): если один и тот же человек напишет продавцу и про трактор, и
+// через месяц про комбайн — это два разных диалога, а не одна общая каша
+// сообщений. sellerId продублирован из ad.userId (а не вычисляется каждый
+// раз через join) — чтобы дёшево фильтровать "мои диалоги как продавец" по
+// индексу, без обращения к Ad.
+//
+// Курсоры прочтения (buyerLastReadAt/sellerLastReadAt) — вместо флага
+// "прочитано" на каждом отдельном Message: непрочитанные считаются
+// сравнением lastMessageAt с *LastReadAt соответствующей стороны, что не
+// требует ни отдельной таблицы статусов чтения, ни массового UPDATE по всем
+// сообщениям диалога при открытии чата — обновляется одна строка.
+//
+// dealConfirmed — отметка "сделка состоялась", которую смогут ставить
+// участники диалога; задел на будущее: когда дойдём до отзывов о продавце,
+// оставить отзыв можно будет только там, где dealConfirmed = true — так
+// отзыв нельзя написать, просто зайдя на страницу объявления, не пообщавшись
+// с продавцом по-настоящему.
+model Conversation {
+  id String @id @default(uuid())
+
+  // Nullable + SetNull (не Cascade) — сознательно: объявление может быть
+  // физически удалено (см. AdsArchivePurgeWorker) НЕЗАВИСИМО от судьбы
+  // переписки по нему. Раньше здесь был Cascade, и удаление объявления
+  // сносило переписку целиком — в том числе у собеседника, который ничего
+  // не удалял и не мог на это повлиять. adTitleSnapshot хранит заголовок на
+  // момент создания диалога, чтобы после удаления объявления в интерфейсе
+  // не было пустоты (см. ConversationsService.startConversation).
+  adId String? @map("ad_id")
+  ad   Ad?     @relation(fields: [adId], references: [id], onDelete: SetNull)
+
+  adTitleSnapshot String? @map("ad_title_snapshot")
+
+  buyerId String @map("buyer_id")
+  buyer   User   @relation("ConversationsAsBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+
+  sellerId String @map("seller_id")
+  seller   User   @relation("ConversationsAsSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+
+  messages Message[]
+
+  lastMessageAt DateTime? @map("last_message_at")
+
+  buyerLastReadAt  DateTime? @map("buyer_last_read_at")
+  sellerLastReadAt DateTime? @map("seller_last_read_at")
+
+  dealConfirmed Boolean @default(false) @map("deal_confirmed")
+
+  // "Удаление" диалога — per-user, не физическое: переписка принадлежит
+  // ОБОИМ участникам, и стереть её из базы по воле одного из них означало
+  // бы стереть историю и у второго. Поэтому "удалить" — это скрыть у себя;
+  // диалог продолжает существовать и просто пропадает из списка того, кто
+  // его скрыл (см. ConversationsService.deleteConversation). Если после
+  // этого приходит новое сообщение — оба флага сбрасываются обратно в
+  // false (см. createMessage): диалог не должен быть потерян навсегда для
+  // человека, которому продолжают писать.
+  hiddenByBuyer  Boolean @default(false) @map("hidden_by_buyer")
+  hiddenBySeller Boolean @default(false) @map("hidden_by_seller")
+
+  // Диалог физически удаляется (не скрывается) целиком, когда ОБА участника
+  // уже удалили свои аккаунты — тогда он гарантированно бесхозный: ни один
+  // из них не сможет в него зайти (AuthGuard отклоняет юзеров с deletedAt).
+  // Пока жив хотя бы один — диалог остаётся как есть, это его личная
+  // история переписки, второй показывается с обезличенным профилем и
+  // соответствующей подписью в интерфейсе (см. UserService.deleteAccount).
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Повторное обращение того же покупателя по тому же объявлению должно
+  // попадать в существующий диалог, а не плодить дубликаты.
+  @@unique([adId, buyerId])
+  @@index([buyerId, lastMessageAt])
+  @@index([sellerId, lastMessageAt])
+  @@index([adId])
+  @@map("conversations")
+}
+
+// Блокировка одного юзера другим — глобальная, не привязанная к конкретному
+// диалогу или объявлению: если заблокировал, значит не хочет получать
+// сообщения от этого человека вообще, а не только в рамках одной переписки
+// (в отличие от "удаления" диалога, см. Conversation.hiddenByBuyer/hiddenBySeller,
+// которое скрывает только конкретную переписку и снимается новым сообщением).
+// Однонаправленная запись (blocker -> blocked), но проверка при отправке
+// сообщения смотрит блокировку в обе стороны — если хотя бы один из двух
+// заблокировал другого, переписка невозможна (см. BlockedUsersService.isBlocked).
+model BlockedUser {
+  id String @id @default(uuid())
+
+  blockerId String @map("blocker_id")
+  blocker   User   @relation("BlockerOf", fields: [blockerId], references: [id], onDelete: Cascade)
+
+  blockedId String @map("blocked_id")
+  blocked   User   @relation("BlockedBy", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+  @@map("blocked_users")
+}
+
+model Message {
+  id String @id @default(uuid())
+
+  conversationId String       @map("conversation_id")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderId String @map("sender_id")
+  sender   User   @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  text        String   @db.Text
+  attachments String[] @default([])
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Под пагинированную историю диалога, отсортированную по времени.
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@map("messages")
+}
+
+enum UserRole {
+  REGULAR
+  ADMIN
+  PREMIUM
+}
+
+enum UserType {
+  INDIVIDUAL
+  INDIVIDUAL_ENTREPRENEUR
+  BUSINESS
+}
+
+enum AuthMethod {
+  CREDENTIALS
+  GOOGLE
+  YANDEX
+}
+
+enum TokenType {
+  VERIFICATION
+  TWO_FACTOR
+  PASSWORD_RESET
+  EMAIL_CHANGE
+  SMS_VERIFICATION
+  PHONE_CHANGE
+}
+
+enum AdStatus {
+  DRAFT
+  PENDING
+  PUBLISHED
+  REJECTED
+  ARCHIVED
+  EXPIRED
+}
+
+// Статический справочник городов России (датасет hflabs/city, тот же
+// источник, что и DaData) — импортируется один раз сид-скриптом
+// (prisma/seed.ts, prisma/data/ru-cities.ts) и НЕ зависит от того, есть ли
+// по этому городу хотя бы одно объявление. Нужен, чтобы фильтр локации в
+// каталоге подсказывал города сразу при вводе (см. AdsService.getAvailableLocations).
+// Сёл/деревень тут нет (в исходном датасете их нет) — они по-прежнему
+// фильтруются только по реальным объявлениям, как и раньше.
+model RuCity {
+  fiasId String @id @map("fias_id")
+
+  city     String
+  cityType String? @map("city_type")
+
+  region     String
+  regionType String? @map("region_type")
+
+  // Москва/Санкт-Петербург/Севастополь — у них city совпадает с region;
+  // используется в AdsService для матчинга объявлений по названию региона
+  // (ISO-код региона мы намеренно не хардкодим — см. комментарий в
+  // ru-cities.ts).
+  isFederalCity Boolean @default(false) @map("is_federal_city")
+
+  lat Float
+  lng Float
+
+  @@index([city])
+  @@map("ru_cities")
+}
+
+enum PriceUnit {
+  ITEM
+  TON
+  KG
+  LITER
+  M3
+  BAG
+  HEAD
+  DOSE
+  RUNNING_METER
+  HA
+  HOUR
+}
+
+// Уведомление юзеру про событие, которое ему стоит увидеть, даже если он
+// сам не зайдёт целенаправленно проверять (см. обсуждение — раньше
+// отклонение объявления модератором было видно ТОЛЬКО если продавец сам
+// откроет "Мои объявления"). Сущность универсальная (не "AdRejection..."),
+// чтобы под новые события (одобрили объявление, истекает премиум и т.п.)
+// не заводить отдельную таблицу каждый раз — достаточно добавить значение
+// в NotificationType.
+model Notification {
+  id     String @id @default(uuid())
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type    NotificationType
+  title   String
+  message String
+
+  // Куда ведёт клик по уведомлению (например /ads/{id}/edit для
+  // отклонённого объявления) — опционально, не все уведомления обязаны
+  // куда-то вести.
+  link String?
+
+  isRead Boolean @default(false) @map("is_read")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  AD_REJECTED
+}

@@ -1,0 +1,5 @@
+export * from './about-hero'
+export * from './about-mission'
+export * from './about-trust'
+export * from './about-founder'
+export * from './about-contact'
