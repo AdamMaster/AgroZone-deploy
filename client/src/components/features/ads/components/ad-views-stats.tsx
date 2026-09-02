@@ -49,7 +49,7 @@ export const AdViewsStats = ({ adId }: AdViewsStatsProps) => {
   const canGoForward = weekOffset > 0
 
   return (
-    <div className='sm:custom-shadow mb-5 rounded-3xl sm:bg-white sm:p-6 dark:bg-transparent dark:sm:bg-neutral-700'>
+    <div className='mb-5 rounded-3xl sm:border sm:bg-white sm:p-6 dark:bg-transparent dark:sm:bg-neutral-700'>
       <div className='mb-4 flex flex-wrap items-center justify-between gap-3'>
         <Heading level={4}>Просмотры</Heading>
 
