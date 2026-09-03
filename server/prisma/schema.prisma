@@ -60,6 +60,11 @@ model User {
   conversationsAsSeller Conversation[] @relation("ConversationsAsSeller")
   sentMessages          Message[]
 
+  // Гости чата поддержки, чья переписка "приклеилась" к этому аккаунту
+  // после того, как они зарегистрировались/залогинились (см.
+  // SupportGuest.mergedIntoUserId и ConversationsService.mergeGuestOnLogin).
+  mergedSupportGuests SupportGuest[]
+
   blockedUsers   BlockedUser[] @relation("BlockerOf")
   blockedByUsers BlockedUser[] @relation("BlockedBy")
 
@@ -678,8 +683,26 @@ model AdServicePurchase {
 // оставить отзыв можно будет только там, где dealConfirmed = true — так
 // отзыв нельзя написать, просто зайдя на страницу объявления, не пообщавшись
 // с продавцом по-настоящему.
+//
+// type различает два физически разных сценария в одной таблице:
+//   AD      — обычный диалог покупатель/продавец по объявлению, как описано
+//             выше. buyerId и sellerId обязательны, guestId всегда null.
+//   SUPPORT — диалог с поддержкой (см. SupportChatWidget). adId и sellerId
+//             всегда null — отвечать может ЛЮБОЙ пользователь с ролью ADMIN
+//             (проверяется по роли в ConversationsService, а не по
+//             конкретному sellerId), это осознанно: если админов станет
+//             больше одного, тикет не придётся никому "переприсваивать".
+//             Второй участник — buyerId (залогиненный юзер) ИЛИ guestId
+//             (анонимный посетитель, см. SupportGuest), но не оба сразу и
+//             не ни один — это гарантируется CHECK-constraint'ом
+//             conversation_participant_check, добавленным вручную поверх
+//             сгенерированной Prisma-миграции (см. миграцию
+//             add_support_chat) — сам Prisma такие условные constraint'ы
+//             не умеет выразить в schema.prisma.
 model Conversation {
   id String @id @default(uuid())
+
+  type ConversationType @default(AD)
 
   // Nullable + SetNull (не Cascade) — сознательно: объявление может быть
   // физически удалено (см. AdsArchivePurgeWorker) НЕЗАВИСИМО от судьбы
@@ -687,17 +710,30 @@ model Conversation {
   // сносило переписку целиком — в том числе у собеседника, который ничего
   // не удалял и не мог на это повлиять. adTitleSnapshot хранит заголовок на
   // момент создания диалога, чтобы после удаления объявления в интерфейсе
-  // не было пустоты (см. ConversationsService.startConversation).
+  // не было пустоты (см. ConversationsService.startConversation). Для
+  // SUPPORT-диалогов всегда null.
   adId String? @map("ad_id")
   ad   Ad?     @relation(fields: [adId], references: [id], onDelete: SetNull)
 
   adTitleSnapshot String? @map("ad_title_snapshot")
 
-  buyerId String @map("buyer_id")
-  buyer   User   @relation("ConversationsAsBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  // Nullable — для SUPPORT-диалога с анонимным гостем buyerId пуст, вместо
+  // него заполнен guestId (см. type выше и CHECK-constraint в миграции). Для
+  // AD-диалогов и для SUPPORT-диалогов залогиненного пользователя buyerId
+  // обязателен.
+  buyerId String? @map("buyer_id")
+  buyer   User?   @relation("ConversationsAsBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
 
-  sellerId String @map("seller_id")
-  seller   User   @relation("ConversationsAsSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  // Анонимный собеседник в SUPPORT-диалоге — см. SupportGuest. onDelete:
+  // Cascade тут не страшен: SupportGuest не удаляется физически (см.
+  // комментарий к модели), значит и диалог с ним не пропадёт неожиданно.
+  guestId String?       @map("guest_id")
+  guest   SupportGuest? @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  // Только для AD-диалогов — см. type. Для SUPPORT всегда null: отвечающий
+  // определяется ролью, а не привязкой к конкретному аккаунту.
+  sellerId String? @map("seller_id")
+  seller   User?   @relation("ConversationsAsSeller", fields: [sellerId], references: [id], onDelete: Cascade)
 
   messages Message[]
 
@@ -729,11 +765,19 @@ model Conversation {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Повторное обращение того же покупателя по тому же объявлению должно
-  // попадать в существующий диалог, а не плодить дубликаты.
+  // попадать в существующий диалог, а не плодить дубликаты. Для SUPPORT
+  // (adId всегда null) это ограничение по одному только adId ничего не
+  // дедуплицирует — "один активный тикет на покупателя/гостя" гарантируют
+  // отдельные частичные уникальные индексы (conversation_support_buyer_unique
+  // / conversation_support_guest_unique), добавленные вручную в миграции:
+  // Prisma не умеет выразить partial unique index (WHERE type = 'SUPPORT')
+  // прямо в schema.prisma.
   @@unique([adId, buyerId])
   @@index([buyerId, lastMessageAt])
   @@index([sellerId, lastMessageAt])
   @@index([adId])
+  @@index([guestId])
+  @@index([type, lastMessageAt])
   @@map("conversations")
 }
 
@@ -768,18 +812,83 @@ model Message {
   conversationId String       @map("conversation_id")
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
-  senderId String @map("sender_id")
-  sender   User   @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  // Nullable по той же причине, что buyerId/guestId у Conversation —
+  // отправитель либо зарегистрированный User, либо анонимный SupportGuest,
+  // но не оба сразу и не ни один (CHECK-constraint message_sender_check,
+  // добавлен вручную в миграции add_support_chat).
+  senderId String? @map("sender_id")
+  sender   User?   @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  senderGuestId String?       @map("sender_guest_id")
+  senderGuest   SupportGuest? @relation(fields: [senderGuestId], references: [id], onDelete: Cascade)
 
   text        String   @db.Text
   attachments String[] @default([])
 
   createdAt DateTime @default(now()) @map("created_at")
 
+  // Soft-delete, сейчас — только для SUPPORT (см. SupportService.deleteMessage):
+  // админ может удалить любое сообщение тикета, своё или собеседника, и оно
+  // пропадает из выдачи ОБЕИХ сторон. Физически строка не стирается —
+  // deletedAt просто исключает её из getMessages/getAdminConversations —
+  // это дешевле и безопаснее хард-делита: не ломает lastMessageAt/
+  // isFirstMessage соседних сообщений, и оставляет след на случай спора
+  // задним числом, даже если наружу (в API) он никогда не показывается.
+  deletedAt DateTime? @map("deleted_at")
+
   // Под пагинированную историю диалога, отсортированную по времени.
   @@index([conversationId, createdAt])
   @@index([senderId])
+  @@index([senderGuestId])
   @@map("messages")
+}
+
+// Анонимный посетитель, написавший в чат поддержки без логина (см.
+// SupportChatWidget). Намеренно НЕ строка в User: заводить фейковый
+// аккаунт на каждого анонима означало бы засорять таблицу пользователей и
+// портить любую аналитику по реальным юзерам.
+//
+// Идентификация — через обычную express-session (см. main.ts: session на
+// Redis, cookie ставится только когда что-то реально записано в
+// req.session — saveUninitialized: false), а не через отдельный токен:
+// в req.session.supportGuestId лежит id этой записи, cookie подписана
+// SESSION_SECRET, подделать нельзя — заводить для той же цели ещё одну
+// параллельную сущность "токен" было бы просто дублированием того, что уже
+// даёт сессия бесплатно.
+//
+// Если гость затем регистрируется или логинится — его SUPPORT-диалог
+// "приклеивается" к новому аккаунту: guestId в Conversation/Message
+// заменяется на buyerId/senderId этого юзера (см.
+// ConversationsService.mergeGuestOnLogin), а сама запись SupportGuest не
+// удаляется и остаётся привязана через mergedIntoUserId — просто как
+// исторический след, по которому больше ничего не ищется.
+model SupportGuest {
+  id String @id @default(uuid())
+
+  // Для базового антиспама и чтобы админ мог забанить конкретного гостя
+  // (см. SupportGuestsService.block) — не для аналитики.
+  ip        String? @map("ip")
+  userAgent String? @map("user_agent")
+
+  // Бан ставит админ прямо из чата (аналог BlockedUser, но гость — не User,
+  // и блокировка тут однонаправленная и не требует отдельной таблицы: у
+  // гостя просто нет своего аккаунта, откуда он мог бы "заблокировать в
+  // ответ"). Заблокированный гость получает 403 при попытке отправить
+  // сообщение — весь его диалог при этом никуда не девается, админ может
+  // читать историю.
+  blockedAt DateTime? @map("blocked_at")
+
+  conversations Conversation[]
+  messages      Message[]
+
+  mergedIntoUserId String? @map("merged_into_user_id")
+  mergedIntoUser   User?   @relation(fields: [mergedIntoUserId], references: [id], onDelete: SetNull)
+
+  createdAt  DateTime @default(now()) @map("created_at")
+  lastSeenAt DateTime @default(now()) @updatedAt @map("last_seen_at")
+
+  @@index([mergedIntoUserId])
+  @@map("support_guests")
 }
 
 enum UserRole {
@@ -816,6 +925,11 @@ enum AdStatus {
   REJECTED
   ARCHIVED
   EXPIRED
+}
+
+enum ConversationType {
+  AD
+  SUPPORT
 }
 
 // Статический справочник городов России (датасет hflabs/city, тот же

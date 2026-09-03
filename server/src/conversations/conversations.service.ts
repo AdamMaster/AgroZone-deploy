@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
-import { AdStatus } from '@/generated/prisma/enums'
+import { AdStatus, ConversationType } from '@/generated/prisma/enums'
 
 import { BlockedUsersService } from '@/blocked-users/blocked-users.service'
 import { PrismaService } from '@/prisma/prisma.service'
@@ -57,7 +57,11 @@ export class ConversationsService {
 
   async sendMessage(conversationId: string, userId: string, dto: SendMessageDto) {
     const conversation = await this.getConversationForParticipant(conversationId, userId)
-    const counterpartId = conversation.buyerId === userId ? conversation.sellerId : conversation.buyerId
+    // buyerId/sellerId — String? на уровне колонки (см. schema.prisma:
+    // SUPPORT-диалоги их не заполняют), но getConversationForParticipant
+    // уже отсеял всё, кроме type: AD, а для AD оба поля обязательны —
+    // гарантирует CHECK-constraint conversation_participant_check.
+    const counterpartId = (conversation.buyerId === userId ? conversation.sellerId : conversation.buyerId)!
 
     if (await this.blockedUsersService.isBlocked(userId, counterpartId)) {
       throw new ForbiddenException('Не удалось отправить сообщение')
@@ -78,7 +82,14 @@ export class ConversationsService {
       // в schema.prisma), просто не попадает в список; для второго участника
       // условие на его собственный флаг не срабатывает, и у него диалог
       // остаётся видимым как ни в чём не бывало.
+      //
+      // type: AD — без этого фильтра первая ветка OR (buyerId: userId) задела
+      // бы и SUPPORT-тикет этого же юзера (см. schema.prisma): у него тоже
+      // buyerId === userId. Переписка с поддержкой — отдельный виджет
+      // (SupportChatWidget), в общий список "Мои сообщения" попадать не
+      // должна.
       where: {
+        type: ConversationType.AD,
         OR: [
           { buyerId: userId, hiddenByBuyer: false },
           { sellerId: userId, hiddenBySeller: false }
@@ -113,19 +124,21 @@ export class ConversationsService {
 
       return {
         id: conversation.id,
-        ad: ad && ad.status === AdStatus.PUBLISHED
-          ? { id: ad.id, title: ad.title, images: ad.images, slug: ad.slug }
-          : {
-              id: null,
-              title: ad?.title ?? conversation.adTitleSnapshot ?? 'Объявление удалено',
-              images: ad?.images ?? [],
-              slug: null
-            },
+        ad:
+          ad && ad.status === AdStatus.PUBLISHED
+            ? { id: ad.id, title: ad.title, images: ad.images, slug: ad.slug }
+            : {
+                id: null,
+                title: ad?.title ?? conversation.adTitleSnapshot ?? 'Объявление удалено',
+                images: ad?.images ?? [],
+                slug: null
+              },
         counterpart,
         lastMessage,
         dealConfirmed: conversation.dealConfirmed,
         // Своё же сообщение не считается непрочитанным.
-        isUnread: !!lastMessage && lastMessage.senderId !== userId && (!lastReadAt || lastMessage.createdAt > lastReadAt),
+        isUnread:
+          !!lastMessage && lastMessage.senderId !== userId && (!lastReadAt || lastMessage.createdAt > lastReadAt),
         updatedAt: conversation.lastMessageAt ?? conversation.createdAt
       }
     })
@@ -171,8 +184,11 @@ export class ConversationsService {
   // необратимое удаление (Message уйдёт каскадом, см. Message.conversation
   // onDelete: Cascade).
   async deleteConversation(conversationId: string, userId: string) {
-    const conversation = await this.prisma.conversation.findUnique({
-      where: { id: conversationId },
+    // findFirst, а не findUnique — нужен доп. фильтр type: AD (см.
+    // getConversations выше: SUPPORT-тикет к этому эндпоинту отношения не
+    // имеет, у него и удалять через него нечего).
+    const conversation = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, type: ConversationType.AD },
       select: {
         buyerId: true,
         sellerId: true,
@@ -190,7 +206,10 @@ export class ConversationsService {
     }
 
     const isBuyer = conversation.buyerId === userId
-    const counterpart = isBuyer ? conversation.seller : conversation.buyer
+    // buyer/seller — User? на уровне типа (колонка nullable ради SUPPORT),
+    // но выше уже отфильтровано type: AD, а там оба участника обязательны
+    // (CHECK-constraint conversation_participant_check).
+    const counterpart = (isBuyer ? conversation.seller : conversation.buyer)!
 
     if (counterpart.deletedAt) {
       await this.prisma.conversation.delete({ where: { id: conversationId } })
@@ -223,7 +242,11 @@ export class ConversationsService {
   private async getConversationForParticipant(conversationId: string, userId: string) {
     const conversation = await this.prisma.conversation.findUnique({ where: { id: conversationId } })
 
-    if (!conversation) {
+    // type: AD — этот сервис целиком про диалоги по объявлениям; SUPPORT
+    // живёт в отдельном SupportService со своей авторизацией (гость/юзер/
+    // ADMIN, см. support/), сюда попадать не должен, даже если id диалога
+    // как-то узнали и подставили в этот эндпоинт напрямую.
+    if (!conversation || conversation.type !== ConversationType.AD) {
       throw new NotFoundException('Диалог не найден')
     }
 

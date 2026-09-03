@@ -7,6 +7,7 @@ import { ResetPasswordTemplate } from './templates/reset-password.template'
 import { TwoFactorAuthTemplate } from './templates/two-factor-auth.tamplate'
 import { EmailChangeTemplate } from './templates/email-change.tamplate'
 import { AdRejectedTemplate } from './templates/ad-rejected.template'
+import { SupportMessageTemplate } from './templates/support-message.template'
 
 @Injectable()
 export class MailService {
@@ -47,6 +48,18 @@ export class MailService {
     const html = await render(AdRejectedTemplate({ domain, adId, adTitle, reason }))
 
     return this.sendMail(email, `Объявление «${adTitle}» отклонено`, html)
+  }
+
+  // Уходит один раз на первое сообщение НОВОГО тикета в чате поддержки (см.
+  // SupportService.createMessage — там же и вся логика "только на первое"),
+  // на фиксированный ящик из SUPPORT_NOTIFICATION_EMAIL, а не на email
+  // конкретного пользователя, как остальные письма выше.
+  async sendSupportMessageNotification(fromLabel: string, text: string) {
+    const domain = this.configService.getOrThrow<string>('ALLOWED_ORIGIN')
+    const supportEmail = this.configService.getOrThrow<string>('SUPPORT_NOTIFICATION_EMAIL')
+    const html = await render(SupportMessageTemplate({ domain, fromLabel, text }))
+
+    return this.sendMail(supportEmail, `Новое обращение в поддержку — ${fromLabel}`, html)
   }
 
   private sendMail(email: string, subject: string, html: string) {

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
+import { EventEmitterModule } from '@nestjs/event-emitter'
 import { IS_DEV_ENV } from './libs/common/utils/is-dev.util'
 import { PrismaModule } from './prisma/prisma.module'
 import { CaptchaModule } from './libs/captcha/captcha.module'
@@ -26,6 +27,8 @@ import { AdBumpsModule } from './ad-bumps/ad-bumps.module'
 import { PremiumModule } from './premium/premium.module'
 import { AdServicesModule } from './ad-services/ad-services.module'
 import { NotificationsModule } from './notifications/notifications.module'
+import { SupportModule } from './support/support.module'
+import { SessionModule } from './session/session.module'
 
 @Module({
   imports: [
@@ -35,6 +38,7 @@ import { NotificationsModule } from './notifications/notifications.module'
     }),
     CaptchaModule,
     PrismaModule,
+    SessionModule,
 
     // host/port раньше были захардкожены на 'localhost'/6379 — работало
     // только пока Redis и сервер были на одной машине. В докер-компоузе
@@ -51,6 +55,11 @@ import { NotificationsModule } from './notifications/notifications.module'
       }
     }),
     ScheduleModule.forRoot(),
+    // Развязывает SupportService (пишет в базу, шлёт письмо) и будущий
+    // SupportGateway (шлёт в сокеты) — сервис эмитит
+    // 'support.message.created', гейтвей на него подписывается, друг о
+    // друге они ничего не знают (см. support.service.ts).
+    EventEmitterModule.forRoot(),
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // Время в миллисекундах (1 минута)
@@ -78,7 +87,8 @@ import { NotificationsModule } from './notifications/notifications.module'
     AdBumpsModule,
     PremiumModule,
     AdServicesModule,
-    NotificationsModule
+    NotificationsModule,
+    SupportModule
   ]
 })
 export class AppModule {}

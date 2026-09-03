@@ -1,7 +1,7 @@
 import { PrismaService } from '@/prisma/prisma.service'
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { hash, verify } from 'argon2'
-import { AdStatus, AuthMethod, TokenType, UserRole, UserType } from '@/generated/prisma/enums'
+import { AdStatus, AuthMethod, ConversationType, TokenType, UserRole, UserType } from '@/generated/prisma/enums'
 import { UpdateUserDto } from './dto/update-user.dto'
 import { PasswordChangeDto } from './dto/password-change.dto'
 import { DeleteAccountDto } from './dto/delete-account.dto'
@@ -574,9 +574,7 @@ export class UserService {
     const user = await this.findById(userId)
 
     if (user.role === UserRole.ADMIN) {
-      throw new BadRequestException(
-        'Аккаунт администратора нельзя удалить самостоятельно — обратитесь к разработчику.'
-      )
+      throw new BadRequestException('Аккаунт администратора нельзя удалить самостоятельно — обратитесь к разработчику.')
     }
 
     if (user.password) {
@@ -620,8 +618,13 @@ export class UserService {
       // вместе с Conversation — Message.conversation остался на Cascade, это
       // ок, оба владельца этих сообщений уже ушли). Диалоги, где собеседник
       // ещё жив, не трогаем — это его личная история переписки.
+      // type: AD — SUPPORT-тикет этого юзера сюда попадать не должен: у него
+      // нет "продавца", чьё собственное удаление аккаунта имело бы значение
+      // (отвечает любой ADMIN, см. schema.prisma), и историю обращений в
+      // поддержку не стоит сносить только из-за того, что автор удалил
+      // аккаунт — админу она может быть ещё нужна.
       const conversations = await tx.conversation.findMany({
-        where: { OR: [{ buyerId: userId }, { sellerId: userId }] },
+        where: { type: ConversationType.AD, OR: [{ buyerId: userId }, { sellerId: userId }] },
         select: {
           id: true,
           buyerId: true,
@@ -632,7 +635,11 @@ export class UserService {
 
       const orphanConversationIds = conversations
         .filter(conversation => {
-          const counterpart = conversation.buyerId === userId ? conversation.seller : conversation.buyer
+          // buyer/seller — User? на уровне типа (колонка nullable ради
+          // SUPPORT), но выборка выше уже отфильтрована по type: AD, где оба
+          // участника обязательны (CHECK-constraint
+          // conversation_participant_check).
+          const counterpart = (conversation.buyerId === userId ? conversation.seller : conversation.buyer)!
           return counterpart.deletedAt !== null
         })
         .map(conversation => conversation.id)

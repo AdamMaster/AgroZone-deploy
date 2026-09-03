@@ -14,6 +14,12 @@ export const getMailerConfig = async (configService: ConfigService): Promise<Mai
     }
   },
   defaults: {
-    from: `"AgroZone" ${configService.getOrThrow<string>('MAIL_LOGIN')}`
+    // Без угловых скобок это не "имя + адрес" по RFC 5322, а один
+    // синтаксически кривой адрес ("AgroZone lampezhev86@gmail.com" без
+    // <>) — nodemailer/addressparser такое разбирает ненадёжно (не всегда
+    // ошибкой, но и не гарантированно как валидный from), из-за чего
+    // конкретное письмо может как уйти, так и молча не дойти в
+    // зависимости от того, как его принял SMTP-сервер на том конце.
+    from: `"AgroZone" <${configService.getOrThrow<string>('MAIL_LOGIN')}>`
   }
 })

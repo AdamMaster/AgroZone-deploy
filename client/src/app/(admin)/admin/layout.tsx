@@ -9,14 +9,12 @@ export default function AdminLayout({
 }>) {
   return (
     <div className='bg-neutral-800'>
-      <Container>
-        <div className='grid min-h-screen grid-cols-[280px_1fr] gap-6'>
-          <div className='bg-neutral-700/30'>
-            <AdminNav />
-          </div>
-          <div className='relative w-full'>{children}</div>
+      <div className='grid min-h-screen grid-cols-[280px_1fr] gap-6'>
+        <div className='bg-neutral-700/30'>
+          <AdminNav />
         </div>
-      </Container>
+        <div className='relative w-full'>{children}</div>
+      </div>
     </div>
   )
 }

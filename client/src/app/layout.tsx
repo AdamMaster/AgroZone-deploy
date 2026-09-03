@@ -7,6 +7,7 @@ import { AppModal } from '@/components/modals/app'
 import { CategoriesModal } from '@/components/modals/categories'
 import { FilterModal } from '@/components/modals/filter'
 import { MainProvider } from '@/components/providers'
+import { SupportChatWidget } from '@/components/features/support/components'
 
 import { cn } from '@/lib/utils'
 
@@ -58,6 +59,7 @@ export default function RootLayout({
             <FilterModal />
           </Suspense>
           <CookieConsentBanner />
+          <SupportChatWidget />
         </MainProvider>
       </body>
     </html>
