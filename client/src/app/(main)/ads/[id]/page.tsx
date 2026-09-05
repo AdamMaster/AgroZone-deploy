@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: AdPageProps): Promise<Metadat
   const ad = await getAd(id)
 
   if (!ad) {
-    return { title: 'Объявление не найдено | AgroZone' }
+    return { title: 'Объявление не найдено' }
   }
 
   return {

@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     if (!currentCategory) {
       return {
-        title: 'Каталог объявлений | AgroZone'
+        title: 'Каталог объявлений'
       }
     }
 
@@ -44,7 +44,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
   } catch {
     return {
-      title: 'Каталог | AgroZone'
+      title: 'Каталог'
     }
   }
 }

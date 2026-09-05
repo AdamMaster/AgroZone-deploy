@@ -16,7 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { PRICE_UNITS } from '@/shared/constants/units'
 import { USER_TYPE_LABELS } from '@/shared/constants/user-types'
 import { useProfile } from '@/shared/hooks'
-import { formatPhoneNumber, isFutureDate, isPremiumActive, pluralizeRu } from '@/shared/utils'
+import { formatFeatureValue, formatPhoneNumber, isFutureDate, isPremiumActive, pluralizeRu } from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
 
@@ -49,23 +49,6 @@ const formatDate = (value: Date | string | null) => {
   if (!value) return null
 
   return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(value))
-}
-
-// unit — раньше числовые характеристики показывались голым числом без
-// единицы измерения вообще ("Мощность: 500" — 500 чего? см. обсуждение с
-// пользователем). Берётся из companion-поля "${name}__unit" в
-// Ad.features (см. normalize-feature-units.ts) с фолбэком на
-// каноническую единицу самой фичи — для объявлений, сохранённых до этого
-// исправления, companion-поля ещё нет, но так хотя бы предполагаемая
-// единица покажется, а не полное отсутствие единицы.
-const formatFeatureValue = (feature: ICategoryFeature, value: unknown, unit?: string): string | null => {
-  if (value === null || value === undefined || value === '') return null
-
-  if (feature.type === 'BOOLEAN') return value ? 'Да' : 'Нет'
-  if (Array.isArray(value)) return value.length ? value.join(', ') : null
-  if (feature.type === 'NUMBER' && unit) return `${value} ${unit}`
-
-  return String(value)
 }
 
 export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = [] }: AdDetailProps) => {
@@ -174,15 +157,10 @@ export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = 
   const features = (ad.features as unknown as Record<string, unknown>) || {}
 
   const filledFeatures = categoryFeatures
-    .map(feature => {
-      const storedUnit = features[`${feature.name}__unit`]
-      const unit = typeof storedUnit === 'string' ? storedUnit : feature.units?.[0]
-
-      return {
-        feature,
-        value: formatFeatureValue(feature, features[feature.name], unit)
-      }
-    })
+    .map(feature => ({
+      feature,
+      value: formatFeatureValue(feature, features)
+    }))
     .filter((item): item is { feature: ICategoryFeature; value: string } => item.value !== null)
 
   const publishedDate = formatDate(ad.publishedAt)
@@ -388,7 +366,12 @@ export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = 
           )}
         </div>
         <div>
-          <Heading level={1} className='mb-2 block text-lg sm:hidden'>
+          {/* Тот же заголовок, что и выше (desktop-версия) — на мобильных он
+              визуально нужен именно здесь, но настоящий <h1> на странице
+              должен быть только один (см. Heading.as), иначе поисковые
+              роботы и парсеры разметки видят два одинаковых H1 в исходном
+              HTML, даже если для пользователя виден всегда только один. */}
+          <Heading level={1} as='p' className='mb-2 block text-lg sm:hidden'>
             {ad.title}
           </Heading>
           <div className='relative mb-4 flex items-start justify-between gap-2'>

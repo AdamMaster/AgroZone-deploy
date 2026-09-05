@@ -231,7 +231,10 @@ export const FormRegisterSms = () => {
                     <Link href='/privacy' target='_blank' className='text-primary underline'>
                       обработку персональных данных
                     </Link>{' '}
-                    в соответствии с политикой конфиденциальности
+                    в соответствии с политикой конфиденциальности и принимаю условия{' '}
+                    <Link href='/terms' target='_blank' className='text-primary underline'>
+                      пользовательского соглашения
+                    </Link>
                   </span>
                 </label>
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} className='relative' />}

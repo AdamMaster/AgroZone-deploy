@@ -4,7 +4,7 @@ import { LEGAL_DETAILS } from '@/components/features/legal/legal-details'
 import { LegalPageLayout, LegalSection } from '@/components/layout'
 
 export const metadata: Metadata = {
-  title: 'Политика конфиденциальности | AgroZone',
+  title: 'Политика конфиденциальности',
   description:
     'Политика обработки персональных данных пользователей платформы AgroZone в соответствии с Федеральным законом № 152-ФЗ «О персональных данных».'
 }

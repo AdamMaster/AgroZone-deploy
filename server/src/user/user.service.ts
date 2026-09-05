@@ -11,6 +11,7 @@ import { AD_LIMITS } from '@/ads/constants/ads.constants'
 import { isPremiumActive } from '@/premium/utils/is-premium-active.util'
 import { normalizePhone } from '@/libs/common/utils/phone.util'
 import { ZvonokService } from '@/libs/zvonok/zvonok.service'
+import { PERSONAL_DATA_CONSENT_DOCUMENT_VERSION } from '@/libs/common/constants/legal.constants'
 
 @Injectable()
 export class UserService {
@@ -102,7 +103,15 @@ export class UserService {
     isVerified: boolean,
     // По умолчанию false, чтобы новый вызывающий код, который забудет
     // передать этот параметр, не проставлял согласие молча — 152-ФЗ.
-    personalDataConsent: boolean = false
+    personalDataConsent: boolean = false,
+    // IP и User-Agent, с которых реально пришёл запрос на регистрацию —
+    // передаются контроллером/AuthService (см. getClientIp). Необязательный
+    // параметр (а не обязательный), чтобы не ломать вызовы create() в
+    // тестах/скриптах, которые не имеют доступа к Request — но при этом
+    // если personalDataConsent==true, а контекст не передан, запись в
+    // журнал согласий просто не создастся (см. ниже), что будет заметно
+    // при проверке — это осознанный компромисс, не немая потеря данных.
+    consentContext?: { ip: string; userAgent?: string | null }
   ) {
     const normalizedPhone = phone ? normalizePhone(phone) : null
 
@@ -115,6 +124,21 @@ export class UserService {
         method,
         isVerified,
         personalDataConsentAt: personalDataConsent ? new Date() : null,
+
+        // Помимо быстрого поля-таймстампа выше, при реальном согласии
+        // (не при повторных технических вызовах create с consent=false)
+        // сразу пишем неизменяемую запись в журнал с IP/UA/версией
+        // документа — см. комментарий у модели PersonalDataConsent.
+        ...(personalDataConsent &&
+          consentContext && {
+            personalDataConsents: {
+              create: {
+                ip: consentContext.ip,
+                userAgent: consentContext.userAgent ?? null,
+                documentVersion: PERSONAL_DATA_CONSENT_DOCUMENT_VERSION
+              }
+            }
+          }),
 
         ...(normalizedPhone && {
           phones: {

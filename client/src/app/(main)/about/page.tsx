@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import { AboutContact, AboutFounder, AboutHero, AboutMission, AboutTrust } from '@/components/features/about/components'
 
 export const metadata: Metadata = {
-  title: 'О компании | AgroZone',
+  title: 'О компании',
   description: 'AgroZone — площадка объявлений для агропромышленного рынка: сельхозтехника, продукция и услуги.'
 }
 

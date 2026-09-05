@@ -47,6 +47,16 @@ model User {
   // (не должно происходить для новых аккаунтов после этого изменения).
   personalDataConsentAt DateTime? @map("personal_data_consent_at")
 
+  // Неизменяемый журнал самих фактов согласия — в отличие от поля выше
+  // (которое отвечает только на вопрос "согласие есть?" и удобно для
+  // быстрых проверок), здесь хранится с каким именно IP, User-Agent и
+  // версией документа (см. PERSONAL_DATA_CONSENT_DOCUMENT_VERSION в
+  // server/src/libs/common/constants/legal.constants.ts) согласие было
+  // дано — это и есть юридически значимое доказательство по 152-ФЗ, и оно
+  // не должно перезаписываться при повторной регистрации/восстановлении
+  // аккаунта, поэтому отдельная append-only таблица, а не колонки в User.
+  personalDataConsents PersonalDataConsent[]
+
   deletedAt DateTime? @map("deleted_at")
 
   method   AuthMethod
@@ -82,6 +92,26 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("users")
+}
+
+model PersonalDataConsent {
+  id     String @id @default(uuid())
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  ip        String
+  userAgent String? @map("user_agent")
+
+  // Дата документов (Политика конфиденциальности + Пользовательское
+  // соглашение), с которыми пользователь согласился в момент фиксации —
+  // см. PERSONAL_DATA_CONSENT_DOCUMENT_VERSION на сервере и
+  // LEGAL_DETAILS.effectiveDate на клиенте (должны обновляться синхронно).
+  documentVersion String @map("document_version")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("personal_data_consents")
 }
 
 model UserPhone {

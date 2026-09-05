@@ -24,6 +24,7 @@ import { SmsRegisterDto } from './dto/sms-register.dto'
 import { SmsCompleteDto } from './dto/sms-complete.dto'
 import { normalizePhone } from '@/libs/common/utils/phone.util'
 import { ZvonokService } from '@/libs/zvonok/zvonok.service'
+import { getClientIp } from '@/libs/common/utils/request-ip.util'
 
 @Injectable()
 export class AuthService {
@@ -76,7 +77,8 @@ export class AuthService {
       '',
       AuthMethod.CREDENTIALS,
       true,
-      dto.personalDataConsent
+      dto.personalDataConsent,
+      { ip: getClientIp(req), userAgent: req.headers['user-agent'] }
     )
 
     await this.prismaService.token.delete({ where: { id: smsToken.id } })
@@ -84,7 +86,7 @@ export class AuthService {
     return this.saveSession(req, newUser)
   }
 
-  async register(dto: RegisterDto) {
+  async register(req: Request, dto: RegisterDto) {
     if (!dto.email && !dto.phone) {
       throw new BadRequestException('Укажите Email или номер телефона для регистрации')
     }
@@ -107,7 +109,8 @@ export class AuthService {
       '',
       AuthMethod.CREDENTIALS,
       false,
-      dto.personalDataConsent
+      dto.personalDataConsent,
+      { ip: getClientIp(req), userAgent: req.headers['user-agent'] }
     )
 
     if (newUser.email) {
@@ -383,7 +386,8 @@ export class AuthService {
       profile?.picture ?? '',
       method,
       true,
-      true
+      true,
+      { ip: getClientIp(req), userAgent: req.headers['user-agent'] }
     )
 
     if (!account) {

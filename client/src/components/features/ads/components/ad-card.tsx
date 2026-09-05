@@ -48,7 +48,7 @@ export const AdCard = ({ ad }: AdCardProps) => {
             alt={ad.title}
             className='h-full w-full object-cover'
             fill
-            sizes='(max-width: 639px) 50vw, (max-width: 767px) 33vw, (max-width: 1279px) 25vw, 224px'
+            sizes='(max-width: 639px) 50vw, (max-width: 767px) 33vw, (max-width: 1279px) 25vw, 350px'
           />
         ) : (
           <ImageIcon size={50} className='absolute top-[50%] left-[50%] translate-[-50%] text-gray-500' />

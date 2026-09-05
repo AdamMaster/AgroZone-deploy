@@ -14,7 +14,7 @@ import { useCategories } from '@/components/features/categories/hooks/use-catego
 import { Avatar, AvatarFallback, Button, ButtonBack, Heading, Loading } from '@/components/ui'
 
 import { PRICE_UNITS } from '@/shared/constants/units'
-import { findCategoryById, formatPhoneNumber, getPathToCategory } from '@/shared/utils'
+import { findCategoryById, formatFeatureValue, formatPhoneNumber, getPathToCategory } from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
 
@@ -33,15 +33,6 @@ const STATUS_LABELS: Partial<Record<string, string>> = {
   EXPIRED: 'Срок действия истёк',
   DRAFT: 'Черновик',
   ARCHIVED: 'Снято с публикации'
-}
-
-const formatFeatureValue = (feature: ICategoryFeature, value: unknown): string | null => {
-  if (value === null || value === undefined || value === '') return null
-
-  if (feature.type === 'BOOLEAN') return value ? 'Да' : 'Нет'
-  if (Array.isArray(value)) return value.length ? value.join(', ') : null
-
-  return String(value)
 }
 
 export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
@@ -101,7 +92,7 @@ export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
   const filledFeatures = categoryFeatures
     .map(feature => ({
       feature,
-      value: formatFeatureValue(feature, features[feature.name])
+      value: formatFeatureValue(feature, features)
     }))
     .filter((item): item is { feature: ICategoryFeature; value: string } => item.value !== null)
 

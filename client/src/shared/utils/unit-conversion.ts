@@ -46,6 +46,17 @@ export function isConvertible(units: string[] | undefined): boolean {
   return findCommonDimension(units) !== null
 }
 
+// Коэффициенты вроде 0.7355 (л.с. → кВт) не представимы точно в двоичной
+// IEEE754-арифметике: 130 * 0.7355 в JS даёт 95.61500000000001, а не ровно
+// 95.615. Округляем результат конвертации, чтобы этот мусор не долетал ни
+// до БД, ни тем более до экрана пользователя (см. обсуждение "95.6150000
+// 0000001 кВт" — задача U3 в ROADMAP.md). Два знака после запятой с
+// запасом хватает для всех используемых сейчас величин (мощность, масса,
+// объём, длина, срок).
+function roundConverted(value: number): number {
+  return Math.round(value * 100) / 100
+}
+
 /**
  * Переводит value из fromUnit в canonicalUnit (обычно units[0] у фичи).
  * Если единицы разной физической природы (см. isConvertible) — значение
@@ -58,5 +69,5 @@ export function convertToCanonical(value: number, fromUnit: string, canonicalUni
   if (!dimension) return value
 
   const inBase = value * dimension[fromUnit]
-  return inBase / dimension[canonicalUnit]
+  return roundConverted(inBase / dimension[canonicalUnit])
 }

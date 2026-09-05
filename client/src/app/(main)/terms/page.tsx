@@ -4,7 +4,7 @@ import { LEGAL_DETAILS } from '@/components/features/legal/legal-details'
 import { LegalPageLayout, LegalSection } from '@/components/layout'
 
 export const metadata: Metadata = {
-  title: 'Пользовательское соглашение | AgroZone',
+  title: 'Пользовательское соглашение',
   description:
     'Пользовательское соглашение (публичная оферта) на использование платформы объявлений AgroZone: правила размещения объявлений, платные услуги, права и обязанности сторон.'
 }

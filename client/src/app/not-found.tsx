@@ -1,15 +1,19 @@
-import Link from 'next/link'
+import MainLayout from './(main)/layout'
+import { NotFoundContent } from '@/components/layout'
 
-import { Button, Heading } from '@/components/ui'
-
+// Корневой not-found — единственное, что Next покажет на URL, вообще не
+// совпавшем ни с одним маршрутом сайта (опечатка в адресе, битая внешняя
+// ссылка и т.п.). Вложенные группы маршрутов (в т.ч. (main)/layout.tsx с
+// шапкой/футером/поиском/категориями) на такой URL не применяются —
+// архитектурное ограничение Next: у произвольного несуществующего пути нет
+// сегмента, который можно было бы сопоставить с какой-то конкретной
+// группой. Поэтому оборачиваем контент в MainLayout вручную, тем же самым
+// компонентом, что использует и сама группа (main) — а не копией разметки
+// шапки/футера, чтобы не разъезжались при будущих правках.
 export default function NotFound() {
   return (
-    <div className='flex min-h-screen flex-col items-center justify-center'>
-      <Heading level={1}>404</Heading>
-      <p className='text-muted-foreground mb-4'>Страница не найдена</p>
-      <Button variant='secondary'>
-        <Link href='/'>На главную</Link>
-      </Button>
-    </div>
+    <MainLayout>
+      <NotFoundContent />
+    </MainLayout>
   )
 }

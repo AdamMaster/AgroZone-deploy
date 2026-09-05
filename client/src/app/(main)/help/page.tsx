@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import { StaticPagePlaceholder } from '@/components/layout'
 
 export const metadata: Metadata = {
-  title: 'Помощь | AgroZone'
+  title: 'Помощь'
 }
 
 export default function HelpPage() {
