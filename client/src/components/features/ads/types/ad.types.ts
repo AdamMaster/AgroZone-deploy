@@ -163,6 +163,9 @@ export type AdCardData = Pick<
   | 'id'
   | 'title'
   | 'price'
+  // Единица измерения цены — без неё цена в карточке нечитаема, см.
+  // formatPriceWithUnit в '@/shared/utils'.
+  | 'unit'
   | 'images'
   | 'address'
   | 'locality'
@@ -179,6 +182,7 @@ export type AdCardListData = Pick<
   | 'title'
   | 'description'
   | 'price'
+  | 'unit'
   | 'images'
   | 'address'
   | 'locality'

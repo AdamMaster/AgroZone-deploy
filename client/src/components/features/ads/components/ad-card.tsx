@@ -6,7 +6,7 @@ import Link from 'next/link'
 
 import { Heading } from '@/components/ui'
 
-import { isFutureDate, isPremiumActive } from '@/shared/utils'
+import { formatPriceWithUnit, isFutureDate, isPremiumActive } from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
 
@@ -43,7 +43,13 @@ export const AdCard = ({ ad }: AdCardProps) => {
         className='relative block overflow-hidden rounded-lg bg-gray-100 pt-[100%] sm:rounded-xl'
       >
         {ad.images.length > 0 ? (
-          <Image src={ad.images[0]} alt={ad.title} className='h-full w-full object-cover' fill sizes='400px' />
+          <Image
+            src={ad.images[0]}
+            alt={ad.title}
+            className='h-full w-full object-cover'
+            fill
+            sizes='(max-width: 639px) 50vw, (max-width: 767px) 33vw, (max-width: 1279px) 25vw, 224px'
+          />
         ) : (
           <ImageIcon size={50} className='absolute top-[50%] left-[50%] translate-[-50%] text-gray-500' />
         )}
@@ -58,7 +64,7 @@ export const AdCard = ({ ad }: AdCardProps) => {
         </Heading>
         <p>
           <strong className={cn(isPriceHighlighted && AD_PRICE_HIGHLIGHT_CLASS)}>
-            {ad.price ? ad.price + '₽' : 'Цена договорная'}
+            {formatPriceWithUnit(ad.price, ad.unit)}
           </strong>
         </p>
         <address className='line-clamp-2 text-[12px] leading-4 not-italic sm:text-[13px]'>

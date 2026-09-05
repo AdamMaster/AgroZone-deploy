@@ -6,7 +6,7 @@ import Link from 'next/link'
 
 import { Heading, Skeleton } from '@/components/ui'
 
-import { isFutureDate, isPremiumActive } from '@/shared/utils'
+import { formatPriceWithUnit, isFutureDate, isPremiumActive } from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
 
@@ -45,12 +45,14 @@ export const AdCardList = ({ ad }: AdCardListProps) => {
         <div className='overflow-hidden rounded-xl'>
           <div className='relative block bg-gray-100 pt-[100%]'>
             {ad.images.length > 0 ? (
+              // Колонка с фото в этой раскладке фиксированной ширины —
+              // 180px, с lg 236px (см. grid-cols выше).
               <Image
                 src={ad.images[0]}
                 alt={ad.title}
                 className='h-full w-full object-cover object-center'
                 fill
-                sizes='400px'
+                sizes='(max-width: 1023px) 180px, 236px'
               />
             ) : (
               <ImageIcon size={50} className='absolute top-[50%] left-[50%] translate-[-50%] text-gray-500' />
@@ -61,13 +63,13 @@ export const AdCardList = ({ ad }: AdCardListProps) => {
         <div className='relative grow'>
           <Heading
             level={2}
-            className='hover:text-primary mb-0.5 line-clamp-2 w-fit text-[18px] leading-5 font-medium transition-colors'
+            className='hover:text-primary mb-0.5 line-clamp-2 w-fit text-lg leading-5 font-medium transition-colors sm:text-xl'
           >
             {ad.title}
           </Heading>
           <p className='mb-1 text-[18px]'>
             <strong className={cn(isPriceHighlighted && AD_PRICE_HIGHLIGHT_CLASS)}>
-              {ad.price ? ad.price + '₽' : 'Цена договорная'}
+              {formatPriceWithUnit(ad.price, ad.unit)}
             </strong>
           </p>
           <address className='mb-2 text-[13px] leading-4 not-italic'>

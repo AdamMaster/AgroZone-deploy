@@ -1,5 +1,7 @@
 'use client'
 
+import './suppress-next-themes-script-warning'
+
 import { ThemeProvider } from 'next-themes'
 import { type PropsWithChildren } from 'react'
 

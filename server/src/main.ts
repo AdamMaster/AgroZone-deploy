@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core'
 import { AppModule } from './app.module'
 import { ConfigService } from '@nestjs/config'
 import cookieParser from 'cookie-parser'
+import { NestExpressApplication } from '@nestjs/platform-express'
 import { ValidationPipe } from '@nestjs/common'
 import { ms, StringValue } from './libs/common/utils/ms.util'
 import { parseBoolean } from './libs/common/utils/parse-boolean.util'
@@ -18,8 +19,23 @@ import { SupportIoAdapter } from './support/support-io.adapter'
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule)
-  app.getHttpAdapter().getInstance().set('trust proxy', 1)
+  // Тип приложения указан явно (NestExpressApplication), чтобы express-методы
+  // set/disable были доступны прямо на app и типизированно. Раньше тут был
+  // app.getHttpAdapter().getInstance(), который отдаёт any — любой вызов на
+  // нём проходил мимо проверок типов, на что линтер и ругался no-unsafe-call
+  // ещё до этой правки.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule)
+
+  // За nginx стоит один прокси — доверяем X-Forwarded-* только от него, иначе
+  // req.ip у всех окажется адресом контейнера nginx (важно для rate-limit и
+  // для дедупа просмотров объявлений по viewerKey).
+  app.set('trust proxy', 1)
+
+  // Express по умолчанию представляется заголовком X-Powered-By: Express в
+  // каждом ответе API. Аудит заметил только его аналог у Next.js, но течёт и
+  // здесь — по api.agro-zone.ru ходит тот же браузер. Пользы от заголовка нет,
+  // а атакующему он экономит шаг разведки.
+  app.disable('x-powered-by')
   const config = app.get(ConfigService)
 
   assertSecureSessionConfig(config)

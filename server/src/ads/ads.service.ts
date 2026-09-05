@@ -1424,6 +1424,12 @@ export class AdsService {
             id: true,
             title: true,
             price: true,
+            // Единица измерения цены: в избранном рендерится та же карточка,
+            // что и в выдаче (AdFavoriteCard -> formatPriceWithUnit), и без
+            // unit цена там осталась бы без «/т», «/кг» — то есть
+            // непригодной для сравнения, ради которого объявление и
+            // добавляют в избранное.
+            unit: true,
             createdAt: true,
             images: true,
             address: true,

@@ -4,6 +4,8 @@ import Link from 'next/link'
 
 import { Heading } from '@/components/ui'
 
+import { formatPriceWithUnit } from '@/shared/utils'
+
 import { useAddFavorite, useRemoveFavorite } from '../hooks'
 import { type AdCardData, IAd } from '../types/ad.types'
 import { FavoriteButton } from './favorite-button'
@@ -53,7 +55,7 @@ export const AdFavoriteCard = ({ favorite }: AdFavoriteCardProps) => {
           />
         </div>
         <p className='text-[16px] font-bold sm:mb-3 sm:text-lg'>
-          {favorite.price ? `${favorite.price} ₽` : 'Цена договорная'}
+          {formatPriceWithUnit(favorite.price, favorite.unit)}
         </p>
         <p className='text-[13px] text-gray-500'>{favorite.address}</p>
       </div>

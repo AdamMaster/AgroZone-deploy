@@ -11,6 +11,7 @@ import { Button, Heading, Tooltip, TooltipContent, TooltipTrigger } from '@/comp
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 import { useProfile } from '@/shared/hooks'
+import { formatPriceWithUnit } from '@/shared/utils'
 
 import { IAd } from '../../ads/types/ad.types'
 import { AD_BADGE_LABELS } from '../constants/ad-services.constants'
@@ -199,7 +200,7 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
               )}
             </div>
             <p className='mb-0 text-[16px] font-bold sm:mb-3 sm:text-lg'>
-              {ad.price ? `${ad.price} ₽` : 'Цена договорная'}
+              {formatPriceWithUnit(ad.price, ad.unit)}
             </p>
             <p className='text-[13px] text-gray-500'>{ad.address}</p>
           </div>

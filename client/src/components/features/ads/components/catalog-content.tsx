@@ -1,8 +1,7 @@
 'use client'
 
-import { LayoutGrid, LayoutList } from 'lucide-react'
-
 import { useCatalogViewStore } from '@/store'
+import { LayoutGrid, LayoutList } from 'lucide-react'
 
 import { useMediaQuery } from '@/shared/hooks'
 
@@ -12,7 +11,6 @@ import { CategoryTitle } from '../../categories/components/category-title'
 import { useCategories } from '../../categories/hooks/use-categories'
 import { CatalogSort, Filter } from '../../filter/components'
 import { useCatalogFilters } from '../../filter/hooks/use-catalog-filters'
-import { AdCardList } from './ad-card-list'
 import { AdsClient } from './ads-client'
 
 interface CatalogContentProps {
@@ -22,17 +20,8 @@ interface CatalogContentProps {
 export const CatalogContent = ({ serverSlug }: CatalogContentProps) => {
   const { layout: gridLayout, setLayout: setGridLayout } = useCatalogViewStore()
   const { categories } = useCategories()
-  // Сайдбар — сразу применяет каждое изменение (immediate: true по
-  // умолчанию), в отличие от мобильного окна фильтра (FilterModal), где
-  // фильтры копятся и применяются только по кнопке "Показать".
   const filters = useCatalogFilters()
   const isTopLevelCategory = Boolean(serverSlug) && !serverSlug!.includes('/')
-
-  // На мобилках (< md, 768px) карточка списка (AdCardList) не помещается —
-  // её грид в три колонки (картинка/контент/продавец) требует минимум
-  // ~396px. Поэтому ниже md всегда показываем сеточную раскладку (как
-  // LayoutGrid), а сам переключатель раскладки скрываем — переключать там
-  // нечего.
   const isMobile = useMediaQuery('(max-width: 767px)')
   const effectiveGridLayout = isMobile ? 'cols-4' : gridLayout
 

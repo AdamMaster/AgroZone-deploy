@@ -15,11 +15,16 @@ export const AdCreate = ({ categories }: { categories: ICategory[] }) => {
   const router = useRouter()
 
   const onSubmit = (values: TypeCreateAdSchema) => {
-    console.log('✅ Данные валидны, отправка:', values)
     const formData = buildAdFormData(values)
 
-    values.images?.forEach(file => {
-      formData.append('files', file)
+    // Как и в onSaveDraft ниже: images на этом этапе должны быть File[]
+    // (PhotoUploader для новой карточки только их и кладёт), но
+    // instanceof-проверка на всякий случай — чтобы шальная строка не
+    // ушла в multipart-поле files как текстовое значение вместо бинарника.
+    values.images?.forEach(img => {
+      if (img instanceof File) {
+        formData.append('files', img)
+      }
     })
 
     createAd(formData)

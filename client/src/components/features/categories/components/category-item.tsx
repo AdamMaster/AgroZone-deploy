@@ -58,11 +58,16 @@ export const CategoryItem = ({ category, href, className, onClick }: CategoryIte
       )}
     >
       {icon && (
+        // Реальный размер на экране задаётся классами ниже: 56px по
+        // ширине на мобильном и 80px с md. Без sizes Next ориентировался бы
+        // на width={230} и тянул w=256/w=640 — отсюда PNG по 300–640 КБ на
+        // иконку в 80 пикселей (см. аудит, P1).
         <Image
           src={icon}
           alt={category.name}
           width={230}
           height={230}
+          sizes='(min-width: 768px) 80px, 56px'
           className='absolute -right-2 bottom-0 z-1 h-12 w-14 object-contain object-bottom-right md:h-18 md:w-20'
         />
       )}
