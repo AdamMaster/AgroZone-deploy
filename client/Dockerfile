@@ -18,14 +18,10 @@ ARG NEXT_PUBLIC_DADATA_KEY
 # GOOGLE_SITE_VERIFICATION/YANDEX_SITE_VERIFICATION (S2 в ROADMAP.md) читаются
 # в app/layout.tsx как обычный process.env.* внутри серверного кода — не
 # через next.config.ts -> env и не через NEXT_PUBLIC_-префикс, так что в
-# клиентский JS-бандл эти значения не попадают. Но у клиентского контейнера
-# в docker-compose.prod.yml нет ни одного runtime env_file/environment (см.
-# файл) — метаданные `metadata.verification` в app/layout.tsx резолвятся при
-# `next build` (обычный статический export const metadata, не
-# generateMetadata), а не заново на каждый запрос в уже собранном
-# standalone-сервере. Поэтому значения нужны именно на этапе сборки — как и
-# остальные ARG'и выше, иначе сайт соберётся, а мета-тег подтверждения
-# молча не появится.
+# клиентский JS-бандл эти значения не попадают. Объявлены здесь ТОЖЕ (на
+# случай, если что-то в дереве когда-нибудь станет статическим), но
+# реально их читает рантейм-контейнер — см. подробное объяснение и вторую
+# пару ARG/ENV в стадии `runtime` ниже, где это и правда имеет значение.
 ARG GOOGLE_SITE_VERIFICATION
 ARG YANDEX_SITE_VERIFICATION
 ENV SERVER_URL=$SERVER_URL
@@ -74,6 +70,25 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+
+# РЕАЛЬНАЯ причина, почему тег подтверждения не появился на проде после
+# первой версии этого файла: ARG/ENV выше (в стадии `build`) не
+# наследуются в новую стадию `FROM ... AS runtime` — у multi-stage сборки
+# каждая стадия начинается с чистого окружения, копируется только то, что
+# явно указано в `COPY --from=build`. Для SERVER_URL и капча/карта-ключей
+# это было не важно: они NEXT_PUBLIC_/next.config.ts->env и Next
+# буквально вклеивает их значения текстом в JS-бандл на этапе `next build`
+# в стадии `build` — переменная окружения в рантейме им уже не нужна.
+# А вот GOOGLE_SITE_VERIFICATION/YANDEX_SITE_VERIFICATION читаются как
+# обычный process.env.* в серверном коде (`app/layout.tsx`), и раз
+# `(main)/layout.tsx` делает live-запрос категорий без кеширования
+# (`await categoriesService.findAll()`), весь сайт из-за этого рендерится
+# динамически — заново на каждый запрос, уже ЗДЕСЬ, в рантейм-контейнере,
+# а не один раз при сборке. Значит переменные нужны именно в рантейм-стадии.
+ARG GOOGLE_SITE_VERIFICATION
+ARG YANDEX_SITE_VERIFICATION
+ENV GOOGLE_SITE_VERIFICATION=$GOOGLE_SITE_VERIFICATION
+ENV YANDEX_SITE_VERIFICATION=$YANDEX_SITE_VERIFICATION
 
 # standalone-сборка уже содержит минимальный node_modules и server.js —
 # полный npm install в рантейм-образе не нужен
