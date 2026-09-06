@@ -6,6 +6,8 @@ import { useMemo } from 'react'
 
 import { Button } from '@/components/ui'
 
+import { pluralizeRu } from '@/shared/utils'
+
 import { findCategoryIdBySlug } from '@/components/features/categories/utils/category-utils'
 
 import { useCategories } from '../../categories/hooks/use-categories'
@@ -14,6 +16,19 @@ import { useAdsInfinite } from '../hooks'
 import { IAdsListResponse } from '../types/ad.types'
 import { buildAdsQueryParams } from '../utils/build-ads-query-params'
 import { AdsGrid } from './ads-grid'
+
+// Ограничение длины поискового запроса в сообщении пустого состояния — на
+// случай, если в URL руками (или ботом) подставили аномально длинную
+// строку в ?search=: без этого «По запросу «...5000 символов...» ничего
+// не найдено» ломал бы вёрстку страницы.
+const MAX_DISPLAYED_QUERY_LENGTH = 80
+
+function formatDisplayedQuery(query: string): string {
+  const trimmed = query.trim()
+  return trimmed.length > MAX_DISPLAYED_QUERY_LENGTH
+    ? `${trimmed.slice(0, MAX_DISPLAYED_QUERY_LENGTH)}…`
+    : trimmed
+}
 
 interface CatalogAdsGridProps {
   serverSlug?: string | null
@@ -52,14 +67,29 @@ export function CatalogAdsGrid({ serverSlug, layout, className, initialAds }: Ca
     [categoryId, searchQuery, filters.sortBy, filters.unit, filters.minPrice, filters.maxPrice, filters.regionIsoCode, filters.localityFiasId, filters.sellerType, filters.features]
   )
 
-  const { ads, isFetchingNextPage, hasNextPage, fetchNextPage } = useAdsInfinite(params, initialAds)
+  const { ads, total, isFetchingNextPage, hasNextPage, fetchNextPage } = useAdsInfinite(params, initialAds)
 
-  const emptyMessage = filters.hasActiveFilters
-    ? 'Ничего не найдено — попробуйте изменить фильтры'
-    : 'В этой категории пока нет объявлений'
+  // Поисковый запрос — приоритетнее generic-сообщения про фильтры: если
+  // пользователь искал конкретный текст и ничего не нашлось, сообщение
+  // должно называть именно этот запрос, а не отправлять "попробуйте
+  // изменить фильтры" (запрос сам по себе фильтром для filters.hasActiveFilters
+  // не считается — см. useCatalogFilters — и раньше в этом случае
+  // показывалось совсем generic "В этой категории пока нет объявлений",
+  // как будто в категории вообще пусто).
+  const trimmedSearchQuery = searchQuery?.trim()
+  const emptyMessage = trimmedSearchQuery
+    ? `По запросу «${formatDisplayedQuery(trimmedSearchQuery)}» ничего не найдено`
+    : filters.hasActiveFilters
+      ? 'Ничего не найдено — попробуйте изменить фильтры'
+      : 'В этой категории пока нет объявлений'
 
   return (
     <div>
+      {total > 0 && (
+        <p className='mb-3 text-sm text-gray-500 sm:mb-4'>
+          Найдено {total} {pluralizeRu(total, ['объявление', 'объявления', 'объявлений'])}
+        </p>
+      )}
       <AdsGrid
         ads={ads}
         layout={layout}

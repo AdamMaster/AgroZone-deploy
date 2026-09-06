@@ -54,11 +54,14 @@ export function AdsClient({ serverSlug, layout, className, locationOverride }: A
     buildAdsQueryParams({ categoryId, search: searchQuery, filters, locationOverride })
   )
 
+  const trimmedSearchQuery = searchQuery?.trim()
   const emptyMessage = hasLocationOverride
     ? 'В этом регионе пока нет объявлений — попробуйте выбрать другой регион или посмотреть всю Россию'
-    : filters.hasActiveFilters
-      ? 'Ничего не найдено — попробуйте изменить фильтры'
-      : 'В этой категории пока нет объявлений'
+    : trimmedSearchQuery
+      ? `По запросу «${trimmedSearchQuery}» ничего не найдено`
+      : filters.hasActiveFilters
+        ? 'Ничего не найдено — попробуйте изменить фильтры'
+        : 'В этой категории пока нет объявлений'
 
   return (
     <AdsGrid

@@ -4,6 +4,7 @@ import { useAppModal } from '@/store'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import React, { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -12,7 +13,7 @@ import { Button, Checkbox, Field, FieldError, FieldGroup, Input, InputGroup, Loa
 
 import { useYandexCaptcha } from '@/shared/hooks/use-yandex-captcha'
 
-import { formatPhoneNumber } from '@/shared/utils'
+import { formatPhoneNumber, isSafeReturnPath } from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
 
@@ -25,8 +26,14 @@ import {
 } from '../schemes'
 import { AuthFormWrapper } from './auth-form-wrapper'
 
-export const FormRegisterSms = () => {
+interface RegisterSmsFormProps {
+  // См. form-login.tsx — тот же приём (U1 в ROADMAP.md).
+  returnTo?: string
+}
+
+export const FormRegisterSms = ({ returnTo }: RegisterSmsFormProps) => {
   const { setView, onOpen, onClose } = useAppModal()
+  const router = useRouter()
   const [step, setStep] = useState(1)
   const [regData, setRegData] = useState({ phone: '', code: '' })
   const [callNumber, setCallNumber] = useState('')
@@ -105,6 +112,13 @@ export const FormRegisterSms = () => {
 
         setView('register-sms-message')
 
+        // Переходим сразу, не дожидаясь закрытия модалки — 2.5 секунды
+        // ожидания «Регистрация прошла успешно!» и так достаточно, чтобы
+        // пользователь увидел сообщение поверх уже сменившейся страницы.
+        if (isSafeReturnPath(returnTo)) {
+          router.push(returnTo)
+        }
+
         setTimeout(() => {
           onClose()
         }, 2500)
@@ -124,7 +138,7 @@ export const FormRegisterSms = () => {
           Уже есть аккаунт? <span className='text-primary'>Войти</span>
         </>
       }
-      onSwitchButtonClick={() => onOpen('login')}
+      onSwitchButtonClick={() => onOpen('login', returnTo ? { returnTo } : undefined)}
     >
       {step === 1 && (
         <form id='form-rhf-demo' onSubmit={formPhone.handleSubmit(onFormPhoneSubmit)}>

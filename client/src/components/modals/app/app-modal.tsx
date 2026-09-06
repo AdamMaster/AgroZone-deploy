@@ -24,11 +24,11 @@ export const AppModal = () => {
       case 'register':
         return <FormRegister />
       case 'register-sms':
-        return <FormRegisterSms />
+        return <FormRegisterSms {...props} />
       case 'login':
-        return <FormLogin />
+        return <FormLogin {...props} />
       case 'login-after-reset':
-        return <FormLogin isShowSocial={false} />
+        return <FormLogin isShowSocial={false} {...props} />
       case 'new-password':
         return <FormResetPassword />
       case 'change-password':

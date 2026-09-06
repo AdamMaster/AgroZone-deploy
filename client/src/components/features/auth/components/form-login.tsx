@@ -3,6 +3,7 @@
 import { useAppModal } from '@/store'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Eye, EyeOff } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -10,6 +11,8 @@ import { toast } from 'sonner'
 import { Button, Field, FieldError, FieldGroup, Input, InputGroup, Loading } from '@/components/ui'
 
 import { useYandexCaptcha } from '@/shared/hooks/use-yandex-captcha'
+
+import { isSafeReturnPath } from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
 
@@ -19,12 +22,20 @@ import { AuthFormWrapper } from './auth-form-wrapper'
 
 interface LoginFormProps {
   isShowSocial?: boolean
+  // U1 в ROADMAP.md: куда унести пользователя после успешного входа —
+  // например, обратно на объявление с сразу открытым диалогом продавцу,
+  // или на форму создания объявления. См. shared/utils/return-to.ts —
+  // isSafeReturnPath проверяется здесь ещё раз защитным слоем, хотя
+  // все места, что кладут returnTo в props модалки, уже либо жёстко
+  // прописанный в коде путь, либо сами проверяют перед этим.
+  returnTo?: string
 }
 
-export const FormLogin = ({ isShowSocial = true }: LoginFormProps) => {
+export const FormLogin = ({ isShowSocial = true, returnTo }: LoginFormProps) => {
   const [showPassword, setShowPassword] = useState(false)
   const [isShowTwoFactor, setIsShowTwoFactor] = useState(false)
   const { onOpen, onClose } = useAppModal()
+  const router = useRouter()
 
   const { executeCaptcha, CaptchaWidget } = useYandexCaptcha()
 
@@ -60,6 +71,10 @@ export const FormLogin = ({ isShowSocial = true }: LoginFormProps) => {
             if (!data?.message) {
               onClose()
               form.reset()
+
+              if (isSafeReturnPath(returnTo)) {
+                router.push(returnTo)
+              }
             }
           }
         }
@@ -85,7 +100,7 @@ export const FormLogin = ({ isShowSocial = true }: LoginFormProps) => {
         )
       }
       isShowSocial={isShowSocial && !isShowTwoFactor}
-      onSwitchButtonClick={() => onOpen('register-sms')}
+      onSwitchButtonClick={() => onOpen('register-sms', returnTo ? { returnTo } : undefined)}
     >
       <form id='form-rhf-demo' onSubmit={form.handleSubmit(onSubmit)}>
         <FieldGroup className={cn('group', !isShowTwoFactor && 'hidden')}>

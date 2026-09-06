@@ -2,12 +2,13 @@
 
 import { Crown, Edit, Ellipsis, Heart, ImageIcon, MapPin, Pencil, Phone } from 'lucide-react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import Lightbox from 'yet-another-react-lightbox'
 import Zoom from 'yet-another-react-lightbox/plugins/zoom'
+
+import { useAppModal } from '@/store'
 
 import { UserType } from '@/components/features/auth/types'
 import { Avatar, AvatarFallback, AvatarImage, Button, ButtonBack, Heading } from '@/components/ui'
@@ -54,7 +55,26 @@ const formatDate = (value: Date | string | null) => {
 export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = [] }: AdDetailProps) => {
   const router = useRouter()
   const { user } = useProfile()
+  const { onOpen } = useAppModal()
   const { ad } = useAd(initialAd.id, initialAd)
+
+  // U1 в ROADMAP.md: раньше это была голая <Link href="/profile/settings/
+  // messages?ad=...">. Гость по ней улетал в middleware.ts, который для
+  // защищённых /profile/*-страниц просто редиректил на главную —
+  // объявление терялось, диалог с продавцом не открывался вообще никогда.
+  // Теперь для гостя вместо перехода открываем модалку входа прямо здесь
+  // (страница объявления никуда не уходит), а после входа/регистрации
+  // returnTo сам унесёт на нужный диалог — см. form-login.tsx,
+  // form-register-sms.tsx.
+  const handleWriteClick = () => {
+    const target = `/profile/settings/messages?ad=${ad.id}`
+
+    if (user) {
+      router.push(target)
+    } else {
+      onOpen('login', { returnTo: target })
+    }
+  }
 
   const galleryRef = useRef<HTMLDivElement>(null)
 
@@ -410,13 +430,7 @@ export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = 
                 >
                   {isPhoneRevealed ? formatPhoneNumber(ad.phone) : 'Показать телефон'}
                 </Button>
-                <Button
-                  size='lg'
-                  variant='secondary'
-                  className='px-8'
-                  nativeButton={false}
-                  render={<Link href={`/profile/settings/messages?ad=${ad.id}`} />}
-                >
+                <Button size='lg' variant='secondary' className='px-8' onClick={handleWriteClick}>
                   Написать
                 </Button>
               </div>

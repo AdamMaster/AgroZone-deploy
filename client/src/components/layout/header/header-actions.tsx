@@ -11,6 +11,8 @@ import { UserButton } from '@/components/features/user/components'
 
 import { useMounted, useProfile } from '@/shared/hooks'
 
+import { isSafeReturnPath } from '@/shared/utils'
+
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -48,12 +50,20 @@ export const HeaderActions: React.FC<Props> = ({ className }) => {
   useEffect(() => {
     const auth = searchParams.get('auth')
     const reason = searchParams.get('reason')
+    // См. middleware.ts — сюда попадает гость, которого редиректнули с
+    // защищённой /profile/*-страницы (например, по прямой ссылке). Валидируем
+    // ещё раз здесь: значение уже прошло через наш же редирект, но это
+    // query-параметр, а значит в принципе может прийти и по ссылке, которую
+    // просто прислали пользователю (см. isSafeReturnPath — без проверки это
+    // open redirect сразу после входа).
+    const returnUrlParam = searchParams.get('returnUrl')
+    const returnTo = isSafeReturnPath(returnUrlParam) ? returnUrlParam : undefined
 
     if (auth === 'true') {
       if (reason === 'reset') {
-        onOpen('login-after-reset')
+        onOpen('login-after-reset', returnTo ? { returnTo } : undefined)
       } else {
-        onOpen('login')
+        onOpen('login', returnTo ? { returnTo } : undefined)
       }
     }
   }, [searchParams])
@@ -73,7 +83,7 @@ export const HeaderActions: React.FC<Props> = ({ className }) => {
             <Lock className='h-4 w-4' />
             Вход и регистрация
           </ActionButton>
-          <ActionButton onClick={() => onOpen()}>
+          <ActionButton onClick={() => onOpen('login', { returnTo: '/ads/create' })}>
             <Plus className='h-4 w-4' />
             Разместить объявление
           </ActionButton>

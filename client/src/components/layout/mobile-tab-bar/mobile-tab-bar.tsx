@@ -51,10 +51,13 @@ export const MobileTabBar = () => {
   const { user } = useProfile()
   const { onOpen } = useAppModal()
 
-  const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
+  const handleClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
     if (!user) {
       event.preventDefault()
-      onOpen()
+      // U1 в ROADMAP.md: раньше просто открывали модалку входа и оставляли
+      // гостя там же — после входа ему приходилось ещё раз тыкать по той же
+      // вкладке. Теперь модалка знает, куда его вести дальше.
+      onOpen('login', { returnTo: href })
     }
   }
 
@@ -71,7 +74,7 @@ export const MobileTabBar = () => {
           <Link
             key={tab.href}
             href={tab.href}
-            onClick={handleClick}
+            onClick={event => handleClick(event, tab.href)}
             className={cn(
               'flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-gray-500',
               isActive && 'dark:text-primary text-gray-950'

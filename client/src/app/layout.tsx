@@ -2,13 +2,13 @@ import type { Metadata } from 'next'
 import { Google_Sans, Inter } from 'next/font/google'
 import { Suspense } from 'react'
 
+import { LEGAL_DETAILS, SITE_URL } from '@/components/features/legal/legal-details'
+import { SupportChatWidget } from '@/components/features/support/components'
 import { CookieConsentBanner } from '@/components/layout'
 import { AppModal } from '@/components/modals/app'
 import { CategoriesModal } from '@/components/modals/categories'
 import { FilterModal } from '@/components/modals/filter'
 import { MainProvider } from '@/components/providers'
-import { SupportChatWidget } from '@/components/features/support/components'
-import { LEGAL_DETAILS, SITE_URL } from '@/components/features/legal/legal-details'
 
 import { cn } from '@/lib/utils'
 
@@ -93,21 +93,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='ru' suppressHydrationWarning className={cn('h-full', inter.variable)}>
-      <body
-        className={cn(
-          'flex min-h-full flex-col bg-background font-sans text-[15px] text-foreground'
-        )}
-      >
+      <body className={cn('bg-background text-foreground flex min-h-full flex-col font-sans text-[15px]')}>
         <MainProvider>
           {children}
           <AppModal />
           <CategoriesModal />
-          {/* useCatalogFilters() внутри читает useSearchParams() сразу при
-          рендере, не только когда окно реально открыто (см. filter-modal.tsx) —
-          а этот компонент висит в корневом layout, то есть на каждой
-          странице сайта. Без Suspense здесь ломался статический пререндер
-          любого роута (сначала это всплыло на /ads/create, потом на
-          /_not_found — на самом деле проблема была общая для всего сайта). */}
           <Suspense fallback={null}>
             <FilterModal />
           </Suspense>

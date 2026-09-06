@@ -45,14 +45,12 @@ export const AdCardList = ({ ad }: AdCardListProps) => {
         <div className='overflow-hidden rounded-xl'>
           <div className='relative block bg-gray-100 pt-[100%]'>
             {ad.images.length > 0 ? (
-              // Колонка с фото в этой раскладке фиксированной ширины —
-              // 180px, с lg 236px (см. grid-cols выше).
               <Image
                 src={ad.images[0]}
                 alt={ad.title}
                 className='h-full w-full object-cover object-center'
                 fill
-                sizes='(max-width: 1023px) 250px'
+                sizes='400px'
               />
             ) : (
               <ImageIcon size={50} className='absolute top-[50%] left-[50%] translate-[-50%] text-gray-500' />

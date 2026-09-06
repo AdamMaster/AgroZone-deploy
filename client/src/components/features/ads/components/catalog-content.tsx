@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 
 import { CategoryTitle } from '../../categories/components/category-title'
 import { useCategories } from '../../categories/hooks/use-categories'
-import { CatalogSort, Filter } from '../../filter/components'
+import { ActiveFilterChips, CatalogSort, Filter } from '../../filter/components'
 import { useCatalogFilters } from '../../filter/hooks/use-catalog-filters'
 import { IAdsListResponse } from '../types/ad.types'
 import { CatalogAdsGrid } from './catalog-ads-grid'
@@ -41,6 +41,7 @@ export const CatalogContent = ({ serverSlug, initialAds }: CatalogContentProps) 
   return (
     <div className={cn(!isTopLevelCategory && 'pt-4 sm:pt-6')}>
       <CategoryTitle categories={categories} className='mb-4 sm:mb-6' />
+      <ActiveFilterChips categories={categories} filters={filters} />
       <div className={cn('grid grid-cols-1 gap-8 xl:grid-cols-[320px_1fr]')}>
         <div className='hidden md:block'>
           <Filter categories={categories} filters={filters} />

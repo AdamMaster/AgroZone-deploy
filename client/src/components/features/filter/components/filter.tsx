@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui'
 
@@ -48,7 +48,7 @@ export const Filter = ({ categories, filters }: FilterProps) => {
             onClick={filters.reset}
             className='text-secondary mb-6 hidden self-start text-sm hover:underline sm:block'
           >
-            Сбросить фильтры
+            Сбросить всё
           </button>
         )}
         <aside className='grid grid-cols-1 gap-6 md:grid-cols-2 xl:flex xl:flex-col'>
@@ -75,7 +75,7 @@ export const Filter = ({ categories, filters }: FilterProps) => {
           onClick={filters.reset}
           className='text-secondary mb-6 hidden self-start text-sm hover:underline sm:block'
         >
-          Сбросить фильтры
+          Сбросить всё
         </button>
       )}
       <aside className='grid grid-cols-1 gap-6 md:grid-cols-2 xl:flex xl:flex-col'>
@@ -113,17 +113,38 @@ const PriceRangeFilter = ({ filters, priceUnits }: PriceRangeFilterProps) => {
   const [min, setMin] = useState(filters.minPrice ?? '')
   const [max, setMax] = useState(filters.maxPrice ?? '')
 
-  useEffect(() => {
+  // Синхронизация с внешним изменением URL (сброс фильтров кнопкой/чипом,
+  // "Назад"/"Вперёд" браузера, смена категории меняет набор доступных
+  // priceUnits) — сравнение прямо в теле рендера, а не в useEffect: тот же
+  // паттерн "adjusting state when a prop changes", что и в use-search.ts
+  // (см. U4 в ROADMAP.md). Правило react-hooks/set-state-in-effect в
+  // проекте включено и не пропускает setState внутри эффекта.
+  //
+  // priceUnits — новый массив на каждый рендер родителя (getEffectivePriceUnits
+  // не мемоизирован), поэтому сравниваем не саму ссылку, а склеенное
+  // содержимое — иначе сравнение проходило бы "не равно" на каждый чих
+  // родителя и без всякой пользы каждый раз откатывало бы локальный выбор
+  // unit к значению из URL, даже если реально ни filters.unit, ни набор
+  // единиц не менялись.
+  const priceUnitsKey = priceUnits.join(',')
+  const unitDepsKey = `${filters.unit ?? ''}|${priceUnitsKey}`
+  const [prevUnitDepsKey, setPrevUnitDepsKey] = useState(unitDepsKey)
+  if (unitDepsKey !== prevUnitDepsKey) {
+    setPrevUnitDepsKey(unitDepsKey)
     setUnit(filters.unit ?? priceUnits[0] ?? 'ITEM')
-  }, [filters.unit, priceUnits])
+  }
 
-  useEffect(() => {
+  const [prevMinPrice, setPrevMinPrice] = useState(filters.minPrice)
+  if (filters.minPrice !== prevMinPrice) {
+    setPrevMinPrice(filters.minPrice)
     setMin(filters.minPrice ?? '')
-  }, [filters.minPrice])
+  }
 
-  useEffect(() => {
+  const [prevMaxPrice, setPrevMaxPrice] = useState(filters.maxPrice)
+  if (filters.maxPrice !== prevMaxPrice) {
+    setPrevMaxPrice(filters.maxPrice)
     setMax(filters.maxPrice ?? '')
-  }, [filters.maxPrice])
+  }
 
   const commit = (nextUnit: string, nextMin: string, nextMax: string) => {
     if (!nextMin.trim() && !nextMax.trim()) {

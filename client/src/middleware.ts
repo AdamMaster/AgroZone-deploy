@@ -18,7 +18,19 @@ export default async function middleware(request: NextRequest) {
   const isAdminPage = nextUrl.pathname === ADMIN_PATH_PREFIX || nextUrl.pathname.startsWith(`${ADMIN_PATH_PREFIX}/`)
 
   if (isProfilePage && !session) {
-    return NextResponse.redirect(new URL('/?auth=true', url))
+    // U1 в ROADMAP.md: раньше редирект просто увозил гостя на главную,
+    // теряя, куда он вообще шёл (например, /profile/settings/messages?ad=…
+    // при клике «Написать» из письма/шаринга — прямая ссылка на защищённую
+    // страницу, а не клик по кнопке на сайте, где это уже перехватывается
+    // на клиенте, см. header-actions.tsx/mobile-tab-bar.tsx/ad-detail.tsx).
+    // Кладём исходный путь в returnUrl — HeaderActions на главной прочитает
+    // его и откроет модалку входа уже с этим returnTo, чтобы после входа
+    // унести пользователя туда, куда он и шёл.
+    const returnUrl = `${nextUrl.pathname}${nextUrl.search}`
+    const redirectUrl = new URL('/', url)
+    redirectUrl.searchParams.set('auth', 'true')
+    redirectUrl.searchParams.set('returnUrl', returnUrl)
+    return NextResponse.redirect(redirectUrl)
   }
 
   if (session && nextUrl.pathname === '/profile') {
