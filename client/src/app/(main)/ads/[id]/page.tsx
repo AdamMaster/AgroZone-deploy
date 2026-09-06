@@ -70,9 +70,20 @@ export default async function AdPage({ params }: AdPageProps) {
   // для всех 610 категорий в GET /categories, теперь есть отдельный GET
   // /categories/:id/features). Дерево всё ещё нужно — но только для
   // хлебных крошек (categoryPath) и priceUnits, которые остаются в нём.
-  const [categories, categoryFeatures] = await Promise.all([
+  // "Похожие объявления" — та же категория, без самого текущего
+  // объявления, только опубликованные и не просроченные (это уже
+  // гарантирует AdsService.findAll). revalidate: 120 — тот же ISR-кэш, что
+  // и у самого объявления/каталога (см. adsService.findAll в
+  // catalog/[[...slug]]/page.tsx). Все три запроса независимы друг от
+  // друга — грузим параллельно, каждый со своим catch, чтобы сбой одного
+  // не ронял всю страницу объявления.
+  const [categories, categoryFeatures, similarAds] = await Promise.all([
     categoriesService.findAll().catch(() => []),
-    categoriesService.findFeatures(ad.categoryId).catch(() => [])
+    categoriesService.findFeatures(ad.categoryId).catch(() => []),
+    adsService
+      .findAll({ categoryId: ad.categoryId, excludeAdId: ad.id, limit: 8 }, { next: { revalidate: 120 } })
+      .then(response => response.items)
+      .catch(() => [])
   ])
 
   const categoryChain = getPathToCategory(categories, ad.categoryId)
@@ -96,7 +107,7 @@ export default async function AdPage({ params }: AdPageProps) {
     <div>
       <Container>
         <JsonLd data={[buildBreadcrumbListJsonLd(breadcrumbItems), buildProductJsonLd(ad)]} />
-        <AdDetail ad={ad} categoryFeatures={categoryFeatures} categoryPath={categoryPath} />
+        <AdDetail ad={ad} categoryFeatures={categoryFeatures} categoryPath={categoryPath} similarAds={similarAds} />
       </Container>
     </div>
   )

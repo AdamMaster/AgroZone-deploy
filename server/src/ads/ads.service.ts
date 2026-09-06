@@ -269,12 +269,18 @@ export class AdsService {
       conditions.push(Prisma.sql`ads.user_id IN (SELECT id FROM users WHERE type = ${query.sellerType}::"UserType")`)
     }
 
-    // Публичная страница продавца и блок "Ещё от продавца" (страница
-    // объявления) — просто список объявлений конкретного продавца, без
-    // доп. семантики (в отличие от sellerType выше — это фильтр по
-    // самозаявленному ТИПУ продавца, а не по конкретному id).
+    // Публичная страница продавца (/sellers/:id) — просто список
+    // объявлений конкретного продавца, без доп. семантики (в отличие от
+    // sellerType выше — это фильтр по самозаявленному ТИПУ продавца, а не
+    // по конкретному id).
     if (query.sellerId) {
       conditions.push(Prisma.sql`ads.user_id = ${query.sellerId}`)
+    }
+
+    // Блок "Похожие объявления" (страница объявления) — исключаем самого
+    // себя из выдачи той же категории.
+    if (query.excludeAdId) {
+      conditions.push(Prisma.sql`ads.id != ${query.excludeAdId}`)
     }
 
     conditions.push(...featureConditions)

@@ -103,4 +103,11 @@ export class FindAdsQueryDto {
   @IsOptional()
   @IsString()
   sellerId?: string
+
+  // Исключить конкретное объявление из результата — блок "Похожие
+  // объявления" на странице объявления: те же categoryId, но без самого
+  // текущего объявления (см. AdsService.findAll).
+  @IsOptional()
+  @IsString()
+  excludeAdId?: string
 }

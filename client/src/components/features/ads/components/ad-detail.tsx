@@ -33,6 +33,7 @@ import { BumpStatusHandler } from './bump-status-handler'
 import { CategoryBreadcrumbItem, CategoryBreadcrumbs } from './category-breadcrumbs'
 import { FavoriteButton } from './favorite-button'
 import { ReportAdDialog } from './report-ad-dialog'
+import { SimilarAdsSection } from './similar-ads-section'
 
 import 'yet-another-react-lightbox/styles.css'
 
@@ -44,6 +45,10 @@ interface AdDetailProps {
   // Путь категорий до текущей (родители → сама категория) с готовыми
   // ссылками на каталог — считается на сервере по ad.categoryId.
   categoryPath?: CategoryBreadcrumbItem[]
+  // Блок "Похожие объявления" — та же категория, без текущего объявления,
+  // получен на сервере вместе с самим объявлением (см. ads/[id]/page.tsx).
+  // Пустой массив по умолчанию — секция просто не рендерится.
+  similarAds?: IAd[]
 }
 
 const formatDate = (value: Date | string | null) => {
@@ -52,7 +57,7 @@ const formatDate = (value: Date | string | null) => {
   return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(value))
 }
 
-export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = [] }: AdDetailProps) => {
+export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = [], similarAds = [] }: AdDetailProps) => {
   const router = useRouter()
   const { user } = useProfile()
   const { onOpen } = useAppModal()
@@ -551,6 +556,12 @@ export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = 
           </div>
         )}
       </div>
+
+      {similarAds.length > 0 && (
+        <div className='mt-8'>
+          <SimilarAdsSection ads={similarAds} />
+        </div>
+      )}
 
       {ad.images.length > 0 && (
         <Lightbox
