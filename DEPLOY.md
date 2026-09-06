@@ -30,7 +30,9 @@ Cloud Server, Ubuntu 22.04/24.04. По ресурсам не экономьте 
   словите OOM на первом же всплеске трафика.
 
 Домен: должен уже существовать и указывать A-записью на IP сервера —
-`example.ru` → IP, `api.example.ru` → тот же IP (или CNAME на example.ru).
+`agro-zone.ru` → IP, `api.agro-zone.ru` → тот же IP (или CNAME на
+agro-zone.ru). Домен agro-zone.ru уже куплен и развёрнут (см. ROADMAP.md,
+раздел S2) — ниже везде подставлен именно он вместо общего плейсхолдера.
 Без домена не будет HTTPS через Let's Encrypt, а без HTTPS не будут
 нормально работать OAuth-редиректы (Google/Yandex) и вебхук ЮKassa.
 
@@ -41,9 +43,12 @@ Cloud Server, Ubuntu 22.04/24.04. По ресурсам не экономьте 
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER   # перелогиниться после этого
 
-# Клонировать репозиторий вместе с сабмодулями (client/server —
-# отдельные репо, без --recurse-submodules код внутри них не подтянется)
-git clone --recurse-submodules <ваш-репозиторий> agro-zone
+# Клонировать репозиторий. Раньше client/server были отдельными
+# сабмодулями (см. историю ниже, в п.6.5), но в текущем состоянии
+# репозитория (AgroZone-deploy) это уже обычный монорепозиторий —
+# .gitmodules нет, client/ и server/ — простые папки, --recurse-submodules
+# ничего не подтягивает и не нужен.
+git clone <ваш-репозиторий> agro-zone
 cd agro-zone
 ```
 
@@ -63,10 +68,10 @@ cd agro-zone
    затем нажать «Подтвердить» в панели.
 2. `server/.env` — берёте текущий рабочий `.env` с dev-машины и правите:
    - `NODE_ENV=production`
-   - `APPLICATION_URL=https://api.example.ru`
-   - `ALLOWED_ORIGIN=https://example.ru`
-   - `SESSION_DOMAIN=.example.ru` (с точкой — расшаривает куку между
-     example.ru и api.example.ru)
+   - `APPLICATION_URL=https://api.agro-zone.ru`
+   - `ALLOWED_ORIGIN=https://agro-zone.ru`
+   - `SESSION_DOMAIN=.agro-zone.ru` (с точкой — расшаривает куку между
+     agro-zone.ru и api.agro-zone.ru)
    - `SESSION_SECURE=true`
    - `POSTGRES_HOST=db` (имя сервиса в docker-compose, не `localhost`)
    - `REDIS_HOST=dredis`
@@ -74,9 +79,9 @@ cd agro-zone
      `.env` (п.1)
    - Остальное (S3, почта, OAuth-ключи, ЮKassa, DaData, Zvonok, GigaChat)
      — как было, эти сервисы внешние и от переезда не зависят.
-3. Домены в `nginx/bootstrap/app.conf` и `nginx/conf.d/app.conf` —
-   заменить `example.ru`/`api.example.ru` на реальный домен (сейчас там
-   плейсхолдер).
+3. Домены в `nginx/bootstrap/app.conf` и `nginx/conf.d/app.conf` — уже
+   заменены на agro-zone.ru/api.agro-zone.ru, дополнительно ничего
+   делать не нужно.
 
 ## 4. Первый запуск: собрать и поднять БД/Redis/API/фронт
 
@@ -117,8 +122,8 @@ docker compose -f docker-compose.prod.yml --env-file .env up -d nginx
 # использует volume certbot_www, который уже смонтирован в nginx)
 docker compose -f docker-compose.prod.yml --env-file .env run --rm certbot \
   certonly --webroot -w /var/www/certbot \
-  -d example.ru -d www.example.ru -d api.example.ru \
-  --email you@example.ru --agree-tos --no-eff-email
+  -d agro-zone.ru -d www.agro-zone.ru -d api.agro-zone.ru \
+  --email support@agro-zone.ru --agree-tos --no-eff-email
 
 # 5.3 — возвращаем боевой (HTTPS) конфиг и перечитываем nginx
 mv nginx/conf.d/app.conf.bak nginx/conf.d/app.conf
@@ -137,7 +142,7 @@ docker compose -f docker-compose.prod.yml --env-file .env restart nginx
 
 ## 6. Проверка
 
-- `https://example.ru` открывается, картинки объявлений грузятся с
+- `https://agro-zone.ru` открывается, картинки объявлений грузятся с
   `s3.twcstorage.ru`.
 - Логин через Google/Yandex — редиректы должны идти уже на `https://`.
 - Загрузка фото объявления (проверяет и `client_max_body_size` в nginx, и
@@ -145,51 +150,46 @@ docker compose -f docker-compose.prod.yml --env-file .env restart nginx
 - Семантический поиск категорий (проверяет, что embeddings-модель
   реально прогрелась и работает не только на dev-машине).
 - Оплата продвижения объявления (ЮKassa) — вебхук должен достучаться до
-  `https://api.example.ru/...`, а не до `localhost` (см. комментарии в
+  `https://api.agro-zone.ru/...`, а не до `localhost` (см. комментарии в
   `ad-bumps.controller.ts` — вы уже знали про это ограничение).
 
-## 6.5. Обновление после первого деплоя (важно: git submodules!)
+## 6.5. Обновление после первого деплоя
 
-Репозиторий — монорепо с сабмодулями (`client`, `server` — отдельные
-репозитории, тут только указатели на их коммиты). Из-за этого обычные
-`git clone` / `git pull` **не подтягивают код сабмодулей** — сервер может
-неделями катить один и тот же старый коммит client/server, даже если вы
-видите новый коммит в самом монорепо (ровно так один раз и случилось:
-фикс Suspense/useSearchParams был закоммичен и запушен в `client`, а
-монорепо продолжало указывать на коммит до фикса, пока указатель явно не
-запушили).
+**Было исторически:** репозиторий когда-то был монорепо с сабмодулями
+(`client`, `server` — отдельные репозитории, тут только указатели на их
+коммиты), и из-за этого обычные `git clone` / `git pull` не подтягивали
+код сабмодулей — сервер мог неделями катить один и тот же старый коммит
+client/server, даже если в самом монорепо виден новый коммит (ровно так
+один раз и случилось: фикс Suspense/useSearchParams был закоммичен и
+запушен в `client`, а монорепо продолжало указывать на коммит до фикса,
+пока указатель явно не запушили).
 
-**Первый клон на сервере** — сразу тяните сабмодули:
+**Сейчас — не так.** Проверил (сентябрь 2026): в текущем рабочем дереве
+`.gitmodules` нет, `client/.git` и `server/.git` нет — это обычные папки
+одного репозитория (`AgroZone-deploy`), `git status` в корне показывает
+изменённые файлы внутри `client/`/`server/` напрямую, а не единую
+строку-указатель на чужой коммит, как было бы с сабмодулем. То есть
+проблема выше, скорее всего, была устранена, когда сабмодули
+расформировали и влили в монорепо — но раз документация про неё молчала,
+на всякий случай выполните `git submodule status` на сервере один раз:
+если команда ответит "No submodules" — раздел ниже не нужен, обычный
+`git pull` подтягивает всё сразу.
 
-```bash
-git clone --recurse-submodules <ваш-репозиторий> agro-zone
-```
-
-**Каждый следующий релиз** (после того как локально запушили фикс/фичу
-и в `client`/`server`, и, если менялся указатель, в самом монорепо):
+**Каждый следующий релиз:**
 
 ```bash
 cd agro-zone
 git pull
-git submodule update --init --recursive   # <-- вот это легко забыть
 
-# дальше как обычно
 docker compose -f docker-compose.prod.yml --env-file .env build
 docker compose -f docker-compose.prod.yml --env-file .env up -d
 ```
 
-Проверить, что сабмодули реально на нужных коммитах (сверить с тем, что
-локально в `git log -1` внутри `client`/`server`):
-
-```bash
-git submodule status
-```
-
-Если после `docker compose build` ошибка на клиенте всё та же — почти
-наверняка сабмодуль не обновился. `git submodule status` со звёздочкой
-(`+`) перед хэшем значит "рабочая копия сабмодуля не совпадает с тем, что
-записано в индексе монорепо" — тогда `git submodule update --init
---recursive` ещё раз.
+Если `git submodule status` всё же покажет что-то (значит где-то на
+сервере сабмодули не до конца расформированы) — тогда дополнительно
+`git submodule update --init --recursive` перед сборкой, и стоит
+разобраться, почему на сервере состояние отличается от того, что видно
+в этой рабочей копии.
 
 ## 7. На будущее (не сегодня, но держите в уме)
 
