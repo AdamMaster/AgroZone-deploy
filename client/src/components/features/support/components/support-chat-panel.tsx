@@ -20,13 +20,20 @@ interface SupportChatPanelProps extends PropsWithChildren {
 // в шапке скрыт — второй способ закрыть то же самое действие не нужен.
 export const SupportChatPanel = ({ onClose, children }: SupportChatPanelProps) => {
   return (
-    <div className='fixed inset-0 z-50 flex flex-col overflow-hidden bg-white shadow-2xl sm:inset-auto sm:right-6 sm:bottom-24 sm:h-[560px] sm:w-[380px] sm:rounded-2xl sm:border sm:border-gray-100 dark:bg-neutral-800'>
-      <div className='flex items-center justify-end border-b border-gray-100 px-1 py-1 sm:hidden'>
-        <Button type='button' variant='ghost' size='icon' onClick={onClose} aria-label='Закрыть чат поддержки'>
+    <div className='fixed inset-0 z-100 flex flex-col overflow-hidden bg-white shadow-2xl sm:inset-auto sm:right-6 sm:bottom-24 sm:h-[560px] sm:w-[380px] sm:rounded-2xl sm:border sm:border-gray-100 dark:bg-neutral-800'>
+      <div className='flex min-h-0 flex-1 flex-col'>
+        <Button
+          type='button'
+          variant='ghost'
+          size='icon'
+          onClick={onClose}
+          aria-label='Закрыть чат поддержки'
+          className='absolute top-1.75 right-3 z-10 sm:hidden'
+        >
           <X className='size-5' />
         </Button>
+        {children}
       </div>
-      <div className='flex min-h-0 flex-1 flex-col'>{children}</div>
     </div>
   )
 }

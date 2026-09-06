@@ -683,16 +683,26 @@ export class AdsService {
       const viewDate = new Date()
       viewDate.setHours(0, 0, 0, 0)
 
-      await this.prisma.adView.create({ data: { adId, viewerKey, viewDate } })
+      // createMany + skipDuplicates вместо create: повторный просмотр того
+      // же посетителя в тот же день — ожидаемая, частая ситуация (не
+      // ошибка, см. уникальный индекс (adId, viewerKey, viewDate) в схеме
+      // AdView), а не только на бэкенде. Раньше это ловилось через try/catch
+      // на код Prisma P2002 — работало корректно (пользователь не видел
+      // ошибку), но сам Prisma Client логирует КАЖДУЮ ошибку движка в
+      // консоль на уровне 'error' (см. PrismaService: log: ['warn',
+      // 'error']) ДО того, как её долетит до нашего catch — то есть каждый
+      // повторный просмотр печатал в терминал "prisma:error ... Unique
+      // constraint failed", хотя по факту всё работало правильно. С
+      // skipDuplicates (ON CONFLICT DO NOTHING на Postgres) дубликат просто
+      // молча не вставляется — исключения вообще не возникает, значит и
+      // печатать Prisma тут нечего.
+      await this.prisma.adView.createMany({ data: [{ adId, viewerKey, viewDate }], skipDuplicates: true })
     } catch (error) {
-      // P2002 — уникальный индекс (adId, viewerKey, viewDate): повторный
-      // просмотр того же посетителя в тот же день, это ожидаемо и не
-      // ошибка (см. схему AdView). Остальные сбои не должны ронять показ
-      // объявления посетителю — оно уже отдано, статистика подождёт до
-      // следующего просмотра.
-      if ((error as { code?: string })?.code !== 'P2002') {
-        this.logger.error(`Не удалось записать просмотр объявления ${adId}`, error)
-      }
+      // Сюда теперь долетают только по-настоящему неожиданные сбои (БД
+      // недоступна и т.п.) — они не должны ронять показ объявления
+      // посетителю, оно уже отдано, статистика подождёт до следующего
+      // просмотра.
+      this.logger.error(`Не удалось записать просмотр объявления ${adId}`, error)
     }
   }
 

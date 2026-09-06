@@ -1,14 +1,13 @@
 'use client'
 
-import { Crown, Edit, Ellipsis, Heart, ImageIcon, MapPin, Pencil, Phone } from 'lucide-react'
+import { useAppModal } from '@/store'
+import { Crown, Edit, Ellipsis, Heart, ImageIcon, MapPin, Pencil, Phone, Share2 } from 'lucide-react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import Lightbox from 'yet-another-react-lightbox'
 import Zoom from 'yet-another-react-lightbox/plugins/zoom'
-
-import { useAppModal } from '@/store'
 
 import { UserType } from '@/components/features/auth/types'
 import { Avatar, AvatarFallback, AvatarImage, Button, ButtonBack, Heading } from '@/components/ui'
@@ -147,27 +146,33 @@ export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = 
   const handleArchive = () => archiveAd(ad.id)
   const handleRemove = () => removeAd(ad.id, { onSuccess: () => router.push('/profile/settings/ads') })
 
-  // "Поделиться" — в обоих меню (свой и чужой объявление, см. обсуждение с
-  // пользователем). navigator.share — системное меню шаринга, есть почти
-  // везде на мобилках; там, где его нет (десктоп/старые браузеры) —
-  // фолбэк на копирование ссылки в буфер. AbortError — пользователь просто
-  // закрыл системное меню, это не ошибка, тост не показываем.
-  const handleShare = async () => {
+  // "Поделиться" — раньше был только Web Share API (navigator.share) с
+  // фолбэком на копирование ссылки: на мобилках открывал системное меню
+  // шаринга, а на десктопе (где navigator.share почти нигде не
+  // поддерживается) кнопки "Поделиться" не было вообще — только в
+  // мобильной sticky-панели сверху. По ROADMAP.md (U11) нужны явные кнопки
+  // Telegram/WhatsApp — основные каналы, которыми продавцы техники реально
+  // договариваются о сделках, и не только на мобилке. Заменили на три
+  // явных пункта, одинаковых на любом устройстве и в любом браузере: два
+  // прямых диплинка в мессенджеры и копирование ссылки как универсальный
+  // вариант на случай другого приложения.
+  const handleShareTelegram = () => {
     const url = window.location.href
+    window.open(
+      `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(ad.title)}`,
+      '_blank',
+      'noopener,noreferrer'
+    )
+  }
 
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: ad.title, url })
-      } catch (error) {
-        if (error instanceof Error && error.name !== 'AbortError') {
-          toast.error('Не удалось поделиться объявлением')
-        }
-      }
-      return
-    }
+  const handleShareWhatsapp = () => {
+    const url = window.location.href
+    window.open(`https://wa.me/?text=${encodeURIComponent(`${ad.title} ${url}`)}`, '_blank', 'noopener,noreferrer')
+  }
 
+  const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(url)
+      await navigator.clipboard.writeText(window.location.href)
       toast.success('Ссылка скопирована')
     } catch {
       toast.error('Не удалось скопировать ссылку')
@@ -222,7 +227,9 @@ export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = 
                 <Ellipsis size={20} />
               </DropdownMenuTrigger>
               <DropdownMenuContent className='w-48' align='end'>
-                <DropdownMenuItem onClick={handleShare}>Поделиться</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleShareTelegram}>Telegram</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleShareWhatsapp}>WhatsApp</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleCopyLink}>Скопировать ссылку</DropdownMenuItem>
                 <DropdownMenuItem
                   className='text-red-500 hover:text-red-500!'
                   disabled={isLoadingRemove}
@@ -249,7 +256,9 @@ export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = 
                 <Ellipsis size={20} />
               </DropdownMenuTrigger>
               <DropdownMenuContent className='w-48' align='end'>
-                <DropdownMenuItem onClick={handleShare}>Поделиться</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleShareTelegram}>Telegram</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleShareWhatsapp}>WhatsApp</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleCopyLink}>Скопировать ссылку</DropdownMenuItem>
                 {user && (
                   <DropdownMenuItem
                     className='text-red-500 hover:text-red-500!'
@@ -400,6 +409,22 @@ export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = 
                 <span className='block text-sm font-normal text-gray-500'>за {PRICE_UNITS[ad.unit].toLowerCase()}</span>
               )}
             </p>
+            {/* На мобилке "Поделиться" уже есть в дропдауне "..." верхней
+                sticky-панели (см. выше) — здесь дублируем для десктопа,
+                где той панели нет вообще. */}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label='Поделиться'
+                className='absolute top-0 right-7 hidden size-5 text-gray-400 transition-colors hover:text-gray-600 sm:block'
+              >
+                <Share2 className='size-full' />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align='end' className='w-44'>
+                <DropdownMenuItem onClick={handleShareTelegram}>Telegram</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleShareWhatsapp}>WhatsApp</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleCopyLink}>Скопировать ссылку</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <FavoriteButton
               onClick={onClickFavorite}
               isFavorite={!!ad.isFavorite}
@@ -529,6 +554,7 @@ export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = 
           close={closeLightbox}
           index={activeImage}
           slides={slides}
+          plugins={[Zoom]}
           on={{ view: ({ index }) => setActiveImage(index) }}
           animation={{ swipe: 0 }}
           styles={{ slide: { maxWidth: 1280, margin: '0 auto' } }}

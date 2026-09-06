@@ -1,6 +1,6 @@
 'use client'
 
-import { MessageCircle, X } from 'lucide-react'
+import { Headset, MessageCircle, X } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
@@ -23,7 +23,7 @@ export const SupportChatButton = ({ isOpen, hasUnread, onClick }: SupportChatBut
         'bg-primary fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 flex size-13 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 active:scale-95 sm:right-6 sm:bottom-6'
       )}
     >
-      {isOpen ? <X className='size-6' /> : <MessageCircle className='size-6' />}
+      {isOpen ? <X className='size-6' /> : <Headset className='size-6' />}
 
       {!isOpen && hasUnread && (
         <span className='absolute -top-0.5 -right-0.5 size-3.5 rounded-full border-2 border-white bg-red-500' />

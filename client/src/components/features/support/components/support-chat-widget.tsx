@@ -1,12 +1,11 @@
 'use client'
 
+import { useSupportChatStore } from '@/store'
 import { useEffect } from 'react'
 
 import { UserRole } from '@/components/features/auth/types'
 
 import { useProfile } from '@/shared/hooks'
-
-import { useSupportChatStore } from '@/store'
 
 import { useSupportMyConversation, useSupportRealtime } from '../hooks'
 import { SupportAdminInbox } from './support-admin-inbox'
@@ -63,9 +62,6 @@ export const SupportChatWidget = () => {
 
   const handleClose = () => {
     onClose()
-    // Возвращаем админский инбокс к списку при закрытии — иначе при
-    // следующем открытии панель молча откроется сразу на последнем
-    // просмотренном тикете, будто это и есть точка входа.
     if (isAdmin) setActiveAdminConversationId(null)
   }
 
