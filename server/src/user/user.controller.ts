@@ -56,6 +56,17 @@ export class UserController {
     return this.userService.findById(id)
   }
 
+  // Публичная страница продавца (/sellers/:id на фронте) и блок "Ещё от
+  // продавца" на странице объявления — без @Authorization(), доступно
+  // анонимам. Намеренно НЕ 'by-id/:id' выше (тот отдаёт админу полную
+  // запись, включая email/телефоны/связанные аккаунты) — здесь только
+  // явно отобранные публичные поля (см. UserService.getPublicProfile).
+  @HttpCode(HttpStatus.OK)
+  @Get(':id/public')
+  async findPublicProfile(@Param('id') id: string) {
+    return this.userService.getPublicProfile(id)
+  }
+
   @Authorization()
   @HttpCode(HttpStatus.OK)
   @Patch('profile')

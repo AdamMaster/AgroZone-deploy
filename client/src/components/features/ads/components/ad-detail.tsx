@@ -3,6 +3,7 @@
 import { useAppModal } from '@/store'
 import { Crown, Edit, Ellipsis, Heart, ImageIcon, MapPin, Pencil, Phone, Share2 } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -462,7 +463,10 @@ export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = 
             )}
           </div>
 
-          <div className='mb-4 flex items-center gap-3'>
+          {/* Ведёт на публичную страницу продавца (/sellers/:id) — весь
+              блок кликабелен целиком, а не только текст "Ещё N
+              объявлений", чтобы было легко попасть туда и с аватара/имени. */}
+          <Link href={`/sellers/${ad.user!.id}`} className='mb-4 flex items-center gap-3'>
             <UserAvatar user={ad.user!} className='size-12' />
             <div>
               <div className='flex items-center gap-1.5'>
@@ -476,7 +480,7 @@ export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = 
                 </p>
               )}
             </div>
-          </div>
+          </Link>
           <div className='mb-6 flex gap-2'>
             {/* "Частное лицо" — просто самозаявленный тип, показываем всегда.
                 ИП/Компания — без подтверждения ИНН это ничем не обеспеченное

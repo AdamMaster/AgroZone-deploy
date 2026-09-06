@@ -61,6 +61,48 @@ export class UserService {
     }
   }
 
+  // Публичная страница продавца (/sellers/:id на фронте) — в отличие от
+  // findById/getProfileForClient (для владельца аккаунта, с телефонами,
+  // связанными аккаунтами и т.д.), тут явный select только тех полей,
+  // которые безопасно показывать кому угодно: ни email, ни телефонов, ни
+  // паролей. deletedAt проверяем явно (см. тот же приём в
+  // support-identity.service.ts) — обезличенный аккаунт не должен всплыть
+  // тут же со старым отображаемым именем.
+  async getPublicProfile(userId: string) {
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        displayName: true,
+        picture: true,
+        type: true,
+        businessName: true,
+        businessVerifiedAt: true,
+        premiumUntil: true,
+        createdAt: true,
+        deletedAt: true,
+        _count: {
+          select: {
+            ads: {
+              where: {
+                status: AdStatus.PUBLISHED,
+                expiresAt: { gt: new Date() }
+              }
+            }
+          }
+        }
+      }
+    })
+
+    if (!user || user.deletedAt) {
+      throw new NotFoundException('Продавец не найден')
+    }
+
+    const { _count, deletedAt, ...rest } = user
+
+    return { ...rest, adsCount: _count.ads }
+  }
+
   async findByPhone(phone: string) {
     const userPhone = await this.prismaService.userPhone.findUnique({
       where: {
