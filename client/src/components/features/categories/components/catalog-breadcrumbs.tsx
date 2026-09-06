@@ -6,13 +6,24 @@ import { useMemo } from 'react'
 import { CategoryBreadcrumbItem, CategoryBreadcrumbs } from '@/components/features/ads/components/category-breadcrumbs'
 import { Container } from '@/components/layout'
 
-import { useCategories } from '../hooks/use-categories'
+import { ICategory } from '../types'
 import { buildCategoryMap } from '../utils/category-utils'
 
-export const CatalogBreadcrumbs = () => {
+interface CatalogBreadcrumbsWidgetProps {
+  // Категории приходят пропом из MainLayout (там они уже получены на
+  // сервере одним запросом, см. комментарий в MainLayout). Раньше этот
+  // компонент дублировал загрузку через useCategories() — он смонтирован
+  // на КАЖДОЙ странице (в т.ч. на главной, где хлебные крошки всё равно не
+  // рендерятся, см. breadcrumbItems.length === 0 ниже), и такой же
+  // самостоятельный запрос параллельно делал CategoryMenu — по факту это
+  // и был тот самый лишний повторный fetch /categories из аудита
+  // (P3 в ROADMAP.md), подтверждённый трассировкой сети в реальном браузере.
+  categories: ICategory[]
+}
+
+export const CatalogBreadcrumbs = ({ categories }: CatalogBreadcrumbsWidgetProps) => {
   const pathname = usePathname()
   const params = useParams<{ slug?: string[] }>()
-  const { categories } = useCategories()
 
   const categoryMap = useMemo(() => buildCategoryMap(categories), [categories])
 

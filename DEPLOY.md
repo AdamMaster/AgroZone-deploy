@@ -54,6 +54,13 @@ cd agro-zone
 1. `.env` в корне (рядом с `docker-compose.prod.yml`) — на основе
    `.env.prod.example`: пароли Postgres/Redis + публичные ключи для
    сборки клиента (recaptcha/2GIS/DaData) + `CLIENT_SERVER_URL`.
+   Сюда же, когда будете подтверждать сайт в Яндекс.Вебмастере и Google
+   Search Console (S2 в ROADMAP.md, домен agro-zone.ru уже развёрнут) —
+   `GOOGLE_SITE_VERIFICATION` и `YANDEX_SITE_VERIFICATION`: код выдаётся
+   в соответствующей панели при добавлении сайта, без него метатег
+   подтверждения просто не рендерится (см. `app/layout.tsx`), ошибки не
+   будет. После добавления значений — пересобрать и передеплоить клиент,
+   затем нажать «Подтвердить» в панели.
 2. `server/.env` — берёте текущий рабочий `.env` с dev-машины и правите:
    - `NODE_ENV=production`
    - `APPLICATION_URL=https://api.example.ru`

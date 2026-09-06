@@ -8,11 +8,10 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import { Container } from '@/components/layout'
-import { Heading, Loading } from '@/components/ui'
+import { Heading } from '@/components/ui'
 
 import { useClickOutside } from '@/shared/hooks'
 
-import { useCategories } from '../hooks/use-categories'
 import { useCategoryMenuStore } from '../store'
 import { ICategory } from '../types'
 
@@ -46,9 +45,18 @@ const CategoryIcon = ({ name, className }: CategoryIconProps) => {
   return <Icon className={className} />
 }
 
-export const CategoryMenu = () => {
+interface CategoryMenuProps {
+  // Как и в CatalogBreadcrumbs — категории приходят готовым пропом из
+  // MainLayout, а не отдельным useCategories() на клиенте. Раньше этот
+  // компонент был смонтирован на каждой странице (в т.ч. на главной, где
+  // меню закрыто по умолчанию — isOpen: false, см. return null ниже) и всё
+  // равно самостоятельно дёргал /categories, хотя данные уже есть на
+  // сервере в этом же MainLayout. См. подробности в ROADMAP.md (P3).
+  categories: ICategory[]
+}
+
+export const CategoryMenu = ({ categories }: CategoryMenuProps) => {
   const { isOpen, close } = useCategoryMenuStore()
-  const { categories, isLoadingCategories } = useCategories()
 
   const menuRef = useRef<HTMLDivElement | null>(null)
 
@@ -92,32 +100,28 @@ export const CategoryMenu = () => {
           <Container>
             <div className='mx-[-16px] grid h-full max-w-7xl grid-cols-[340px_1fr] overflow-hidden'>
               <div className='relative flex flex-col overflow-y-auto py-6'>
-                {isLoadingCategories ? (
-                  <Loading />
-                ) : (
-                  categories?.map(category => {
-                    const isActive = category.id === activeCategoryId
+                {categories.map(category => {
+                  const isActive = category.id === activeCategoryId
 
-                    return (
-                      <button
-                        key={category.id}
-                        onMouseEnter={() => setActiveCategoryId(category.id)}
-                        className={[
-                          'relative flex w-full gap-3 rounded-lg px-4 py-3 pr-8 text-left text-[15px] font-medium',
-                          isActive ? 'bg-gray-100' : ''
-                        ].join(' ')}
-                      >
-                        <CategoryIcon
-                          name={category.iconId ? category.iconId : ''}
-                          className='text-primary size-5 min-w-5'
-                        />
-                        <span>{category.name}</span>
+                  return (
+                    <button
+                      key={category.id}
+                      onMouseEnter={() => setActiveCategoryId(category.id)}
+                      className={[
+                        'relative flex w-full gap-3 rounded-lg px-4 py-3 pr-8 text-left text-[15px] font-medium',
+                        isActive ? 'bg-gray-100' : ''
+                      ].join(' ')}
+                    >
+                      <CategoryIcon
+                        name={category.iconId ? category.iconId : ''}
+                        className='text-primary size-5 min-w-5'
+                      />
+                      <span>{category.name}</span>
 
-                        <ChevronRight className='absolute top-3.5 right-2 size-4' />
-                      </button>
-                    )
-                  })
-                )}
+                      <ChevronRight className='absolute top-3.5 right-2 size-4' />
+                    </button>
+                  )
+                })}
               </div>
 
               <div className='h-full overflow-y-auto p-8'>

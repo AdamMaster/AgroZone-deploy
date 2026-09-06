@@ -71,6 +71,18 @@ export const metadata: Metadata = {
     title: HOME_TITLE,
     description: HOME_DESCRIPTION,
     images: ['/images/og-default.jpg']
+  },
+  // Подтверждение прав на сайт в Яндекс.Вебмастере и Google Search Console
+  // (S2 в ROADMAP.md). Коды выдаются в соответствующей панели после
+  // добавления сайта-ресурса (webmaster.yandex.ru / search.google.com/search-console)
+  // и вставляются в .env на сервере — сюда их вписывать вручную не нужно и
+  // не следует (это публичный репозиторий кода, а не секрет, но домен
+  // подтверждается один раз, и держать код рядом с .env удобнее для
+  // ротации). Пока переменные не заданы, Next просто не рендерит эти
+  // мета-теги — старт без ошибок.
+  verification: {
+    ...(process.env.GOOGLE_SITE_VERIFICATION && { google: process.env.GOOGLE_SITE_VERIFICATION }),
+    ...(process.env.YANDEX_SITE_VERIFICATION && { yandex: process.env.YANDEX_SITE_VERIFICATION })
   }
 }
 
