@@ -15,10 +15,25 @@ ARG SERVER_URL
 ARG NEXT_PUBLIC_YANDEX_CAPTCHA_CLIENT_KEY
 ARG NEXT_PUBLIC_2GIS_KEY
 ARG NEXT_PUBLIC_DADATA_KEY
+# GOOGLE_SITE_VERIFICATION/YANDEX_SITE_VERIFICATION (S2 в ROADMAP.md) читаются
+# в app/layout.tsx как обычный process.env.* внутри серверного кода — не
+# через next.config.ts -> env и не через NEXT_PUBLIC_-префикс, так что в
+# клиентский JS-бандл эти значения не попадают. Но у клиентского контейнера
+# в docker-compose.prod.yml нет ни одного runtime env_file/environment (см.
+# файл) — метаданные `metadata.verification` в app/layout.tsx резолвятся при
+# `next build` (обычный статический export const metadata, не
+# generateMetadata), а не заново на каждый запрос в уже собранном
+# standalone-сервере. Поэтому значения нужны именно на этапе сборки — как и
+# остальные ARG'и выше, иначе сайт соберётся, а мета-тег подтверждения
+# молча не появится.
+ARG GOOGLE_SITE_VERIFICATION
+ARG YANDEX_SITE_VERIFICATION
 ENV SERVER_URL=$SERVER_URL
 ENV NEXT_PUBLIC_YANDEX_CAPTCHA_CLIENT_KEY=$NEXT_PUBLIC_YANDEX_CAPTCHA_CLIENT_KEY
 ENV NEXT_PUBLIC_2GIS_KEY=$NEXT_PUBLIC_2GIS_KEY
 ENV NEXT_PUBLIC_DADATA_KEY=$NEXT_PUBLIC_DADATA_KEY
+ENV GOOGLE_SITE_VERIFICATION=$GOOGLE_SITE_VERIFICATION
+ENV YANDEX_SITE_VERIFICATION=$YANDEX_SITE_VERIFICATION
 
 COPY package.json package-lock.json ./
 RUN npm ci

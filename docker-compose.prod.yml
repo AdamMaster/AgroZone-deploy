@@ -76,6 +76,13 @@ services:
         NEXT_PUBLIC_YANDEX_CAPTCHA_CLIENT_KEY: ${NEXT_PUBLIC_YANDEX_CAPTCHA_CLIENT_KEY}
         NEXT_PUBLIC_2GIS_KEY: ${NEXT_PUBLIC_2GIS_KEY}
         NEXT_PUBLIC_DADATA_KEY: ${NEXT_PUBLIC_DADATA_KEY}
+        # Подтверждение сайта в Google Search Console / Яндекс.Вебмастере
+        # (S2 в ROADMAP.md) — та же логика, что у переменных выше: нужны на
+        # этапе сборки (см. комментарий в client/Dockerfile). Не заданы в
+        # .env — просто станут пустой строкой, `metadata.verification` в
+        # app/layout.tsx это уже учитывает (мета-тег не рендерится).
+        GOOGLE_SITE_VERIFICATION: ${GOOGLE_SITE_VERIFICATION}
+        YANDEX_SITE_VERIFICATION: ${YANDEX_SITE_VERIFICATION}
     container_name: agrozone-client
     restart: always
     depends_on:
