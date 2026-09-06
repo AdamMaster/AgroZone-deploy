@@ -3,11 +3,14 @@ import type { Metadata } from 'next'
 import { LEGAL_DETAILS } from '@/components/features/legal/legal-details'
 import { LegalPageLayout, LegalSection } from '@/components/layout'
 
-export const metadata: Metadata = {
+import { buildPageMetadata } from '@/shared/utils/metadata'
+
+export const metadata: Metadata = buildPageMetadata({
   title: 'Пользовательское соглашение',
   description:
-    'Пользовательское соглашение (публичная оферта) на использование платформы объявлений AgroZone: правила размещения объявлений, платные услуги, права и обязанности сторон.'
-}
+    'Пользовательское соглашение (публичная оферта) на использование платформы объявлений AgroZone: правила размещения объявлений, платные услуги, права и обязанности сторон.',
+  path: '/terms'
+})
 
 export default function TermsPage() {
   return (

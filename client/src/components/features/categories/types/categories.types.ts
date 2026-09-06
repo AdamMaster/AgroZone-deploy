@@ -39,6 +39,16 @@ export interface ICategorySearchSuggestion {
   score: number
 }
 
+// categoryFeatures здесь больше НЕТ намеренно: раньше бэкенд отдавал
+// полный список атрибутов (ICategoryFeature[]) для КАЖДОЙ из 610 категорий
+// прямо в массовом дереве (GET /categories) — это ~4271 запись с полными
+// label/description/options/units и раздувало ответ на каждую навигацию
+// по каталогу примерно до ~2МБ. Теперь атрибуты одной категории грузятся
+// отдельно и по требованию через useCategoryFeatures(categoryId) (см.
+// categories/hooks) — GET /categories/:id/features. Поле специально
+// убрано из типа целиком (не сделано опциональным), чтобы tsc сразу
+// показал компиляционной ошибкой любое место, которое ещё читает
+// category.categoryFeatures напрямую из дерева.
 export interface ICategory {
   id: string
   name: string
@@ -50,8 +60,15 @@ export interface ICategory {
   sortOrder: number
   path: string[]
   fullPath: string
-  categoryFeatures: ICategoryFeature[]
   priceUnits: string[]
+  // Список из 15-25 обиходных названий/сортов через запятую (сгенерирован
+  // GigaChat на бэкенде, см. комментарий у CategoryWithChildren.description
+  // в categories.service.ts) — заведено для семантического поиска, а не как
+  // готовый текст для показа пользователю. Для meta-описания категории
+  // используется через buildCategoryMetaDescription (category-utils.ts),
+  // который оборачивает список в читаемое предложение — само поле напрямую
+  // в разметке не выводить.
+  description: string | null
   children?: ICategory[]
   isBack?: boolean
 }

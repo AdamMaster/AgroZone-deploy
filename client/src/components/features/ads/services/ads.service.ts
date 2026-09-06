@@ -1,4 +1,5 @@
 import { api } from '@/shared/api'
+import { RequestOptions } from '@/shared/fetch'
 
 import {
   IAd,
@@ -55,9 +56,13 @@ class AdsService {
     return response
   }
 
+  // requestOptions — например { next: { revalidate: 120 } } для SSR-фетча
+  // первой страницы каталога (см. page.tsx и S1 в ROADMAP.md). Обычные
+  // клиентские вызовы (useAds/useAdsInfinite) его не передают — тогда
+  // применяется дефолтное поведение fetch в Next 16 (без кэша).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async findAll(params?: Record<string, any>): Promise<IAdsListResponse> {
-    const response = await api.get<IAdsListResponse>(this.URL, { params })
+  async findAll(params?: Record<string, any>, requestOptions?: Omit<RequestOptions, 'params'>): Promise<IAdsListResponse> {
+    const response = await api.get<IAdsListResponse>(this.URL, { params, ...requestOptions })
     return response
   }
 

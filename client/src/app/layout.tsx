@@ -8,6 +8,7 @@ import { CategoriesModal } from '@/components/modals/categories'
 import { FilterModal } from '@/components/modals/filter'
 import { MainProvider } from '@/components/providers'
 import { SupportChatWidget } from '@/components/features/support/components'
+import { LEGAL_DETAILS, SITE_URL } from '@/components/features/legal/legal-details'
 
 import { cn } from '@/lib/utils'
 
@@ -20,16 +21,56 @@ const inter = Google_Sans({
   display: 'swap'
 })
 
+const HOME_TITLE = 'AgroZone — Агропромышленная торговая площадка'
+const HOME_DESCRIPTION = 'Всё для агробизнеса: продукция, сырьё, техника и оборудование оптом'
+
 export const metadata: Metadata = {
+  // metadataBase — без него Next не может резолвить относительные пути в
+  // alternates.canonical / openGraph.url / openGraph.images (которые почти
+  // везде на сайте передаются относительными, см. shared/utils/metadata.ts)
+  // в абсолютные адреса: в деве он молча подставлял бы localhost, а без
+  // него в проде Next вообще не подставит домен сам. Раньше metadataBase не
+  // было задано вовсе (см. S3 в ROADMAP.md).
+  metadataBase: new URL(SITE_URL),
   title: {
-    absolute: 'AgroZone — Агропромышленная торговая площадка',
+    absolute: HOME_TITLE,
     template: '%s | AgroZone'
   },
-  description: 'Всё для агробизнеса: продукция, сырьё, техника и оборудование оптом',
+  description: HOME_DESCRIPTION,
+  // Главная страница ((main)/(home)/page.tsx) не объявляет собственный
+  // metadata/generateMetadata, поэтому целиком наследует этот объект —
+  // canonical для неё указываем прямо здесь, а не заводим отдельный файл
+  // ради одного поля.
+  alternates: {
+    canonical: '/'
+  },
   icons: {
     icon: '/favicon.ico',
     shortcut: '/favicon.ico',
     apple: '/apple-touch-icon.png'
+  },
+  // Общий запасной openGraph/twitter — на случай страницы, у которой нет
+  // собственного generateMetadata/metadata (Next в этом случае наследует
+  // родительский целиком, в отличие от страницы, которая объявляет
+  // openGraph сама — тогда родительский полностью заменяется, без
+  // слияния). У всех публичных страниц сайта теперь есть собственные
+  // метаданные через buildPageMetadata (см. shared/utils/metadata.ts), так
+  // что этот блок — просто защитная сетка, а не то, что реально показывают
+  // пользователям.
+  openGraph: {
+    type: 'website',
+    locale: 'ru_RU',
+    siteName: LEGAL_DETAILS.siteName,
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
+    url: '/',
+    images: [{ url: '/images/og-default.jpg', width: 1200, height: 630 }]
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
+    images: ['/images/og-default.jpg']
   }
 }
 

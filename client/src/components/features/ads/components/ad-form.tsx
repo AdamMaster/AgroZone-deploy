@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 
+import { useCategoryFeatures } from '@/components/features/categories/hooks/use-category-features'
 import {
   AddressInput,
   Button,
@@ -128,6 +129,20 @@ export const AdForm = ({
     return router.back()
   }
 
+  // Атрибуты категории (categoryFeatures) больше не приходят в дереве
+  // categories (см. комментарий у ICategory в categories.types.ts) — при
+  // редактировании существующего объявления их нужно догрузить отдельным
+  // запросом по initialData.categoryId. priceUnits и путь по хлебным
+  // крошкам остаются в дереве, так что для них прежний обход категорий
+  // сохранён без изменений.
+  const { features: editCategoryFeatures } = useCategoryFeatures(isEdit ? initialData?.categoryId : undefined)
+
+  useEffect(() => {
+    if (isEdit && editCategoryFeatures.length) {
+      setFeatures(editCategoryFeatures)
+    }
+  }, [isEdit, editCategoryFeatures])
+
   useEffect(() => {
     if (isEdit && initialData?.categoryId) {
       const findCategory = (cats: ICategory[]): ICategory | undefined => {
@@ -143,10 +158,6 @@ export const AdForm = ({
       }
 
       const category = findCategory(categories)
-
-      if (category?.categoryFeatures) {
-        setFeatures(category.categoryFeatures)
-      }
 
       if (category?.priceUnits?.length) {
         setPriceUnits(category.priceUnits)

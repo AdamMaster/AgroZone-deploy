@@ -1,8 +1,6 @@
 import { MetadataRoute } from 'next'
 
-import { LEGAL_DETAILS } from '@/components/features/legal/legal-details'
-
-const SITE_URL = `https://${LEGAL_DETAILS.siteUrl}`
+import { SITE_URL } from '@/components/features/legal/legal-details'
 
 // Закрываем от индексации всё, что не имеет смысла показывать в поиске и
 // местами даже вредно там показывать: личный кабинет и формы подачи/

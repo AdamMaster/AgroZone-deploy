@@ -1,10 +1,9 @@
-import { ICategory, ICategoryFeature } from '@/components/features/ads/types/ad.types'
+import { ICategory } from '@/components/features/ads/types/ad.types'
 
 export interface IFlatCategory {
   id: string
   name: string
   path: string[]
-  categoryFeatures: ICategoryFeature[]
   // Есть ли у категории подкатегории — раньше подсказки поиска в
   // CategoryCascader не различали листовые и промежуточные категории:
   // клик по категории с детьми молча закрывал список и ничего не выбирал
@@ -14,6 +13,10 @@ export interface IFlatCategory {
   hasChildren: boolean
 }
 
+// categoryFeatures здесь раньше тоже прокидывался, но нигде не читался
+// (CategoryCascader использует flattenCategories только ради path и
+// hasChildren) — убран вместе с полем в ICategory (см. комментарий в
+// categories.types.ts), лишний повод его тут держать пропал.
 export const flattenCategories = (cats: ICategory[], parentPath: string[] = []): IFlatCategory[] => {
   return cats.flatMap((cat): IFlatCategory[] => {
     const currentPath = [...parentPath, cat.name]
@@ -23,7 +26,6 @@ export const flattenCategories = (cats: ICategory[], parentPath: string[] = []):
       id: cat.id,
       name: cat.name,
       path: currentPath,
-      categoryFeatures: cat.categoryFeatures || [],
       hasChildren
     }
 

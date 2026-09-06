@@ -3,11 +3,14 @@ import type { Metadata } from 'next'
 import { LEGAL_DETAILS } from '@/components/features/legal/legal-details'
 import { LegalPageLayout, LegalSection } from '@/components/layout'
 
-export const metadata: Metadata = {
+import { buildPageMetadata } from '@/shared/utils/metadata'
+
+export const metadata: Metadata = buildPageMetadata({
   title: 'Политика конфиденциальности',
   description:
-    'Политика обработки персональных данных пользователей платформы AgroZone в соответствии с Федеральным законом № 152-ФЗ «О персональных данных».'
-}
+    'Политика обработки персональных данных пользователей платформы AgroZone в соответствии с Федеральным законом № 152-ФЗ «О персональных данных».',
+  path: '/privacy'
+})
 
 export default function PrivacyPage() {
   return (

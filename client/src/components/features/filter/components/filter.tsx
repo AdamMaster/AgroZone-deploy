@@ -8,6 +8,7 @@ import { PRICE_UNITS } from '@/shared/constants/units'
 import { USER_TYPE_LABELS, USER_TYPE_OPTIONS } from '@/shared/constants/user-types'
 
 import { UserType } from '../../auth/types'
+import { useCategoryFeatures } from '../../categories/hooks/use-category-features'
 import { useCurrentCategory } from '../../categories/hooks/use-current-category'
 import { ICategory } from '../../categories/types'
 import { useCatalogFilters } from '../hooks/use-catalog-filters'
@@ -27,6 +28,16 @@ interface FilterProps {
 
 export const Filter = ({ categories, filters }: FilterProps) => {
   const category = useCurrentCategory(categories)
+
+  // Атрибуты категории теперь не приходят в дереве (см. комментарий у
+  // ICategory в categories.types.ts) — грузим их отдельно, только когда
+  // реально выбрана листовая категория (для нелистовой и для случая без
+  // выбранной категории вовсе фильтры по атрибутам не показываются, так
+  // что запрос в остальных случаях просто не срабатывает: enabled: false).
+  // Хук вызывается безусловно, ДО раннего return ниже — иначе нарушается
+  // правило "хуки не могут вызываться условно".
+  const isLeafCategory = !!category && (!category.children || category.children.length === 0)
+  const { features: categoryFeatures } = useCategoryFeatures(isLeafCategory ? category!.id : undefined)
 
   if (!category) {
     return (
@@ -54,11 +65,7 @@ export const Filter = ({ categories, filters }: FilterProps) => {
     )
   }
 
-  const isLeafCategory = !category.children || category.children.length === 0
-
-  const filterableFeatures = isLeafCategory
-    ? (category.categoryFeatures ?? []).filter(f => f.filterable && f.type !== 'TEXT')
-    : []
+  const filterableFeatures = isLeafCategory ? categoryFeatures.filter(f => f.filterable && f.type !== 'TEXT') : []
 
   return (
     <div>

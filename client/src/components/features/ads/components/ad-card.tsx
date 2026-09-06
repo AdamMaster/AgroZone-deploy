@@ -56,8 +56,15 @@ export const AdCard = ({ ad }: AdCardProps) => {
         {isBadgeShown && <AdBadgeChip badge={ad.badge!} className='absolute top-1 left-1' />}
       </Link>
       <div className='relative'>
+        {/* level={2} — сохраняет прежний визуальный размер/вес (тут он и так
+        полностью переопределён className ниже), as='h3' — семантический тег.
+        На странице ровно одна H1 (или H2 CategoryTitle на каталоге), а на
+        листинге таких карточек может быть 20+ — если каждая размечена как
+        H2, у страницы получается 20 заголовков одного уровня без какой-либо
+        вложенности, что и было найдено аудитом (S4 в ROADMAP.md). */}
         <Heading
           level={2}
+          as='h3'
           className='hover:text-primary mb-0.5 line-clamp-2 w-fit pr-6 text-sm leading-snug font-medium transition-colors sm:text-base'
         >
           <Link href={`/ads/${ad.id}`}>{ad.title}</Link>

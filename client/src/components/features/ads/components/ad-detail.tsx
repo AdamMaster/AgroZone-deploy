@@ -234,11 +234,6 @@ export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = 
                   <DropdownMenuItem
                     className='text-red-500 hover:text-red-500!'
                     onClick={() => {
-                      // setTimeout — открываем диалог уже после того, как
-                      // дропдаун закроется и отпустит фокус, иначе они
-                      // конфликтуют (см. похожие места в проекте, где
-                      // диалог/поповер триггерится изнутри другого
-                      // оверлея).
                       setTimeout(() => setIsReportDialogOpen(true), 0)
                     }}
                   >
@@ -272,7 +267,7 @@ export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = 
                   <span className='font-medium text-gray-900 dark:text-white'>
                     {counters.viewsTotal}
                     {counters.viewsToday > 0 && (
-                      <span className='font-medium text-primary'> (+{counters.viewsToday})</span>
+                      <span className='text-primary font-medium'> (+{counters.viewsToday})</span>
                     )}
                   </span>
                 </span>
@@ -328,7 +323,7 @@ export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = 
                       alt={`${ad.title} — фото ${index + 1}`}
                       className='h-full w-full object-cover'
                       fill
-                      sizes='(min-width: 1024px) 640px, 100vw'
+                      sizes='(min-width: 1024px) 700px, 100vw'
                       priority={index === 0}
                     />
                   </button>
@@ -358,7 +353,7 @@ export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = 
                     alt={`${ad.title} — фото ${index + 1}`}
                     className='object-cover'
                     fill
-                    sizes='64px'
+                    sizes='100px'
                   />
                 </button>
               ))}

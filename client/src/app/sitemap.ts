@@ -3,9 +3,7 @@ import { MetadataRoute } from 'next'
 import { adsService } from '@/components/features/ads/services'
 import { categoriesService } from '@/components/features/categories/services'
 import { ICategory } from '@/components/features/categories/types/categories.types'
-import { LEGAL_DETAILS } from '@/components/features/legal/legal-details'
-
-const SITE_URL = `https://${LEGAL_DETAILS.siteUrl}`
+import { SITE_URL } from '@/components/features/legal/legal-details'
 
 // Пересобираем не чаще раза в час — объявления и категории меняются
 // нередко, но карту сайта и так читают в основном поисковые роботы, а не

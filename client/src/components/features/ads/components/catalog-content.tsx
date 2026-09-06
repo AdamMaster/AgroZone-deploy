@@ -2,6 +2,7 @@
 
 import { useCatalogViewStore } from '@/store'
 import { LayoutGrid, LayoutList } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 
 import { useMediaQuery } from '@/shared/hooks'
 
@@ -11,19 +12,31 @@ import { CategoryTitle } from '../../categories/components/category-title'
 import { useCategories } from '../../categories/hooks/use-categories'
 import { CatalogSort, Filter } from '../../filter/components'
 import { useCatalogFilters } from '../../filter/hooks/use-catalog-filters'
-import { AdsClient } from './ads-client'
+import { IAdsListResponse } from '../types/ad.types'
+import { CatalogAdsGrid } from './catalog-ads-grid'
 
 interface CatalogContentProps {
   serverSlug?: string | null
+  // Первая страница выдачи, отрисованная сервером (см. page.tsx, S1 в
+  // ROADMAP.md) — прокидывается дальше в CatalogAdsGrid как initialData.
+  initialAds: IAdsListResponse
 }
 
-export const CatalogContent = ({ serverSlug }: CatalogContentProps) => {
+export const CatalogContent = ({ serverSlug, initialAds }: CatalogContentProps) => {
   const { layout: gridLayout, setLayout: setGridLayout } = useCatalogViewStore()
   const { categories } = useCategories()
   const filters = useCatalogFilters()
+  const searchParams = useSearchParams()
   const isTopLevelCategory = Boolean(serverSlug) && !serverSlug!.includes('/')
   const isMobile = useMediaQuery('(max-width: 767px)')
   const effectiveGridLayout = isMobile ? 'cols-4' : gridLayout
+
+  // Полностью размонтирует и заново монтирует CatalogAdsGrid при смене
+  // категории (serverSlug) или любого параметра фильтра/поиска/сортировки —
+  // без этого компонент сохранил бы свой внутренний список "показать ещё"
+  // страниц поверх initialAds, пришедшего уже под НОВЫЙ запрос с сервера
+  // (см. комментарий в CatalogAdsGrid).
+  const gridKey = `${serverSlug ?? ''}?${searchParams.toString()}`
 
   return (
     <div className={cn(!isTopLevelCategory && 'pt-4 sm:pt-6')}>
@@ -48,7 +61,7 @@ export const CatalogContent = ({ serverSlug }: CatalogContentProps) => {
             </div>
             <CatalogSort />
           </div>
-          <AdsClient serverSlug={serverSlug} layout={effectiveGridLayout} />
+          <CatalogAdsGrid key={gridKey} serverSlug={serverSlug} layout={effectiveGridLayout} initialAds={initialAds} />
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { api } from '@/shared/api'
 
-import { ICategory, ICategorySearchSuggestion } from '../types/categories.types'
+import { ICategory, ICategoryFeature, ICategorySearchSuggestion } from '../types/categories.types'
 
 class CategoriesService {
   private URL = 'categories'
@@ -28,6 +28,16 @@ class CategoriesService {
     const response = await api.get<ICategory[]>(this.URL, { cache: 'no-store' })
 
     return response
+  }
+
+  // Определения атрибутов ОДНОЙ категории — точечный запрос взамен
+  // прежнего чтения category.categoryFeatures из массового дерева (см.
+  // комментарий у ICategory в categories.types.ts). no-store здесь не
+  // нужен: этот запрос не завязан на постоянно-смонтированный layout.tsx,
+  // а react-query поверх него (см. useCategoryFeatures) сам кэширует и
+  // переиспользует результат между компонентами по categoryId.
+  async findFeatures(categoryId: string): Promise<ICategoryFeature[]> {
+    return api.get<ICategoryFeature[]>(`${this.URL}/${categoryId}/features`)
   }
 }
 

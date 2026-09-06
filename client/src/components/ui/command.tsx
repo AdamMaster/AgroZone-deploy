@@ -35,14 +35,33 @@ function CommandDialog({
 }) {
   return (
     <Dialog {...props}>
-      <DialogHeader className='sr-only'>
-        <DialogTitle>{title}</DialogTitle>
-        <DialogDescription>{description}</DialogDescription>
-      </DialogHeader>
+      {/* DialogHeader/DialogTitle — раньше стояли здесь, прямым потомком
+          <Dialog>, а не внутри DialogContent. DialogPrimitive.Root
+          "Doesn't render its own HTML element" — просто прокидывает
+          контекст и рендерит children как есть, БЕЗ условия на open: в
+          отличие от DialogContent (он оборачивает содержимое в
+          DialogPortal и монтируется в DOM только пока диалог открыт),
+          прежнее расположение означало, что sr-only <h2> с заголовком
+          диалога («Выберите регион» у HomeLocationPicker) присутствовал в
+          DOM ВСЕГДА, а не только пока диалог реально открыт — и, будучи
+          первым заголовком в разметке главной страницы (которая до
+          соседней задачи S4 в ROADMAP.md не имела собственного <h1>),
+          оказывался первым заголовком на всей странице, хотя визуально
+          и для скринридера в состоянии "закрыто" его как бы не должно
+          быть. DialogTitle резолвит accessible name диалога через общий
+          store (store.useSyncedValueWithCleanup('titleElementId', ...)),
+          а не через положение в дереве — так что перенос внутрь
+          DialogContent ничего не ломает в доступности (aria-labelledby
+          на попапе продолжает указывать на этот же title), но теперь
+          сам <h2> монтируется в DOM только когда диалог открыт. */}
       <DialogContent
         className={cn('top-1/3 translate-y-0 rounded-xl! p-0', className)}
         showCloseButton={showCloseButton}
       >
+        <DialogHeader className='sr-only'>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
         {/* CommandInput/CommandList и другие Command-примитивы читают
             состояние (фильтр, выбранный пункт) из контекста, который
             создаёт именно корневой cmdk Command — без этой обёртки они

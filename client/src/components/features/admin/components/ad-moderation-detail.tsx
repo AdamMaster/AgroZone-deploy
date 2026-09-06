@@ -11,6 +11,7 @@ import { CategoryBreadcrumbs } from '@/components/features/ads/components/catego
 import { useModerationAd, usePublishAd } from '@/components/features/ads/hooks'
 import { ICategoryFeature } from '@/components/features/ads/types/ad.types'
 import { useCategories } from '@/components/features/categories/hooks/use-categories'
+import { useCategoryFeatures } from '@/components/features/categories/hooks/use-category-features'
 import { Avatar, AvatarFallback, Button, ButtonBack, Heading, Loading } from '@/components/ui'
 
 import { PRICE_UNITS } from '@/shared/constants/units'
@@ -40,6 +41,13 @@ export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
   const { ad, isLoading } = useModerationAd(id)
   const { categories } = useCategories()
   const { publishAd, isLoadingPublish } = usePublishAd()
+  // Атрибуты категории больше не приходят в дереве categories (см.
+  // комментарий у ICategory.categoryFeatures) — грузим их отдельно по
+  // ad.categoryId. Объявление всегда привязано к листовой категории (см.
+  // CategoryCascader.handleCategorySelect), поэтому это ровно та же
+  // категория, чьи атрибуты раньше брались с "самой глубокой" в
+  // categoryChain.
+  const { features: categoryFeatures } = useCategoryFeatures(ad?.categoryId)
 
   const galleryRef = useRef<HTMLDivElement>(null)
 
@@ -82,8 +90,6 @@ export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
   const categoryChain = getPathToCategory(categories, ad.categoryId)
     .map(catId => findCategoryById(categories, catId))
     .filter((c): c is NonNullable<typeof c> => c !== null)
-
-  const categoryFeatures = categoryChain.at(-1)?.categoryFeatures ?? []
 
   const categoryPath = categoryChain.map(c => ({ name: c.name, href: `/catalog/${c.fullPath}` }))
 

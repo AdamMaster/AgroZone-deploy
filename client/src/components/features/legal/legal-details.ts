@@ -20,3 +20,9 @@ export const LEGAL_DETAILS = {
   siteUrl: 'agro-zone.ru',
   effectiveDate: '18 августа 2026 г.'
 }
+
+// Полный абсолютный origin сайта — раньше пересчитывался в трёх местах
+// одинаковой строкой (`https://${LEGAL_DETAILS.siteUrl}` в sitemap.ts,
+// robots.ts, и теперь ещё metadataBase/canonical в metadata.ts), вынесен
+// сюда один раз, чтобы домен менялся в одном месте.
+export const SITE_URL = `https://${LEGAL_DETAILS.siteUrl}`

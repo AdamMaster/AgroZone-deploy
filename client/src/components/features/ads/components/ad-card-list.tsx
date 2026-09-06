@@ -61,8 +61,12 @@ export const AdCardList = ({ ad }: AdCardListProps) => {
           </div>
         </div>
         <div className='relative grow'>
+          {/* level={2} + as='h3' — см. тот же комментарий в ad-card.tsx (S4 в
+          ROADMAP.md): на листинге десятки таких карточек, каждая как H2
+          означала бы десятки заголовков одного уровня подряд без вложенности. */}
           <Heading
             level={2}
+            as='h3'
             className='hover:text-primary mb-0.5 line-clamp-2 w-fit text-lg leading-5 font-medium transition-colors sm:text-xl'
           >
             {ad.title}

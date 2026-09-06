@@ -4,44 +4,18 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
 
 import { CatalogFiltersState, FeatureFilterValue, FeatureFiltersMap } from '../types/filter.types'
+import {
+  EMPTY_STATE,
+  FEATURES_PARAM,
+  isEmptyFeatureValue,
+  parseCatalogFiltersFromSearchParams
+} from '../utils/parse-catalog-filters'
 
-const FEATURES_PARAM = 'features'
-
-// Значение считается "пустым" — такое условие только засоряло бы URL и
-// не добавляло бы никакого реального ограничения на запрос.
-const isEmptyFeatureValue = (value: FeatureFilterValue): boolean => {
-  if (Array.isArray(value)) return value.length === 0
-  if (typeof value === 'boolean') return value === false
-  return value.min === undefined && value.max === undefined
-}
-
-const parseFeatures = (raw: string | null): FeatureFiltersMap => {
-  if (!raw) return {}
-
-  try {
-    const parsed = JSON.parse(raw)
-
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      return parsed as FeatureFiltersMap
-    }
-  } catch {
-    // Битый параметр в адресной строке (например, вручную отредактированный
-    // URL) — просто игнорируем, а не роняем страницу.
-  }
-
-  return {}
-}
-
-const readStateFromParams = (searchParams: URLSearchParams): CatalogFiltersState => ({
-  sortBy: searchParams.get('sortBy') ?? undefined,
-  unit: searchParams.get('unit') ?? undefined,
-  minPrice: searchParams.get('minPrice') ?? undefined,
-  maxPrice: searchParams.get('maxPrice') ?? undefined,
-  regionIsoCode: searchParams.get('regionIsoCode') ?? undefined,
-  localityFiasId: searchParams.get('localityFiasId') ?? undefined,
-  sellerType: searchParams.get('sellerType') ?? undefined,
-  features: parseFeatures(searchParams.get(FEATURES_PARAM))
-})
+// Парсинг URL -> CatalogFiltersState (readStateFromParams) вынесен в
+// ../utils/parse-catalog-filters.ts — тот файл без 'use client' и его же
+// использует серверный компонент страницы каталога для SSR первой страницы
+// выдачи (см. S1 в ROADMAP.md), чтобы резолвить фильтры из searchParams
+// точно так же, как это делает этот хук после гидратации.
 
 const writeStateToParams = (state: CatalogFiltersState, base: URLSearchParams): URLSearchParams => {
   const params = new URLSearchParams(base.toString())
@@ -73,17 +47,6 @@ const writeStateToParams = (state: CatalogFiltersState, base: URLSearchParams): 
   return params
 }
 
-const EMPTY_STATE: CatalogFiltersState = {
-  sortBy: undefined,
-  unit: undefined,
-  minPrice: undefined,
-  maxPrice: undefined,
-  regionIsoCode: undefined,
-  localityFiasId: undefined,
-  sellerType: undefined,
-  features: {}
-}
-
 type ScalarPatch = Partial<
   Pick<
     CatalogFiltersState,
@@ -112,7 +75,7 @@ export function useCatalogFilters(options: UseCatalogFiltersOptions = {}) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const urlState = useMemo(() => readStateFromParams(searchParams), [searchParams])
+  const urlState = useMemo(() => parseCatalogFiltersFromSearchParams(searchParams), [searchParams])
 
   // Буфер несохранённых изменений — актуален только при immediate: false.
   // Держим его в ref, а не в useState: apply() может вызываться сразу же

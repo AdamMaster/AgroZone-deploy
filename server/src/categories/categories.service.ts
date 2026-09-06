@@ -39,10 +39,16 @@ export interface CategoryWithChildren {
   parentId: string | null
   level: number
   sortOrder: number
-  categoryFeatures: CategoryFeature[]
   path: string[]
   fullPath: string
   priceUnits: string[]
+  // Список из 15-25 обиходных названий/сортов через запятую, сгенерированный
+  // GigaChat (см. scripts/enrich-category-descriptions.ts) — заведено для
+  // семантического поиска категорий (CategoryTerm/searchBySemantic), НЕ как
+  // готовый человекочитаемый текст. На клиенте поэтому не выводится как
+  // есть, а оборачивается в шаблон-предложение — см.
+  // buildCategoryMetaDescription в categories/utils/category-utils.ts.
+  description: string | null
   children: CategoryWithChildren[]
 }
 
@@ -101,12 +107,27 @@ export class CategoriesService implements OnModuleInit {
     this.logger.log(`Кэш терминов категорий для семантического поиска загружен: ${this.termCache.length} терминов`)
   }
 
+  // Массовое дерево категорий — отдаётся на каждую навигацию по каталогу
+  // (клиент грузит его целиком, чтобы построить сайдбар/breadcrumbs/кэш
+  // slug->id). Раньше сюда же подмешивались categoryFeatures каждой из
+  // 610 категорий (4271 запись суммарно, с полными label/description/
+  // options/units) — это раздувало ответ примерно до ~2МБ, хотя реальные
+  // определения атрибутов нужны почти всегда только для ОДНОЙ конкретной
+  // (обычно листовой) категории за раз: сайдбар фильтра, форма подачи
+  // объявления, карточка объявления, модерация. Поэтому categoryFeatures
+  // здесь больше не отдаём — за ними теперь отдельный метод getFeatures()
+  // и эндпоинт GET /categories/:id/features, который дергается только
+  // когда конкретная категория уже выбрана.
+  // priceUnits в дереве ОСТАЁТСЯ: клиентская агрегация эффективных единиц
+  // измерения (getEffectivePriceUnits/getEffectivePriceUnitsForAll в
+  // client/.../filter/utils/price-units.ts) рекурсивно обходит priceUnits
+  // по всему поддереву (а на голом /catalog — по всему дереву целиком), и
+  // делать под это отдельный запрос не имеет смысла: пришлось бы либо
+  // грузить priceUnits для каждой категории отдельно, либо всё равно
+  // тянуть их все разом, только вторым запросом вместо одного.
   async findAll(): Promise<CategoryWithChildren[]> {
     const categories = await this.prisma.category.findMany({
-      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-      include: {
-        categoryFeatures: true
-      }
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }]
     })
 
     const byParent = new Map<string, typeof categories>()
@@ -135,15 +156,27 @@ export class CategoriesService implements OnModuleInit {
         parentId: cat.parentId,
         level: cat.level,
         sortOrder: cat.sortOrder,
-        categoryFeatures: cat.categoryFeatures,
         path: cat.path,
         fullPath: cat.fullPath,
         priceUnits: cat.priceUnits,
+        description: cat.description,
         children: build(cat.id)
       }))
     }
 
     return build(null)
+  }
+
+  // Определения атрибутов (features) ОДНОЙ категории — на замену прежнему
+  // подходу "все categoryFeatures всех категорий внутри findAll()". Дергается
+  // точечно, когда пользователь уже выбрал конкретную категорию (обычно
+  // листовую — см. вызывающий код: Filter, CategoryCascader, AdForm,
+  // модерация, страница объявления).
+  async getFeatures(categoryId: string): Promise<CategoryFeature[]> {
+    return this.prisma.categoryFeature.findMany({
+      where: { categoryId },
+      orderBy: [{ sortOrder: 'asc' }]
+    })
   }
 
   async getCategoryPath(categoryId: string): Promise<string[]> {
