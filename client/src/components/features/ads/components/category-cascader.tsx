@@ -137,6 +137,7 @@ export const CategoryCascader = ({ categories, form, onCategorySelect }: Categor
         className={cn('overflow-initial relative mb-3 rounded-lg border', open ? 'focus-input' : 'border')}
       >
         <CommandInput
+          aria-label='Поиск нужной категории'
           className='text-md p-0 placeholder:text-gray-500'
           placeholder='Поиск нужной категории'
           onFocus={() => {

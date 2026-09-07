@@ -37,7 +37,7 @@ export const NotificationBell = () => {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className='relative px-2 py-1'>
+      <DropdownMenuTrigger aria-label='Уведомления' className='relative px-2 py-1'>
         <Bell className='size-6 fill-gray-300 text-gray-300 hover:fill-gray-400 hover:text-gray-400' />
         {unreadCount > 0 && (
           <span className='bg-primary absolute top-0.5 right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium text-white'>

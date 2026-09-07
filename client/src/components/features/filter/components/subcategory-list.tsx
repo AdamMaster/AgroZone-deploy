@@ -1,7 +1,7 @@
 'use client'
 
 import { CommandItem } from 'cmdk'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandList, Label } from '@/components/ui'
 
@@ -36,6 +36,12 @@ export const SubcategoryList = ({
   placeholder = 'Найти категорию'
 }: SubcategoryListProps) => {
   const [open, setOpen] = useState(false)
+  // Связывает видимый <Label> с полем через htmlFor/id — без этого
+  // скринридер видит их как два независимых элемента, хотя визуально
+  // подпись стоит прямо над полем (см. аудит A1+A2 в ROADMAP.md).
+  // useId(), а не статичная строка — компонент используется и в
+  // десктопном сайдбаре, и в мобильном окне фильтра одновременно.
+  const inputId = useId()
 
   if (!categories.length) return null
 
@@ -46,9 +52,10 @@ export const SubcategoryList = ({
 
   return (
     <div className='flex flex-col gap-2'>
-      <Label>{label}</Label>
+      <Label htmlFor={inputId}>{label}</Label>
       <Command className={cn('overflow-initial relative h-[46px] rounded-lg border', open ? 'focus-input' : 'border')}>
         <CommandInput
+          id={inputId}
           className='h-full p-0 placeholder:text-gray-500'
           placeholder={placeholder}
           onFocus={() => setOpen(true)}

@@ -1,7 +1,7 @@
 'use client'
 
 import { load } from '@2gis/mapgl'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList, FieldError, Label } from '@/components/ui'
 
@@ -62,6 +62,9 @@ export function MapAd({ value, error, onChange }: MapAdProps) {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
+  // Связывает видимый <Label>Выберите местоположение</Label> с полем через
+  // htmlFor/id (см. аудит A1+A2 в ROADMAP.md).
+  const inputId = useId()
 
   useEffect(() => {
     let destroyed = false
@@ -219,10 +222,11 @@ export function MapAd({ value, error, onChange }: MapAdProps) {
 
   return (
     <div className='space-y-2'>
-      <Label>Выберите местоположение</Label>
+      <Label htmlFor={inputId}>Выберите местоположение</Label>
 
       <Command shouldFilter={false} className='rounded-lg border'>
         <CommandInput
+          id={inputId}
           value={query}
           placeholder='Введите адрес...'
           onValueChange={value => {

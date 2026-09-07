@@ -56,7 +56,11 @@ export const HomeLocationPicker = ({ className }: HomeLocationPickerProps) => {
         description='Объявления на главной будут показаны для выбранной локации'
         className='w-[500px] max-w-full'
       >
-        <CommandInput placeholder='Город, село, регион...' className='text-sm placeholder:text-gray-500' />
+        <CommandInput
+          placeholder='Город, село, регион...'
+          aria-label='Город, село, регион'
+          className='text-sm placeholder:text-gray-500'
+        />
         <CommandList className='py-2'>
           <CommandEmpty>Ничего не найдено.</CommandEmpty>
           <CommandGroup>

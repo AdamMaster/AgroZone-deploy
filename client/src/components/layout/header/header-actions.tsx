@@ -98,7 +98,7 @@ export const HeaderActions: React.FC<Props> = ({ className }) => {
             <Layers className='h-4 w-4' />
             Мои объявления
           </ActionButton>
-          <Link href='/profile/settings/favorites' className='px-2 py-1'>
+          <Link href='/profile/settings/favorites' aria-label='Избранное' className='px-2 py-1'>
             <Heart className='size-6 fill-gray-300 text-gray-300 hover:fill-gray-400 hover:text-gray-400' />
           </Link>
           <NotificationBell />

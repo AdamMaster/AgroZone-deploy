@@ -60,7 +60,7 @@ export const Header = () => {
               </div>
               {isProfileSection ? (
                 <div className='flex w-full items-center justify-end gap-4 md:hidden'>
-                  <Link href='/profile/settings/notifications' className='relative inline-flex'>
+                  <Link href='/profile/settings/notifications' aria-label='Уведомления' className='relative inline-flex'>
                     <Bell className='size-6 text-gray-700' />
                     {user && <ProfileHeaderBellBadge />}
                   </Link>

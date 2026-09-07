@@ -1,7 +1,7 @@
 'use client'
 
 import { CommandItem } from 'cmdk'
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandList, Label } from '@/components/ui'
 
@@ -39,6 +39,10 @@ export const LocationFilter = ({ value, onChange }: LocationFilterProps) => {
   const { locations, isLoadingLocations } = useLocations()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
+  // Связывает видимый <Label>Локация</Label> с полем через htmlFor/id (см.
+  // аудит A1+A2 в ROADMAP.md) — без этого скринридер видит их как два
+  // независимых элемента.
+  const inputId = useId()
 
   useEffect(() => {
     if (!value.regionIsoCode && !value.localityFiasId) {
@@ -78,7 +82,7 @@ export const LocationFilter = ({ value, onChange }: LocationFilterProps) => {
   return (
     <div className='flex h-auto flex-col gap-2'>
       <div className='flex items-center justify-between'>
-        <Label>Локация</Label>
+        <Label htmlFor={inputId}>Локация</Label>
         {hasValue && (
           <button type='button' onClick={handleClear} className='text-secondary text-xs hover:underline'>
             Сбросить
@@ -87,6 +91,7 @@ export const LocationFilter = ({ value, onChange }: LocationFilterProps) => {
       </div>
       <Command className={cn('overflow-initial relative h-[46px] rounded-lg border', open ? 'focus-input' : 'border')}>
         <CommandInput
+          id={inputId}
           className='h-full p-0 placeholder:text-gray-500'
           placeholder='Город, село, регион...'
           value={search}

@@ -57,7 +57,12 @@ const formatDate = (value: Date | string | null) => {
   return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(value))
 }
 
-export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = [], similarAds = [] }: AdDetailProps) => {
+export const AdDetail = ({
+  ad: initialAd,
+  categoryFeatures = [],
+  categoryPath = [],
+  similarAds = []
+}: AdDetailProps) => {
   const router = useRouter()
   const { user } = useProfile()
   const { onOpen } = useAppModal()
@@ -195,6 +200,27 @@ export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = 
     .filter((item): item is { feature: ICategoryFeature; value: string } => item.value !== null)
 
   const publishedDate = formatDate(ad.publishedAt)
+
+  // "Обновлено" — намеренно НЕ updatedAt: это поле трогает вообще любой
+  // update() строки в базе (архивация, снятие с архива, покупка бейджа/
+  // выделения цены и т.п.), а не только реальное обновление контента, и
+  // показывать его буквально означало бы "обновлено сегодня" почти всегда.
+  // bumpedAt — тот же признак свежести, что уже используется для
+  // сортировки каталога (COALESCE(bumped_at, created_at), см.
+  // AdsService.findAll) и обновляется только платным "Поднять объявление"
+  // или премиумом (в том числе автоматически раз в сутки, пока услуга
+  // активна, см. AdAutoBumpWorker) — то есть ровно тогда, когда объявление
+  // реально "поднялось" и должно выглядеть свежим для покупателя. Условие
+  // "bumpedAt позже publishedAt" — от случая, когда объявление подняли, а
+  // потом отредактировали и оно прошло повторную модерацию: publish()
+  // всегда перезаписывает publishedAt текущим моментом, так что старая
+  // дата подъёма может оказаться РАНЬШЕ новой даты публикации — тогда
+  // "Обновлено" показывать не нужно. Сравнение отформатированных строк, а
+  // не самих дат — чтобы не показывать две одинаковые на вид даты, если
+  // подъём случился в тот же день, что и публикация.
+  const bumpedDate =
+    ad.bumpedAt && ad.publishedAt && new Date(ad.bumpedAt) > new Date(ad.publishedAt) ? formatDate(ad.bumpedAt) : null
+  const updatedDate = bumpedDate && bumpedDate !== publishedDate ? bumpedDate : null
 
   const slides = useMemo(() => ad.images.map(src => ({ src })), [ad.images])
 
@@ -454,14 +480,14 @@ export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = 
                 <Button
                   variant='default'
                   size='lg'
-                  className='grow px-8'
+                  className='h-13! grow px-8'
                   onClick={() => setIsPhoneRevealed(true)}
                   nativeButton={!isPhoneRevealed}
                   render={isPhoneRevealed ? <a href={`tel:+${ad.phone}`} /> : undefined}
                 >
                   {isPhoneRevealed ? formatPhoneNumber(ad.phone) : 'Показать телефон'}
                 </Button>
-                <Button size='lg' variant='secondary' className='px-8' onClick={handleWriteClick}>
+                <Button size='lg' variant='secondary' className='h-13! px-8' onClick={handleWriteClick}>
                   Написать
                 </Button>
               </div>
@@ -478,6 +504,7 @@ export const AdDetail = ({ ad: initialAd, categoryFeatures = [], categoryPath = 
                 <p className='text-sm font-medium'>{ad.user?.displayName ?? 'Пользователь'}</p>
               </div>
               {publishedDate && <p className='text-xs text-gray-500'>Опубликовано {publishedDate}</p>}
+              {updatedDate && <p className='text-xs text-gray-500'>Обновлено {updatedDate}</p>}
               {!!ad.user?.adsCount && (
                 <p className='text-xs text-gray-500'>
                   Ещё {ad.user.adsCount} {pluralizeRu(ad.user.adsCount, ['объявление', 'объявления', 'объявлений'])}{' '}

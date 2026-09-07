@@ -73,6 +73,7 @@ const SortablePhotoTile = ({ id, url, onRemove }: SortablePhotoTileProps) => {
           e.stopPropagation()
           onRemove()
         }}
+        aria-label='Удалить фото'
         className='absolute top-1 right-1 rounded-full bg-black/50 p-1 text-white hover:bg-black/70'
       >
         <X size={14} />
@@ -192,6 +193,7 @@ export const PhotoUploader = ({ control, name, maxFiles, isPremium }: PhotoUploa
               <button
                 type='button'
                 onClick={() => inputRef.current?.click()}
+                aria-label='Добавить фото'
                 className='hover:border-primary flex aspect-square flex-col items-center justify-center rounded-lg border-2 border-dashed text-sm text-gray-500 transition-colors'
               >
                 <ImagePlus className='text-gray-900' />

@@ -87,14 +87,14 @@ export const AdViewsStats = ({ adId }: AdViewsStatsProps) => {
       </p>
 
       {isLoading ? (
-        <Skeleton className='h-[220px] w-full rounded-xl' />
+        <Skeleton className='h-[280px] w-full rounded-xl' />
       ) : (
         <ChartContainer
           config={chartConfig}
           className={cn('aspect-auto h-[180px] w-full transition-opacity sm:h-[280px]', isFetching && 'opacity-50')}
         >
           <BarChart data={chartData} barCategoryGap={20}>
-            <CartesianGrid vertical={false} strokeDasharray='3 3' />
+            <CartesianGrid vertical={false} />
             <XAxis
               dataKey='label'
               tickLine={false}
@@ -111,7 +111,7 @@ export const AdViewsStats = ({ adId }: AdViewsStatsProps) => {
               tick={{ fill: 'var(--muted-foreground)' }}
             />
             <ChartTooltip
-              cursor={false}
+              cursor={true}
               isAnimationActive={false}
               content={
                 <ChartTooltipContent
@@ -119,7 +119,7 @@ export const AdViewsStats = ({ adId }: AdViewsStatsProps) => {
                 />
               }
             />
-            <Bar maxBarSize={50} dataKey='views' fill='#bed9ff' radius={[6, 6, 0, 0]} activeBar={false} />
+            <Bar maxBarSize={50} dataKey='views' fill={'#7db3ff'} radius={[6, 6, 0, 0]} activeBar={false} />
           </BarChart>
         </ChartContainer>
       )}

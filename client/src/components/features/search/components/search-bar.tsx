@@ -92,6 +92,7 @@ export const SearchBar = ({ className }: SearchBarProps) => {
           <Input
             value={query}
             placeholder='Поиск по объявлениям'
+            aria-label='Поиск по объявлениям'
             onChange={e => handleInputChange(e.target.value)}
             onClick={() => onClickInput()}
             className='h-10 w-full rounded-[10px] border-0 bg-transparent pl-3 transition-none focus-visible:border-transparent md:h-12 md:bg-white md:pl-4 md:pl-5 md:text-[15px]! md:transition-colors!'
@@ -102,6 +103,7 @@ export const SearchBar = ({ className }: SearchBarProps) => {
             <button
               type='button'
               onClick={() => onClear()}
+              aria-label='Очистить поиск'
               className='absolute top-0 right-0 flex h-full items-center justify-center px-3'
             >
               <X className='size-5 text-base hover:text-inherit md:text-gray-400' />
@@ -112,6 +114,7 @@ export const SearchBar = ({ className }: SearchBarProps) => {
         <Button
           type='submit'
           variant='default'
+          aria-label='Найти'
           className='text-md hidden h-12! px-5 font-normal md:flex'
           onClick={() => onClickButton()}
         >

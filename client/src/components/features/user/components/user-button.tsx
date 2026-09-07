@@ -56,7 +56,7 @@ export const UserButton = ({ className, user }: UserButtonProps) => {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className={className}>
+      <DropdownMenuTrigger aria-label='Меню профиля' className={className}>
         <UserAvatar user={user} />
       </DropdownMenuTrigger>
       <DropdownMenuContent className='w-40' align='end'>

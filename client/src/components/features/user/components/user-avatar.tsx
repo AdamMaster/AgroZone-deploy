@@ -26,7 +26,7 @@ interface UserAvatarProps {
 export const UserAvatar = ({ user, size, className }: UserAvatarProps) => {
   return (
     <Avatar size={size} className={className}>
-      <AvatarImage src={user.picture ?? undefined} />
+      <AvatarImage src={user.picture ?? undefined} alt={user.displayName ?? 'Пользователь'} />
       <AvatarFallback style={{ backgroundColor: getAvatarColor(user.id) }}>
         {user.displayName?.slice(0, 1).toUpperCase() ?? '?'}
       </AvatarFallback>

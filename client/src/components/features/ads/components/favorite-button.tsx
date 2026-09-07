@@ -22,8 +22,11 @@ export const FavoriteButton = ({ onClick, isFavorite = false, isLoading = false,
 
   return (
     <button
+      type='button'
       onClick={handleClick}
       disabled={isLoading}
+      aria-label={isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'}
+      aria-pressed={isFavorite}
       className={cn('absolute top-0 right-0 size-5 transition-all active:scale-95 disabled:opacity-50', className)}
     >
       <Heart

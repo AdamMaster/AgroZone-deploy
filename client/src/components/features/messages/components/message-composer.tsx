@@ -63,7 +63,13 @@ export const MessageComposer = ({
           maxLength={maxLength}
           className='min-h-12 flex-1 resize-none px-4! py-3 wrap-anywhere placeholder:text-gray-400'
         />
-        <Button size='icon-lg' className='size-12! rounded-lg!' onClick={handleSend} disabled={!text.trim() || isSending}>
+        <Button
+          size='icon-lg'
+          aria-label='Отправить'
+          className='size-12! rounded-lg!'
+          onClick={handleSend}
+          disabled={!text.trim() || isSending}
+        >
           <SendHorizontal />
         </Button>
       </div>
