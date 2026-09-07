@@ -75,7 +75,10 @@ export const NotificationBell = () => {
                 {!notification.isRead && <span className='bg-primary size-1.5 shrink-0 rounded-full' />}
                 <p className='text-sm font-medium'>{notification.title}</p>
               </div>
-              <p className='line-clamp-2 text-xs text-gray-500'>{notification.message}</p>
+              {/* text-sm, а не text-xs — тот же текст на полной странице
+                  уведомлений (content-notifications.tsx) уже text-sm, тут
+                  был рассинхрон (аудит A1+A2, ROADMAP.md). */}
+              <p className='line-clamp-2 text-sm text-gray-500'>{notification.message}</p>
               <p className='text-[11px] text-gray-400'>{formatNotificationDate(notification.createdAt)}</p>
             </DropdownMenuItem>
           ))

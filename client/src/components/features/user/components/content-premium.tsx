@@ -95,7 +95,10 @@ export const ContentPremium = () => {
                 <Check className='text-primary mt-0.5 size-4 flex-shrink-0' strokeWidth={3} />
                 <div>
                   <p className='text-sm font-medium'>{benefit.title}</p>
-                  {benefit.description && <p className='text-xs text-gray-500'>{benefit.description}</p>}
+                  {/* text-sm, а не text-xs — это продающий текст,
+                      который должен убедить купить премиум, а не
+                      вспомогательная подпись (аудит A1+A2, ROADMAP.md). */}
+                  {benefit.description && <p className='text-sm text-gray-500'>{benefit.description}</p>}
                 </div>
               </li>
             ))}

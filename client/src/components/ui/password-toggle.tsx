@@ -10,7 +10,11 @@ export const PasswordToggle = ({ isShow, onClick }: PropsWithChildren<PasswordTo
   return (
     <button
       type='button'
-      className='absolute top-1/2 right-2.5 h-auto -translate-y-[50%] hover:bg-transparent'
+      // Область нажатия — 32px (минимум по аудиту A1+A2, ROADMAP.md — 24px,
+      // берём с запасом под палец), сама иконка внутри остаётся прежних
+      // 16px (h-4 w-4) — размер иконки не меняем, только невидимый отступ
+      // вокруг неё через flex-центрирование в увеличенной кнопке.
+      className='absolute top-1/2 right-2.5 flex size-8 -translate-y-1/2 items-center justify-center hover:bg-transparent'
       onClick={onClick}
       aria-label={isShow ? 'Скрыть пароль' : 'Показать пароль'}
     >

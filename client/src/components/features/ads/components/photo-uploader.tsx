@@ -74,7 +74,10 @@ const SortablePhotoTile = ({ id, url, onRemove }: SortablePhotoTileProps) => {
           onRemove()
         }}
         aria-label='Удалить фото'
-        className='absolute top-1 right-1 rounded-full bg-black/50 p-1 text-white hover:bg-black/70'
+        // p-1.5, а не p-1 — область нажатия ~26px вместо ~22px (минимум
+        // по аудиту A1+A2, ROADMAP.md — 24px), сама иконка (X size={14})
+        // не меняется.
+        className='absolute top-1 right-1 rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70'
       >
         <X size={14} />
       </button>

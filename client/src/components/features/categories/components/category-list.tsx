@@ -108,7 +108,7 @@ export const CategoryList = () => {
                       key={child.id}
                       href={`/catalog/${child.fullPath}`}
                       onClick={handleClose}
-                      className='hover:text-primary block py-1 text-[13px]'
+                      className='hover:text-primary block py-1 text-sm'
                     >
                       {child.name}
                     </Link>
@@ -118,7 +118,7 @@ export const CategoryList = () => {
                     <button
                       type='button'
                       onClick={() => toggleExpanded(category.id)}
-                      className='hover:text-primary block text-[13px] text-gray-500 transition-colors'
+                      className='hover:text-primary block text-sm text-gray-500 transition-colors'
                     >
                       {isExpanded ? 'Скрыть' : `Ещё ${children.length - 5}`}
                     </button>

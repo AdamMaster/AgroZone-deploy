@@ -2,13 +2,12 @@
 
 import { useAppModal } from '@/store'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
 import React, { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 
-import { Button, Checkbox, Field, FieldError, FieldGroup, Input, InputGroup, Loading } from '@/components/ui'
+import { Button, Checkbox, Field, FieldError, FieldGroup, Input, InputGroup, Loading, PasswordToggle } from '@/components/ui'
 
 import { useYandexCaptcha } from '@/shared/hooks/use-yandex-captcha'
 
@@ -106,18 +105,7 @@ export const FormRegister = () => {
               <Field data-invalid={fieldState.invalid} className={cn(fieldState.invalid && 'pb-5', 'group')}>
                 <InputGroup>
                   <Input {...field} type={showPassword ? 'text' : 'password'} placeholder='Пароль' />
-                  <button
-                    type='button'
-                    className='absolute top-1/2 right-2.5 h-auto -translate-y-[50%] hover:bg-transparent'
-                    onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
-                  >
-                    {showPassword ? (
-                      <Eye className='text-muted-foreground h-4 w-4' />
-                    ) : (
-                      <EyeOff className='text-muted-foreground h-4 w-4' />
-                    )}
-                  </button>
+                  <PasswordToggle isShow={showPassword} onClick={() => setShowPassword(!showPassword)} />
                 </InputGroup>
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
@@ -130,18 +118,7 @@ export const FormRegister = () => {
               <Field data-invalid={fieldState.invalid} className={cn(fieldState.invalid && 'pb-5', 'group')}>
                 <InputGroup>
                   <Input {...field} type={showPasswordRepeat ? 'text' : 'password'} placeholder='Повторите пароль' />
-                  <button
-                    type='button'
-                    className='absolute top-1/2 right-2.5 h-auto -translate-y-[50%] hover:bg-transparent'
-                    onClick={() => setShowPasswordRepeat(!showPasswordRepeat)}
-                    aria-label={showPasswordRepeat ? 'Скрыть пароль' : 'Показать пароль'}
-                  >
-                    {showPasswordRepeat ? (
-                      <Eye className='text-muted-foreground h-4 w-4' />
-                    ) : (
-                      <EyeOff className='text-muted-foreground h-4 w-4' />
-                    )}
-                  </button>
+                  <PasswordToggle isShow={showPasswordRepeat} onClick={() => setShowPasswordRepeat(!showPasswordRepeat)} />
                 </InputGroup>
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>

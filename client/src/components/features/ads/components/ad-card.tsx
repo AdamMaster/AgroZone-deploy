@@ -76,7 +76,8 @@ export const AdCard = ({ ad }: AdCardProps) => {
           onClick={() => onClickFavorite(ad.id, !!ad.isFavorite)}
           isFavorite={ad.isFavorite}
           isLoading={isAddingFavorite || isRemovingFavorite}
-          className='top-1.5 right-1.5 size-4 sm:size-5'
+          className='top-1.5 right-1.5'
+          iconClassName='size-4 sm:size-5'
         />
       </div>
     </article>

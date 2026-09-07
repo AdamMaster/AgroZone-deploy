@@ -445,11 +445,18 @@ export const AdDetail = ({
                 sticky-панели (см. выше) — здесь дублируем для десктопа,
                 где той панели нет вообще. */}
             <DropdownMenu>
+              {/* Та же "кнопка-обёртка 32px / иконка 20px" схема, что и у
+                  FavoriteButton ниже (аудит A1+A2, ROADMAP.md) — раньше у
+                  этой кнопки не было отступа вокруг иконки вообще (box =
+                  icon = 20px), а у FavoriteButton уже появился, из-за чего
+                  две соседние кнопки визуально разъехались по высоте.
+                  right-8, а не right-7 — вплотную к 32px-боксу
+                  FavoriteButton (тот сидит на right-0). */}
               <DropdownMenuTrigger
                 aria-label='Поделиться'
-                className='absolute top-0 right-7 hidden size-5 text-gray-400 transition-colors hover:text-gray-600 sm:block'
+                className='absolute top-0 right-8 hidden size-8 items-center justify-center text-gray-400 transition-colors hover:text-gray-600 sm:flex'
               >
-                <Share2 className='size-full' />
+                <Share2 className='size-5' />
               </DropdownMenuTrigger>
               <DropdownMenuContent align='end' className='w-44'>
                 <DropdownMenuItem onClick={handleShareTelegram}>Telegram</DropdownMenuItem>
@@ -461,7 +468,9 @@ export const AdDetail = ({
               onClick={onClickFavorite}
               isFavorite={!!ad.isFavorite}
               isLoading={isAddingFavorite || isRemovingFavorite}
-              className='hidden sm:block'
+              // sm:flex, а не sm:block — база компонента центрирует иконку
+              // через flex, block сломал бы это центрирование.
+              className='hidden sm:flex'
             />
           </div>
 
@@ -501,7 +510,7 @@ export const AdDetail = ({
             <UserAvatar user={ad.user!} className='size-12' />
             <div>
               <div className='flex items-center gap-1.5'>
-                <p className='text-sm font-medium'>{ad.user?.displayName ?? 'Пользователь'}</p>
+                <p className='font-medium'>{ad.user?.displayName ?? 'Пользователь'}</p>
               </div>
               {publishedDate && <p className='text-xs text-gray-500'>Опубликовано {publishedDate}</p>}
               {updatedDate && <p className='text-xs text-gray-500'>Обновлено {updatedDate}</p>}
