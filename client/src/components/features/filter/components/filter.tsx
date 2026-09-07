@@ -51,7 +51,7 @@ export const Filter = ({ categories, filters }: FilterProps) => {
             Сбросить всё
           </button>
         )}
-        <aside className='grid grid-cols-1 gap-6 md:grid-cols-2 xl:flex xl:flex-col'>
+        <aside className='grid grid-cols-1 gap-6'>
           <SubcategoryList categories={categories} onSelect={filters.selectCategory} />
 
           <PriceRangeFilter filters={filters} priceUnits={getEffectivePriceUnitsForAll(categories)} />
@@ -78,7 +78,7 @@ export const Filter = ({ categories, filters }: FilterProps) => {
           Сбросить всё
         </button>
       )}
-      <aside className='grid grid-cols-1 gap-6 md:grid-cols-2 xl:flex xl:flex-col'>
+      <aside className='grid grid-cols-1 gap-6'>
         <PriceRangeFilter filters={filters} priceUnits={getEffectivePriceUnits(category)} />
 
         {!isLeafCategory && <SubcategoryList categories={category.children ?? []} onSelect={filters.selectCategory} />}

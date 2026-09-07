@@ -58,14 +58,14 @@ export const AdCardList = ({ ad }: AdCardListProps) => {
             {isBadgeShown && <AdBadgeChip badge={ad.badge!} className='absolute top-0 left-0' />}
           </div>
         </div>
-        <div className='relative grow'>
+        <div className='relative col-span-2 grow xl:col-span-1'>
           {/* level={2} + as='h3' — см. тот же комментарий в ad-card.tsx (S4 в
           ROADMAP.md): на листинге десятки таких карточек, каждая как H2
           означала бы десятки заголовков одного уровня подряд без вложенности. */}
           <Heading
             level={2}
             as='h3'
-            className='hover:text-primary mb-0.5 line-clamp-2 w-fit text-lg leading-5 font-medium transition-colors sm:text-xl'
+            className='hover:text-primary mb-0.5 line-clamp-2 w-fit text-lg! leading-5 font-medium transition-colors xl:text-xl!'
           >
             {ad.title}
           </Heading>
@@ -85,7 +85,7 @@ export const AdCardList = ({ ad }: AdCardListProps) => {
             isLoading={isAddingFavorite || isRemovingFavorite}
           />
         </div>
-        <div className='relative ml-2 text-gray-950'>
+        <div className='relative ml-2 hidden text-gray-950 xl:block'>
           <p className='hover:text-primary text-[15px] transition-colors'>{ad.user?.displayName}</p>
         </div>
       </Link>

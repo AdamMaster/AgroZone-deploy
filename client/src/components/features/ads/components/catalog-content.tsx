@@ -42,7 +42,7 @@ export const CatalogContent = ({ serverSlug, initialAds }: CatalogContentProps) 
     <div className={cn(!isTopLevelCategory && 'pt-4 sm:pt-6')}>
       <CategoryTitle categories={categories} className='mb-4 sm:mb-6' />
       <ActiveFilterChips categories={categories} filters={filters} />
-      <div className={cn('grid grid-cols-1 gap-8 xl:grid-cols-[320px_1fr]')}>
+      <div className={cn('grid grid-cols-1 gap-8 md:grid-cols-[240px_1fr] xl:grid-cols-[320px_1fr]')}>
         <div className='hidden md:block'>
           <Filter categories={categories} filters={filters} />
         </div>

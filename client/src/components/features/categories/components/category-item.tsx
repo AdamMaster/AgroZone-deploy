@@ -52,7 +52,7 @@ export const CategoryItem = ({ category, href, className, onClick }: CategoryIte
         // text-sm (14px), а не text-[13px] — основной навигационный текст
         // плиток категорий (аудит A1+A2, ROADMAP.md), не вспомогательная
         // подпись.
-        'relative flex min-h-[53px] max-w-[160px] gap-1 overflow-hidden rounded-lg bg-gray-100 text-sm leading-tight hover:bg-gray-200 md:max-w-[260px]',
+        'relative flex min-h-[53px] max-w-[160px] gap-1 overflow-hidden rounded-lg bg-gray-100 text-[13px] leading-tight hover:bg-gray-200 md:max-w-[260px]',
         isTopLevelCard ? 'h-19 px-3.5 py-2.5 pr-8 md:h-25 md:max-w-75 md:pr-12' : 'px-4 py-2.5 md:max-w-75',
         category.isSelected &&
           'bg-secondary hover:bg-secondary-foreground text-white dark:bg-neutral-50 dark:text-neutral-900',
