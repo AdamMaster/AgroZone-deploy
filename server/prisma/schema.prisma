@@ -86,6 +86,12 @@ model User {
 
   adServicePurchases AdServicePurchase[]
 
+  // Дилерский фид — см. DealerFeed. Один аккаунт = один фид (см. комментарий
+  // у модели), поэтому связь 1:1, а не массив.
+  dealerFeed DealerFeed?
+
+  dealerSubscriptions DealerSubscription[]
+
   notifications Notification[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -403,9 +409,37 @@ model Ad {
   // платежом — см. AdServicePurchase.
   servicePurchases AdServicePurchase[]
 
+  // Источник объявления — создано вручную через форму (MANUAL, по
+  // умолчанию) или импортировано из XML/YML-фида дилера (FEED, см.
+  // DealerFeed/DealerFeedSyncService). Для FEED-объявлений заполнены поля
+  // ниже; для MANUAL они всегда null.
+  source AdSource @default(MANUAL)
+
+  dealerFeedId String?     @map("dealer_feed_id")
+  dealerFeed   DealerFeed? @relation(fields: [dealerFeedId], references: [id], onDelete: SetNull)
+
+  // Собственный ID позиции в фиде дилера (тег <Id> в YML) — по нему при
+  // повторной синхронизации DealerFeedSyncService понимает "это та же
+  // позиция, что и раньше" (обновить) в отличие от новой (создать) или
+  // пропавшей из фида (снять с публикации). Уникален в пределах одного
+  // фида, не глобально — у разных дилеров ID могут случайно совпадать.
+  externalId String? @map("external_id")
+
+  // Карта "ссылка на фото у дилера -> наша ссылка после перезаливки в S3"
+  // на момент последней синхронизации (см. DealerFeedSyncService) — чтобы
+  // при следующей синхронизации не перекачивать и не перезаливать фото
+  // повторно, если ссылка у дилера не изменилась.
+  feedSourceImages Json? @map("feed_source_images")
+
+  // Разобранная позиция фида как она пришла от дилера в последний раз —
+  // на случай споров/отладки (почему объявление выглядит так, а не иначе,
+  // что реально было в фиде). Не участвует ни в какой бизнес-логике.
+  feedRawData Json? @map("feed_raw_data")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  @@unique([dealerFeedId, externalId])
   @@index([status])
   @@index([status, expiresAt])
   // Под AdsArchivePurgeWorker: выборка архивных объявлений живых аккаунтов
@@ -418,7 +452,13 @@ model Ad {
   @@index([phone])
   @@index([regionIsoCode])
   @@index([localityFiasId])
+  @@index([dealerFeedId])
   @@map("ads")
+}
+
+enum AdSource {
+  MANUAL
+  FEED
 }
 
 // "Срочно" / "Торг уместен" / "Новинка" — только субъективные пометки
@@ -692,6 +732,126 @@ model AdServicePurchase {
   @@index([userId])
   @@index([status])
   @@map("ad_service_purchases")
+}
+
+enum DealerFeedStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+// Тарифные планы дилерского фида — по объёму позиций, а не единая ставка,
+// как у обычного "Премиум" (см. обсуждение с владельцем: аудитория и
+// ценность принципиально другие — не буст своего объявления, а массовый
+// автоматический импорт целого каталога, следовательно и платить дилер
+// должен за объём, а не по единой ставке для всех). Ровно так же построена
+// платная "Авито Автозагрузка" — доступна только на бизнес-тарифе, а не в
+// личном "бусте" объявлений.
+enum DealerTier {
+  UP_TO_20
+  UP_TO_100
+  UNLIMITED
+}
+
+// Один дилерский фид на аккаунт (userId уникален) — сознательно не
+// массив: сценарий "один дилер — несколько разных фидов" пока не
+// встречался и усложнил бы и модель, и личный кабинет (см. обсуждение
+// UI — раздел "Фиды" в /profile/settings как один экран статуса, а не
+// список). Если понадобится несколько фидов на дилера — снять @unique
+// с userId будет достаточно, остальная модель не изменится.
+model DealerFeed {
+  id String @id @default(uuid())
+
+  userId String @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  url String
+
+  // Массовый импорт — потенциальный вектор спама/мошенничества (см.
+  // обсуждение с владельцем), поэтому первое подключение фида требует
+  // ручного одобрения администратором, прежде чем DealerFeedSyncWorker
+  // начнёт что-либо импортировать по этой ссылке. rejectionReason — текст
+  // для дилера, почему отклонили (виден ему в личном кабинете).
+  status          DealerFeedStatus @default(PENDING_REVIEW)
+  rejectionReason String?          @map("rejection_reason")
+  reviewedAt      DateTime?        @map("reviewed_at")
+  reviewedBy      String?          @map("reviewed_by")
+
+  // Дилер сам может приостановить синхронизацию, не разрывая подключение
+  // (не нужно заново проходить модерацию, чтобы возобновить) — отдельно
+  // от status, который отражает решение админа, а не желание дилера.
+  isPaused Boolean @default(false) @map("is_paused")
+
+  // Текущее состояние платного тарифа — тот же принцип, что и
+  // User.premiumUntil vs PremiumPurchase (см. там): DealerSubscription —
+  // история платежей, эти два поля — текущее состояние, которое реально
+  // читает DealerFeedSyncService перед импортом (сколько позиций максимум
+  // разрешено активному тарифу).
+  subscriptionTier  DealerTier? @map("subscription_tier")
+  subscriptionUntil DateTime?   @map("subscription_until")
+
+  // Итоги последней синхронизации — чтобы дилер в личном кабинете видел не
+  // просто "синхронизировано", а что конкретно произошло (см.
+  // DealerFeedSyncService.syncOne), и чтобы админ мог разобраться в
+  // проблемном фиде, не читая логи контейнера.
+  lastSyncAt            DateTime? @map("last_sync_at")
+  lastSyncError         String?   @map("last_sync_error") @db.Text
+  lastSyncItemsTotal    Int?      @map("last_sync_items_total")
+  lastSyncItemsCreated  Int?      @map("last_sync_items_created")
+  lastSyncItemsUpdated  Int?      @map("last_sync_items_updated")
+  lastSyncItemsRemoved  Int?      @map("last_sync_items_removed")
+  lastSyncItemsFailed   Int?      @map("last_sync_items_failed")
+  // Список ошибок по конкретным позициям ([{externalId, title, reason}]) —
+  // отдельно от lastSyncError (который про фид целиком: недоступен урл,
+  // невалидный XML и т.п.), см. комментарий в DealerFeedSyncService.
+  lastSyncItemErrors    Json?     @map("last_sync_item_errors")
+
+  subscriptions DealerSubscription[]
+  ads           Ad[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("dealer_feeds")
+}
+
+enum DealerSubscriptionStatus {
+  PENDING
+  SUCCEEDED
+  CANCELED
+}
+
+// Разовая покупка дилерского тарифа на PREMIUM_DURATION_DAYS-подобный срок
+// (см. константы в dealer-feeds/constants) — по структуре и логике оплаты
+// такой же чекаут в ЮKassa, как AdBump/PremiumPurchase/AdServicePurchase
+// (см. подробные комментарии там), намеренно не переиспользует ни одну из
+// них — это независимый вид платежа с собственным смыслом (тариф на
+// фид), а не услуга на конкретное объявление и не буст аккаунта.
+model DealerSubscription {
+  id String @id @default(uuid())
+
+  dealerFeedId String     @map("dealer_feed_id")
+  dealerFeed   DealerFeed @relation(fields: [dealerFeedId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tier DealerTier
+
+  // В копейках, как и AdBump.amount/PremiumPurchase.amount.
+  amount Int
+
+  status            DealerSubscriptionStatus @default(PENDING)
+  yookassaPaymentId String?                  @unique @map("yookassa_payment_id")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  paidAt    DateTime? @map("paid_at")
+
+  @@index([dealerFeedId])
+  @@index([userId])
+  @@index([status])
+  @@map("dealer_subscriptions")
 }
 
 // Диалог между покупателем и продавцом ПО КОНКРЕТНОМУ объявлению — не

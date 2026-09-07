@@ -16,6 +16,10 @@ const items = [
   { label: 'Избранное', icon: Heart, id: 'favorites', href: '/profile/settings/favorites' },
   { label: 'Уведомления', icon: Bell, id: 'notifications', href: '/profile/settings/notifications' },
   { label: 'Персонализация', icon: Palette, id: 'personalization', href: '/profile/settings/personalization' },
+  // Building2 — раньше был импортирован, но не использовался нигде в
+  // списке; теперь ровно тот случай, под который он и напрашивался (см.
+  // F9 в ROADMAP.md — фиды для дилеров/бизнес-аккаунтов).
+  { label: 'Фиды', icon: Building2, id: 'feeds', href: '/profile/settings/feeds' },
   { label: 'Премиум', icon: Crown, id: 'premium', href: '/profile/settings/premium' }
 ]
 

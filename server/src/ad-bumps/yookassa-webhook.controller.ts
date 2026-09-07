@@ -2,6 +2,7 @@ import { Body, Controller, HttpCode, Post } from '@nestjs/common'
 import { SkipThrottle } from '@nestjs/throttler'
 
 import { PremiumService } from '@/premium/premium.service'
+import { DealerSubscriptionsService } from '@/dealer-feeds/subscriptions/dealer-subscriptions.service'
 
 import { AdBumpsService } from './ad-bumps.service'
 import { AdServicesService } from '../ad-services/ad-services.service'
@@ -12,19 +13,21 @@ import { AdServicesService } from '../ad-services/ad-services.service'
 // @SkipThrottle — глобальный лимитер (3 запроса/мин, см. AppModule) не
 // должен резать легитимные повторные уведомления от ЮKassa.
 //
-// Один урл на ВСЕ виды платежей магазина — сейчас это AdBump, PremiumPurchase
-// и AdServicePurchase (единая страница "Поднять просмотры"), дальше могут
-// добавиться другие. Каждый сервис сверяет paymentId со своей таблицей и
-// молча ничего не делает, если совпадения нет (см. reconcilePayment во
-// всех трёх сервисах), поэтому вызывать все безопасно — "чужой" для
-// конкретного сервиса вебхук просто не найдёт запись.
+// Один урл на ВСЕ виды платежей магазина — сейчас это AdBump, PremiumPurchase,
+// AdServicePurchase (единая страница "Поднять просмотры") и
+// DealerSubscription (дилерский тариф на фиды), дальше могут добавиться
+// другие. Каждый сервис сверяет paymentId со своей таблицей и молча
+// ничего не делает, если совпадения нет (см. reconcilePayment во всех
+// сервисах), поэтому вызывать все безопасно — "чужой" для конкретного
+// сервиса вебхук просто не найдёт запись.
 @Controller('payments/yookassa')
 @SkipThrottle()
 export class YookassaWebhookController {
   constructor(
     private readonly adBumpsService: AdBumpsService,
     private readonly premiumService: PremiumService,
-    private readonly adServicesService: AdServicesService
+    private readonly adServicesService: AdServicesService,
+    private readonly dealerSubscriptionsService: DealerSubscriptionsService
   ) {}
 
   // 200 — на успешный разбор, включая "не наш платёж"/уже обработанный
@@ -38,5 +41,6 @@ export class YookassaWebhookController {
     await this.adBumpsService.handleWebhook(body)
     await this.premiumService.handleWebhook(body)
     await this.adServicesService.handleWebhook(body)
+    await this.dealerSubscriptionsService.handleWebhook(body)
   }
 }

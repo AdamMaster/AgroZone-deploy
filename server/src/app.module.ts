@@ -29,6 +29,7 @@ import { AdServicesModule } from './ad-services/ad-services.module'
 import { NotificationsModule } from './notifications/notifications.module'
 import { SupportModule } from './support/support.module'
 import { SessionModule } from './session/session.module'
+import { DealerFeedsModule } from './dealer-feeds/dealer-feeds.module'
 
 @Module({
   imports: [
@@ -88,7 +89,8 @@ import { SessionModule } from './session/session.module'
     PremiumModule,
     AdServicesModule,
     NotificationsModule,
-    SupportModule
+    SupportModule,
+    DealerFeedsModule
   ]
 })
 export class AppModule {}

@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft, Flag, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Building2, Flag, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -12,7 +12,8 @@ import { cn } from '@/lib/utils'
 // набор разделов у админки совсем другие.
 const items = [
   { label: 'Модерация объявлений', icon: ShieldCheck, id: 'moderation', href: '/admin/moderation' },
-  { label: 'Жалобы', icon: Flag, id: 'reports', href: '/admin/reports' }
+  { label: 'Жалобы', icon: Flag, id: 'reports', href: '/admin/reports' },
+  { label: 'Фиды дилеров', icon: Building2, id: 'dealers', href: '/admin/dealers' }
 ]
 
 export const AdminNav = () => {

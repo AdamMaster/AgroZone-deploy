@@ -5,6 +5,7 @@ import { AuthModule } from '@/auth/auth.module'
 import { PremiumModule } from '@/premium/premium.module'
 import { PrismaService } from '@/prisma/prisma.service'
 import { UserModule } from '@/user/user.module'
+import { DealerFeedsModule } from '@/dealer-feeds/dealer-feeds.module'
 
 import { AdBumpsController } from './ad-bumps.controller'
 import { AdBumpsService } from './ad-bumps.service'
@@ -14,10 +15,10 @@ import { AdAutoBumpWorker } from './workers/ad-auto-bump.worker'
 @Module({
   // UserModule/AuthModule — AuthGuard (используется в AdBumpsController на
   // обоих роутах) резолвит UserService из UserModule, без импорта здесь
-  // Nest не может собрать граф зависимостей. PremiumModule/AdServicesModule
-  // — нужны YookassaWebhookController'у (он физически лежит тут же),
-  // который теперь дёргает handleWebhook у всех трёх сервисов оплаты.
-  imports: [UserModule, AuthModule, PremiumModule, AdServicesModule],
+  // Nest не может собрать граф зависимостей. PremiumModule/AdServicesModule/
+  // DealerFeedsModule — нужны YookassaWebhookController'у (он физически
+  // лежит тут же), который дёргает handleWebhook у всех сервисов оплаты.
+  imports: [UserModule, AuthModule, PremiumModule, AdServicesModule, DealerFeedsModule],
   controllers: [AdBumpsController, YookassaWebhookController],
   // AdAutoBumpWorker — общий шедулер для этой услуги и для премиум-
   // автоподъёма (см. сам файл воркера), поэтому лежит здесь, а не в
