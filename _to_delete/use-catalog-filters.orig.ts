@@ -27,11 +27,7 @@ const writeStateToParams = (state: CatalogFiltersState, base: URLSearchParams): 
     ['maxPrice', state.maxPrice],
     ['regionIsoCode', state.regionIsoCode],
     ['localityFiasId', state.localityFiasId],
-    ['sellerType', state.sellerType],
-    ['lat', state.lat],
-    ['lng', state.lng],
-    ['radiusKm', state.radiusKm],
-    ['originLabel', state.originLabel]
+    ['sellerType', state.sellerType]
   ]
 
   for (const [key, value] of scalarEntries) {
@@ -54,17 +50,7 @@ const writeStateToParams = (state: CatalogFiltersState, base: URLSearchParams): 
 type ScalarPatch = Partial<
   Pick<
     CatalogFiltersState,
-    | 'sortBy'
-    | 'unit'
-    | 'minPrice'
-    | 'maxPrice'
-    | 'regionIsoCode'
-    | 'localityFiasId'
-    | 'sellerType'
-    | 'lat'
-    | 'lng'
-    | 'radiusKm'
-    | 'originLabel'
+    'sortBy' | 'unit' | 'minPrice' | 'maxPrice' | 'regionIsoCode' | 'localityFiasId' | 'sellerType'
   >
 >
 
@@ -210,7 +196,6 @@ export function useCatalogFilters(options: UseCatalogFiltersOptions = {}) {
     state.regionIsoCode ||
     state.localityFiasId ||
     state.sellerType ||
-    (state.lat && state.lng) ||
     Object.keys(state.features).length
   )
 

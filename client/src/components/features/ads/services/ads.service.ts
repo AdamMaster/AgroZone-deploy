@@ -71,6 +71,18 @@ class AdsService {
     return response
   }
 
+  // Реверс-геокодинг координат в человекочитаемый адрес (Yandex Maps,
+  // см. AdsService.getAddressFromCoords на бэкенде) — используется только
+  // для подписи в радиус-фильтре каталога (F3), когда точка задана
+  // геолокацией браузера, а не ручным адресом через AddressInput (тот уже
+  // отдаёт готовый адрес сам). Параметр на бэкенде называется `lon`, а не
+  // `lng` (см. GET /ads/geocode) — специально приводим тут, чтобы
+  // остальной фронт везде мог называть его `lng`, как и в AddressValue.
+  async getAddressFromCoords(lat: number, lng: number): Promise<string> {
+    const response = await api.get<string>(`${this.URL}/geocode`, { params: { lat, lon: lng } })
+    return response
+  }
+
   async findMyAds(): Promise<IAd[]> {
     const response = await api.get<IAd[]>(`${this.URL}/my`)
     return response

@@ -92,6 +92,19 @@ export const ActiveFilterChips = ({ categories, filters }: ActiveFilterChipsProp
     }
   }
 
+  // Радиус-фильтр (F3) — взаимоисключим с regionIsoCode/localityFiasId
+  // выше на уровне UI (см. LocationFilterSection), поэтому оба чипа
+  // одновременно на практике не встречаются. originLabel — подпись,
+  // сохранённая в URL самим RadiusFilter (адрес или "Моё местоположение"),
+  // чип её не пересчитывает.
+  if (filters.lat && filters.lng) {
+    chips.push({
+      key: 'radius',
+      label: `${filters.originLabel ?? 'Точка на карте'} · ${filters.radiusKm ?? '50'} км`,
+      onRemove: () => filters.update({ lat: undefined, lng: undefined, radiusKm: undefined, originLabel: undefined })
+    })
+  }
+
   for (const feature of categoryFeatures) {
     const value = filters.features[feature.name]
 

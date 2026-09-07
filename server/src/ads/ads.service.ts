@@ -208,6 +208,38 @@ export class AdsService {
       throw new BadRequestException('Минимальная цена не может быть больше максимальной')
     }
 
+    // Геопоиск (F3) — lat/lng обязательны вместе: одно без другого не
+    // задаёт точку. radiusKm и сортировка DISTANCE_ASC без точки тоже
+    // бессмысленны — явно 400, а не молча игнорировать параметр.
+    if ((query.lat !== undefined) !== (query.lng !== undefined)) {
+      throw new BadRequestException('Для геопоиска нужны обе координаты — lat и lng')
+    }
+
+    const hasOrigin = query.lat !== undefined && query.lng !== undefined
+
+    if (query.radiusKm !== undefined && !hasOrigin) {
+      throw new BadRequestException('Радиус поиска работает только вместе с координатами (lat/lng)')
+    }
+
+    if (query.sortBy === AdsSortBy.DISTANCE_ASC && !hasOrigin) {
+      throw new BadRequestException('Сортировка по расстоянию работает только вместе с координатами (lat/lng)')
+    }
+
+    // Формула гаверсинуса — расстояние по большому кругу между точкой
+    // поиска и координатами объявления, в километрах. LEAST/GREATEST
+    // зажимают аргумент acos в [-1, 1] — без этого при расстоянии,
+    // близком к нулю, погрешность плавающей точки может дать
+    // подкоренное/подкосинусное значение чуть больше 1 и acos вернёт NaN
+    // (типичная ловушка этой формулы, а не гипотетическая). Расширение
+    // PostGIS не подключено — оно избыточно ради одной формулы расстояния,
+    // обычный SQL справляется без него.
+    const distanceExpr = hasOrigin
+      ? Prisma.sql`(6371 * acos(LEAST(1, GREATEST(-1,
+          cos(radians(${query.lat})) * cos(radians(ads.lat)) * cos(radians(ads.lng) - radians(${query.lng}))
+          + sin(radians(${query.lat})) * sin(radians(ads.lat))
+        ))))`
+      : Prisma.sql`0`
+
     const featureConditions = query.features ? await this.resolveFeatureFilters(query.categoryId, query.features) : []
 
     const conditions: Prisma.Sql[] = [
@@ -283,6 +315,10 @@ export class AdsService {
       conditions.push(Prisma.sql`ads.id != ${query.excludeAdId}`)
     }
 
+    if (query.radiusKm !== undefined) {
+      conditions.push(Prisma.sql`${distanceExpr} <= ${query.radiusKm}`)
+    }
+
     conditions.push(...featureConditions)
 
     // DATE_DESC (сортировка по умолчанию) — COALESCE(bumped_at, created_at):
@@ -296,7 +332,15 @@ export class AdsService {
       [AdsSortBy.DATE_DESC]: Prisma.sql`COALESCE(ads.bumped_at, ads.created_at) DESC`,
       [AdsSortBy.DATE_ASC]: Prisma.sql`ads.created_at ASC`,
       [AdsSortBy.PRICE_ASC]: Prisma.sql`ads.price ASC NULLS LAST`,
-      [AdsSortBy.PRICE_DESC]: Prisma.sql`ads.price DESC NULLS LAST`
+      [AdsSortBy.PRICE_DESC]: Prisma.sql`ads.price DESC NULLS LAST`,
+      // hasOrigin гарантирован проверкой выше (иначе уже 400) — ветка без
+      // origin тут недостижима, но Record<AdsSortBy, ...> требует значение
+      // на каждый ключ enum'а, поэтому безопасный фолбэк на дефолтную
+      // сортировку, а не Prisma.sql`0 ASC` (тот сделал бы порядок
+      // непредсказуемым, если сюда всё-таки когда-нибудь дойдёт).
+      [AdsSortBy.DISTANCE_ASC]: hasOrigin
+        ? Prisma.sql`${distanceExpr} ASC`
+        : Prisma.sql`COALESCE(ads.bumped_at, ads.created_at) DESC`
     }
     const orderBy = sortMap[query.sortBy ?? AdsSortBy.DATE_DESC]
 
@@ -327,14 +371,22 @@ export class AdsService {
       return { items: [], total, page, limit }
     }
 
-    const idRows = await this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+    const idRows = await this.prisma.$queryRaw<{ id: string; distance_km: number | null }[]>(Prisma.sql`
       ${categoryTreeCte}
-      SELECT ads.id FROM ads WHERE ${whereClause}
+      SELECT ads.id${hasOrigin ? Prisma.sql`, ${distanceExpr} AS distance_km` : Prisma.sql`, NULL AS distance_km`}
+      FROM ads WHERE ${whereClause}
       ORDER BY ${orderBy}
       LIMIT ${limit} OFFSET ${skip}
     `)
 
     const ids = idRows.map(row => row.id)
+
+    // Расстояние считается в том же запросе, что и ORDER BY/LIMIT — здесь
+    // просто переносим уже посчитанное значение на итоговый объект
+    // объявления (см. items ниже), а не считаем его повторно.
+    const distanceById = new Map(
+      idRows.map(row => [row.id, row.distance_km === null ? null : Math.round(row.distance_km * 10) / 10])
+    )
 
     const ads = await this.prisma.ad.findMany({
       where: { id: { in: ids } },
@@ -372,7 +424,11 @@ export class AdsService {
     const items = orderedAds.map(ad => ({
       ...ad,
       isFavorite: userId ? ad.favorites?.length > 0 : false,
-      isExpired: false
+      isExpired: false,
+      // Есть только когда в запросе была точка поиска (lat/lng) — км до
+      // объявления по прямой (см. distanceExpr выше). null, если геопоиск
+      // не использовался, чтобы фронт мог отличить "не считали" от "0 км".
+      distanceKm: distanceById.get(ad.id) ?? null
     }))
 
     return { items, total, page, limit }

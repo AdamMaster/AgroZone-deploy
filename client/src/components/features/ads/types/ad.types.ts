@@ -99,6 +99,12 @@ export interface IAd {
   // заменяет текущий значок, а не продлевает его же (см. schema.prisma).
   badge?: AdBadge | null
   badgeUntil?: Date | string | null
+  // Расстояние в км до точки радиус-поиска (F3) — есть только когда в
+  // запросе передавались lat/lng (см. FindAdsQueryDto/AdsService.findAll
+  // на бэкенде). null — геопоиск не использовался в этом запросе, а не
+  // "объявление ровно там же, где точка поиска" (для этого случая
+  // бэкенд отдаёт 0, а не null — см. distanceKm в ads.service.ts).
+  distanceKm?: number | null
 }
 
 // Значения — строго как в enum AdReportReason на бэкенде (prisma/schema.prisma).
@@ -184,6 +190,7 @@ export type AdCardData = Pick<
   | 'badge'
   | 'badgeUntil'
   | 'priceHighlightUntil'
+  | 'distanceKm'
 >
 export type AdCardListData = Pick<
   IAd,
@@ -201,6 +208,7 @@ export type AdCardListData = Pick<
   | 'badge'
   | 'badgeUntil'
   | 'priceHighlightUntil'
+  | 'distanceKm'
 >
 
 // Ответ GET /ads — с приходом фильтра каталогу нужен total (количество

@@ -13,7 +13,17 @@ interface BuildAdsQueryParamsInput {
   search?: string
   filters: Pick<
     CatalogFiltersState,
-    'sortBy' | 'unit' | 'minPrice' | 'maxPrice' | 'regionIsoCode' | 'localityFiasId' | 'sellerType' | 'features'
+    | 'sortBy'
+    | 'unit'
+    | 'minPrice'
+    | 'maxPrice'
+    | 'regionIsoCode'
+    | 'localityFiasId'
+    | 'sellerType'
+    | 'lat'
+    | 'lng'
+    | 'radiusKm'
+    | 'features'
   >
   // Только для главной (см. HomeAdsFeed/AdsClient.locationOverride) —
   // подставляет регион/город вместо filters.regionIsoCode/localityFiasId.
@@ -27,12 +37,12 @@ interface BuildAdsQueryParamsInput {
 // одинаковым входным данным (иначе первая, серверно отрисованная страница
 // могла бы отличаться от того, что клиент запросит сам при следующей
 // странице/смене фильтра).
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function buildAdsQueryParams({
   categoryId,
   search,
   filters,
   locationOverride
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 }: BuildAdsQueryParamsInput): Record<string, any> {
   const regionIsoCode = locationOverride ? locationOverride.regionIsoCode : filters.regionIsoCode
   const localityFiasId = locationOverride ? locationOverride.localityFiasId : filters.localityFiasId
@@ -47,6 +57,14 @@ export function buildAdsQueryParams({
     regionIsoCode,
     localityFiasId,
     sellerType: filters.sellerType,
+    // lat/lng/radiusKm — как есть на бэкенд (см. FindAdsQueryDto). НЕ
+    // передаём тут originLabel — это чисто фронтовая подпись для чипа/поля
+    // ввода (см. CatalogFiltersState), на бэкенде такого параметра нет, а
+    // ValidationPipe там с forbidNonWhitelisted: true — лишнее поле в
+    // query завалило бы запрос целиком 400-й, а не просто игнорировалось.
+    lat: filters.lat,
+    lng: filters.lng,
+    radiusKm: filters.radiusKm,
     features: Object.keys(filters.features).length ? JSON.stringify(filters.features) : undefined
   }
 }

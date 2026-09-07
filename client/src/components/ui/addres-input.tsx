@@ -81,7 +81,7 @@ export const AddressInput: React.FC<AddressInputProps> = ({
 
   return (
     <div className='flex w-full flex-col gap-1.5'>
-      {label && <label className='text-sm font-medium text-gray-700 dark:text-gray-300'>{label}</label>}
+      {label && <label className='text-sm font-medium dark:text-gray-300'>{label}</label>}
 
       <div className={error ? '[&_input]:border-red-500' : ''}>
         <AddressSuggestions

@@ -25,5 +25,18 @@ export interface CatalogFiltersState {
   // (в отличие от features). Значение — UserType с бэкенда (см.
   // FindAdsQueryDto.sellerType на сервере).
   sellerType?: string
+  // Радиус-поиск (F3) — альтернатива regionIsoCode/localityFiasId выше:
+  // объявления в радиусе radiusKm км от точки (lat/lng), а не в
+  // конкретном регионе/городе. Взаимоисключимо с ними на фронте (см.
+  // LocationFilterSection) — выбор одного способа сбрасывает другой,
+  // хотя бэкенд просто ANDit оба условия, если они вдруг придут вместе
+  // (см. AdsService.findAll). originLabel — человекочитаемая подпись
+  // точки (адрес или "Моё местоположение") ТОЛЬКО для отображения
+  // (чип/поле ввода) — на бэкенд не отправляется, там нет такого
+  // параметра (см. buildAdsQueryParams).
+  lat?: string
+  lng?: string
+  radiusKm?: string
+  originLabel?: string
   features: FeatureFiltersMap
 }

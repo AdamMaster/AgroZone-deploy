@@ -6,7 +6,7 @@ import Link from 'next/link'
 
 import { Heading, Skeleton } from '@/components/ui'
 
-import { formatPriceWithUnit, isFutureDate, isPremiumActive } from '@/shared/utils'
+import { formatDistance, formatPriceWithUnit, isFutureDate, isPremiumActive } from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
 
@@ -35,6 +35,7 @@ export const AdCardList = ({ ad }: AdCardListProps) => {
 
   const isPriceHighlighted = isFutureDate(ad.priceHighlightUntil) || isPremiumActive(ad.user?.premiumUntil)
   const isBadgeShown = isFutureDate(ad.badgeUntil) && !!ad.badge
+  const distanceLabel = formatDistance(ad.distanceKm)
 
   return (
     <article className='relative before:absolute before:-inset-3 before:rounded-3xl before:bg-gray-100 before:opacity-0 before:transition-colors before:content-[""] hover:before:opacity-100'>
@@ -77,6 +78,7 @@ export const AdCardList = ({ ad }: AdCardListProps) => {
           <address className='mb-2 text-[13px] leading-4 not-italic'>
             <MapPin className='mr-1.5 inline size-3.5' />
             {ad.address}
+            {distanceLabel && <span className='text-gray-500'> · {distanceLabel}</span>}
           </address>
           <p className='line-clamp-4 text-sm text-gray-600'>{ad.description}</p>
           <FavoriteButton

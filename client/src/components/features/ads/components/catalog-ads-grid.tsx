@@ -64,7 +64,7 @@ export function CatalogAdsGrid({ serverSlug, layout, className, initialAds }: Ca
   const params = useMemo(
     () => buildAdsQueryParams({ categoryId, search: searchQuery, filters }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [categoryId, searchQuery, filters.sortBy, filters.unit, filters.minPrice, filters.maxPrice, filters.regionIsoCode, filters.localityFiasId, filters.sellerType, filters.features]
+    [categoryId, searchQuery, filters.sortBy, filters.unit, filters.minPrice, filters.maxPrice, filters.regionIsoCode, filters.localityFiasId, filters.sellerType, filters.lat, filters.lng, filters.radiusKm, filters.features]
   )
 
   const { ads, total, isFetchingNextPage, hasNextPage, fetchNextPage } = useAdsInfinite(params, initialAds)

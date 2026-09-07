@@ -14,7 +14,7 @@ import { ICategory } from '../../categories/types'
 import { useCatalogFilters } from '../hooks/use-catalog-filters'
 import { getEffectivePriceUnits, getEffectivePriceUnitsForAll } from '../utils/price-units'
 import { FilterFeatureField } from './filter-feature-field'
-import { LocationFilter } from './location-filter'
+import { LocationFilterSection } from './location-filter-section'
 import { SubcategoryList } from './subcategory-list'
 
 interface FilterProps {
@@ -56,8 +56,15 @@ export const Filter = ({ categories, filters }: FilterProps) => {
 
           <PriceRangeFilter filters={filters} priceUnits={getEffectivePriceUnitsForAll(categories)} />
 
-          <LocationFilter
-            value={{ regionIsoCode: filters.regionIsoCode, localityFiasId: filters.localityFiasId }}
+          <LocationFilterSection
+            value={{
+              regionIsoCode: filters.regionIsoCode,
+              localityFiasId: filters.localityFiasId,
+              lat: filters.lat,
+              lng: filters.lng,
+              radiusKm: filters.radiusKm,
+              originLabel: filters.originLabel
+            }}
             onChange={patch => filters.update(patch)}
           />
         </aside>
@@ -83,8 +90,15 @@ export const Filter = ({ categories, filters }: FilterProps) => {
 
         {!isLeafCategory && <SubcategoryList categories={category.children ?? []} onSelect={filters.selectCategory} />}
 
-        <LocationFilter
-          value={{ regionIsoCode: filters.regionIsoCode, localityFiasId: filters.localityFiasId }}
+        <LocationFilterSection
+          value={{
+            regionIsoCode: filters.regionIsoCode,
+            localityFiasId: filters.localityFiasId,
+            lat: filters.lat,
+            lng: filters.lng,
+            radiusKm: filters.radiusKm,
+            originLabel: filters.originLabel
+          }}
           onChange={patch => filters.update(patch)}
         />
 

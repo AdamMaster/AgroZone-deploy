@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer'
-import { IsEnum, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator'
+import { IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator'
 import { PriceUnit } from '@/generated/prisma/client'
 import { UserType } from '@/generated/prisma/enums'
 
@@ -9,7 +9,9 @@ export enum AdsSortBy {
   DATE_DESC = 'date_desc',
   DATE_ASC = 'date_asc',
   PRICE_ASC = 'price_asc',
-  PRICE_DESC = 'price_desc'
+  PRICE_DESC = 'price_desc',
+  // Требует lat/lng в запросе (см. AdsService.findAll) — без них 400.
+  DISTANCE_ASC = 'distance_asc'
 }
 
 export class FindAdsQueryDto {
@@ -110,4 +112,39 @@ export class FindAdsQueryDto {
   @IsOptional()
   @IsString()
   excludeAdId?: string
+
+  // Геопоиск (F3) — точка, от которой считается расстояние до каждого
+  // объявления (формула гаверсинуса по Ad.lat/Ad.lng, см.
+  // AdsService.findAll). lat и lng обязательны вместе — оба или ни
+  // одного, проверяется в сервисе, а не декоратором (class-validator не
+  // умеет "оба или ни одного" из коробки без кастомного валидатора ради
+  // одного правила). Источник точки на фронте — геолокация браузера ИЛИ
+  // ручной адрес через AddressInput (см. обсуждение с владельцем), сам
+  // бэкенд не различает откуда взялись координаты.
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  lat?: number
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  lng?: number
+
+  // Радиус в километрах — фильтрует объявления дальше этого расстояния от
+  // lat/lng. Без lat/lng бессмысленен — проверяется в сервисе. Верхняя
+  // граница 1000 км — больше не имеет смысла для радиус-поиска (это уже
+  // почти вся европейская часть России), нижняя 1 км защищает от
+  // случайного radiusKm=0, из-за которого пустой результат выглядел бы
+  // как баг, а не как правильно сработавший фильтр.
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(1000)
+  radiusKm?: number
 }

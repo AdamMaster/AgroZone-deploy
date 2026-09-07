@@ -46,6 +46,10 @@ export const EMPTY_STATE: CatalogFiltersState = {
   regionIsoCode: undefined,
   localityFiasId: undefined,
   sellerType: undefined,
+  lat: undefined,
+  lng: undefined,
+  radiusKm: undefined,
+  originLabel: undefined,
   features: {}
 }
 
@@ -61,5 +65,9 @@ export const parseCatalogFiltersFromSearchParams = (searchParams: URLSearchParam
   regionIsoCode: searchParams.get('regionIsoCode') ?? undefined,
   localityFiasId: searchParams.get('localityFiasId') ?? undefined,
   sellerType: searchParams.get('sellerType') ?? undefined,
+  lat: searchParams.get('lat') ?? undefined,
+  lng: searchParams.get('lng') ?? undefined,
+  radiusKm: searchParams.get('radiusKm') ?? undefined,
+  originLabel: searchParams.get('originLabel') ?? undefined,
   features: parseFeatures(searchParams.get(FEATURES_PARAM))
 })
