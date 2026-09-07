@@ -1,15 +1,16 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect } from 'react'
 
 import { Button } from '@/components/ui'
 
 import { useMounted } from '@/shared/hooks'
 
-import { useCookieConsentStore } from '@/store'
+import { COOKIE_CONSENT_TTL_MS, useCookieConsentStore } from '@/store'
 
 export const CookieConsentBanner = () => {
-  const { status, accept, decline } = useCookieConsentStore()
+  const { status, decidedAt, accept, decline, reset } = useCookieConsentStore()
 
   // Значение из persist (localStorage) появляется только после гидратации
   // на клиенте. До этого момента store.status ещё равен дефолтному null и
@@ -18,17 +19,27 @@ export const CookieConsentBanner = () => {
   // тех, кто уже сделал выбор раньше. Поэтому ждём монтирования.
   const mounted = useMounted()
 
+  // B4 в ROADMAP.md: выбор действителен год. Если он истёк — сбрасываем,
+  // баннер на следующем рендере покажется снова.
+  useEffect(() => {
+    if (mounted && status !== null && decidedAt !== null && Date.now() - decidedAt > COOKIE_CONSENT_TTL_MS) {
+      reset()
+    }
+  }, [mounted, status, decidedAt, reset])
+
   if (!mounted || status !== null) {
     return null
   }
 
   return (
-    // bottom-14 на мобилке — чтобы баннер не перекрывался нижней таб-
-    // панелью (MobileTabBar, h-14, z-40) и не перекрывал её сам; на md+
-    // панели нет, баннер прижат к самому низу как раньше.
-    <div className='bg-background fixed inset-x-0 bottom-14 z-50 border-t p-4 shadow-lg md:bottom-0'>
-      <div className='mx-auto flex max-w-6xl flex-col items-center gap-4 sm:flex-row sm:justify-between'>
-        <p className='text-sm text-gray-600'>
+    // На мобилке отступ снизу — полная высота нижней таб-панели
+    // (MobileTabBar: h-14 + собственный pb-[env(safe-area-inset-bottom)]
+    // под чёлку/индикатор), а не просто h-14 — иначе на iPhone с
+    // safe-area-inset баннер перекрывал верх таб-панели. На md+ панели
+    // нет, баннер прижат к самому низу.
+    <div className='bg-background fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-50 border-t p-3 shadow-lg md:bottom-0'>
+      <div className='mx-auto flex max-w-6xl flex-col items-center gap-3 sm:flex-row sm:justify-between'>
+        <p className='text-xs text-gray-600 sm:text-sm'>
           Мы используем cookie для корректной работы сайта и авторизации. Продолжая пользоваться сайтом, вы соглашаетесь
           с их использованием — подробнее в{' '}
           <Link href='/privacy' className='text-primary underline'>
@@ -37,10 +48,10 @@ export const CookieConsentBanner = () => {
           .
         </p>
         <div className='flex shrink-0 gap-2'>
-          <Button variant='outline' size='lg' onClick={decline}>
+          <Button variant='outline' size='sm' onClick={decline}>
             Отклонить
           </Button>
-          <Button variant='secondary' size='lg' onClick={accept}>
+          <Button variant='secondary' size='sm' onClick={accept}>
             Принять
           </Button>
         </div>

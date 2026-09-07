@@ -96,6 +96,14 @@ class AdsService {
     return response
   }
 
+  // Телефон продавца — отдельно от findOne (см. B2 в ROADMAP.md): за
+  // авторизацией и рейт-лимитом на бэкенде (AdsController.getPhone),
+  // запрашивается по клику "Показать телефон" (см. use-ad-phone.ts), а не
+  // приезжает вместе со всем объявлением.
+  async getPhone(id: string): Promise<{ phone: string }> {
+    return api.get<{ phone: string }>(`${this.URL}/${id}/phone`)
+  }
+
   async update(id: string, data: FormData): Promise<IAd> {
     const response = await api.patch<IAd>(`${this.URL}/${id}`, data)
     return response

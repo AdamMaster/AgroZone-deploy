@@ -680,7 +680,13 @@ export class AdsService {
       void this.recordView(id, viewerKey)
     }
 
-    const { user, favorites, ...rest } = ad
+    // phone исключаем из публичного ответа намеренно (см. B2 в
+    // ROADMAP.md) — раньше он ехал сюда вместе со всем объявлением, и
+    // достаточно было перебрать id, чтобы выкачать номера всех продавцов
+    // на сайте. Теперь номер отдаётся только через отдельный
+    // AdsService.getPhone (см. AdsController.getPhone) — за авторизацией
+    // и рейт-лимитом.
+    const { user, favorites, phone: _phone, ...rest } = ad
 
     let userWithAdsCount: (Omit<NonNullable<typeof user>, '_count'> & { adsCount: number }) | null = null
 
@@ -690,6 +696,47 @@ export class AdsService {
     }
 
     return { ...rest, user: userWithAdsCount, isFavorite: userId ? (favorites?.length ?? 0) > 0 : false }
+  }
+
+  // B2 в ROADMAP.md: единственное место, откуда публично можно получить
+  // телефон продавца — специально за AuthGuard (AdsController.getPhone) и
+  // рейт-лимитом по аккаунту (AdPhoneThrottlerGuard), в отличие от
+  // findOne, где номер больше не отдаётся вовсе.
+  async getPhone(id: string, userId: string, viewerKey: string): Promise<{ phone: string }> {
+    const now = new Date()
+
+    const ad = await this.prisma.ad.findUnique({
+      where: { id },
+      select: { phone: true, status: true, expiresAt: true, userId: true }
+    })
+
+    if (!ad) {
+      throw new NotFoundException('Объявление не найдено')
+    }
+
+    const isExpired = ad.expiresAt !== null && ad.expiresAt <= now
+
+    // Тот же критерий видимости, что и в findOne. Владелец видит номер
+    // своего объявления всегда (это его собственный номер) — остальным
+    // номер доступен только у опубликованного, не просроченного
+    // объявления.
+    if (ad.userId !== userId && (ad.status !== AdStatus.PUBLISHED || isExpired)) {
+      throw new NotFoundException('Объявление не найдено')
+    }
+
+    if (!ad.phone) {
+      throw new NotFoundException('У объявления не указан номер телефона')
+    }
+
+    // Не блокируем ответ логированием — посетитель должен получить номер в
+    // любом случае, даже если запись лога не удастся. viewerKey тут всегда
+    // "user:{id}" (эндпоинт целиком за AuthGuard, анонимов не бывает) — тот
+    // же приём, что и в recordView, но не для статистики, а для
+    // расследования злоупотреблений: по логам видно, кто и когда раскрывал
+    // номер какого объявления, сам номер в лог не пишем.
+    this.logger.log(`Раскрыт телефон объявления ${id} (viewerKey=${viewerKey})`)
+
+    return { phone: ad.phone }
   }
 
   private async recordView(adId: string, viewerKey: string) {

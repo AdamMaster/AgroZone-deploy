@@ -45,7 +45,16 @@ export interface IAd {
   price: number | null
   unit?: string
   address: string
-  phone: string
+  // Публичный GET /ads/:id (findOne) больше НЕ отдаёт номер в этом поле
+  // (см. B2 в ROADMAP.md) — телефон продавца выкачивался простым
+  // перебором id объявлений. Номер теперь только через отдельный
+  // adsService.getPhone (GET /ads/:id/phone, за авторизацией и
+  // рейт-лимитом), см. use-ad-phone.ts. Поле остаётся required-строкой
+  // для владельческих эндпоинтов (findOneForOwner/findOneForModeration),
+  // которые номер по-прежнему отдают как есть — там оно необязательным не
+  // становится по факту, просто общий тип IAd теперь honest про то, что
+  // не в каждом ответе оно есть.
+  phone?: string
   images: string[]
   status: 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED' | 'EXPIRED'
   expiresAt: Date | null

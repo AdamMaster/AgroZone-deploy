@@ -38,7 +38,11 @@ export const AdEdit = ({ id, categories }: AdEditProps) => {
     regionIsoCode: ad.regionIsoCode ?? undefined,
     locality: ad.locality ?? undefined,
     localityFiasId: ad.localityFiasId ?? undefined,
-    phone: formatPhoneNumber(ad.phone),
+    // Владельческий эндпоинт (useMyAd -> GET /ads/my/:id) номер по-
+    // прежнему отдаёт всегда — ?? '' только чтобы удовлетворить общий тип
+    // IAd.phone, который стал опциональным из-за публичного findOne (см.
+    // B2 в ROADMAP.md, ad.types.ts).
+    phone: formatPhoneNumber(ad.phone ?? ''),
     images: ad.images,
     categoryFeatures: (ad.features as ICategoryFeature) || {}
   }

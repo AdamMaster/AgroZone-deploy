@@ -9,6 +9,7 @@ import { EmailConfirmationModule } from './email-confirmation/email-confirmation
 import { MailService } from '@/libs/mail/mail.service'
 import { TwoFactorAuthService } from './two-factor-auth/two-factor-auth.service'
 import { ZvonokService } from '@/libs/zvonok/zvonok.service'
+import { SupportModule } from '@/support/support.module'
 
 @Module({
   imports: [
@@ -17,7 +18,13 @@ import { ZvonokService } from '@/libs/zvonok/zvonok.service'
       useFactory: getProvidersConfig,
       inject: [ConfigService]
     }),
-    forwardRef(() => EmailConfirmationModule)
+    forwardRef(() => EmailConfirmationModule),
+    // За SupportGuestsService — AuthService.saveSession приклеивает
+    // гостевой чат поддержки к аккаунту при входе/регистрации (см. "Долг"
+    // в ROADMAP.md). SupportModule сам импортирует AuthModule (декораторы
+    // Authorization/CurrentUser в SupportController), отсюда forwardRef
+    // на обеих сторонах.
+    forwardRef(() => SupportModule)
   ],
   controllers: [AuthController],
   providers: [AuthService, UserService, MailService, TwoFactorAuthService, ZvonokService],

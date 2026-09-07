@@ -15,6 +15,7 @@ import {
   ParseBoolPipe,
   DefaultValuePipe
 } from '@nestjs/common'
+import { Throttle } from '@nestjs/throttler'
 import { AdsService } from './ads.service'
 import { CreateAdDto } from './dto/create-ad.dto'
 import { AuthGuard } from '../auth/guards/auth.guard'
@@ -30,9 +31,16 @@ import { UserRole } from '@/generated/prisma/enums'
 import { UpdateAdDto } from './dto/update-ad.dto'
 import { CurrentUser } from '@/auth/decorators/decorators/user.decorator'
 import { computeViewerKey } from './utils/viewer-key.util'
+import { AdPhoneThrottlerGuard } from './guards/ad-phone-throttler.guard'
 import { FindAdsQueryDto } from './dto/find-ads-query.dto'
 import { FindMyAdsQueryDto } from './dto/find-my-ads-query.dto'
 import { User } from '@/generated/prisma/client'
+
+// B2 в ROADMAP.md: 20 запросов в минуту на аккаунт — с запасом хватает
+// живому покупателю, который открывает много объявлений подряд, но
+// обрушивает скорость скрипта-скрейпера с "тысячи объявлений в минуту" до
+// бесполезных для сбора базы значений.
+const AD_PHONE_THROTTLE = { default: { limit: 20, ttl: 60000 } }
 
 @Controller('ads')
 export class AdsController {
@@ -182,6 +190,28 @@ export class AdsController {
     @Query('weekOffset', new DefaultValuePipe(0), ParseIntPipe) weekOffset: number
   ) {
     return this.adsService.getViewStatsForAdmin(id, weekOffset)
+  }
+
+  // B2 в ROADMAP.md: раньше телефон продавца отдавался прямо в ответе
+  // findOne — достаточно было перебрать id объявлений, чтобы выкачать
+  // номера всех продавцов на сайте, без всякого клика по "Показать
+  // телефон" на фронте (это была чисто визуальная задержка, сами цифры
+  // уже приезжали в первом же ответе API). Теперь номер отдаётся только
+  // этим отдельным эндпоинтом: гостю сначала нужно авторизоваться (см.
+  // AuthGuard — резко поднимает цену атаки скриптом, требует уже не
+  // просто дёргать URL, а заводить аккаунты), и лимитирован по частоте на
+  // уровне аккаунта (см. AdPhoneThrottlerGuard, AD_PHONE_THROTTLE).
+  // Выше @Get(':id') просто для группировки с остальными ':id/...'
+  // подроутами (moderation/views и т.п.) — конфликта с самим ':id' тут
+  // нет, в отличие от 'locations' выше (тот действительно должен идти
+  // раньше — иначе Nest принял бы 'locations' за id).
+  @Get(':id/phone')
+  @UseGuards(AuthGuard, AdPhoneThrottlerGuard)
+  @Throttle(AD_PHONE_THROTTLE)
+  getPhone(@Param('id') id: string, @CurrentUser('id') userId: string, @Req() request: Request) {
+    const viewerKey = computeViewerKey(userId, request)
+
+    return this.adsService.getPhone(id, userId, viewerKey)
   }
 
   @Get(':id')

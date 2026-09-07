@@ -71,14 +71,12 @@ export class SupportGuestsService {
   }
 
   // "Приклеить" гостевую переписку к аккаунту после регистрации/логина —
-  // вызывается из AuthService (см. TODO в support.module.ts): если в
-  // сессии на момент входа был supportGuestId, его SUPPORT-диалог переезжает
-  // на нового userId, а сама запись SupportGuest остаётся как исторический
-  // след через mergedIntoUserId, не удаляется.
-  //
-  // Не реализовано в этом заходе — сначала нужно аккуратно посмотреть на
-  // auth.service.ts (login/register), чтобы не задеть существующий флоу
-  // входа. См. отдельный шаг после ревью бэкенда чата.
+  // вызывается из AuthService.saveSession (единственная точка входа/
+  // регистрации независимо от способа — пароль, SMS, Google, Yandex, см.
+  // комментарий там же): если в сессии на момент входа был supportGuestId,
+  // его SUPPORT-диалог переезжает на нового userId, а сама запись
+  // SupportGuest остаётся как исторический след через mergedIntoUserId, не
+  // удаляется.
   async mergeIntoUser(guestId: string, userId: string) {
     // guestId уникален для SUPPORT-диалога (см. partial unique index
     // conversation_support_guest_unique в миграции) — гость физически не

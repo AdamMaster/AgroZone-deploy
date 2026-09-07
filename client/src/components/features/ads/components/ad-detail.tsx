@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils'
 
 import { UserAvatar } from '../../user/components'
 import { AD_PRICE_HIGHLIGHT_CLASS } from '../constants/ad-services.constants'
-import { useAd, useAdCounters, useAddFavorite, useArchiveAd, useRemoveAd, useRemoveFavorite } from '../hooks'
+import { useAd, useAdCounters, useAddFavorite, useAdPhone, useArchiveAd, useRemoveAd, useRemoveFavorite } from '../hooks'
 import { IAd, ICategoryFeature } from '../types/ad.types'
 import { AdBadgeChip } from './ad-badge-chip'
 import { AdCountersPanel } from './ad-counters-panel'
@@ -90,7 +90,13 @@ export const AdDetail = ({
 
   const [activeImage, setActiveImage] = useState(0)
   const [isLightboxOpen, setIsLightboxOpen] = useState(false)
-  const [isPhoneRevealed, setIsPhoneRevealed] = useState(false)
+  // B2 в ROADMAP.md: раньше это был чисто визуальный флаг
+  // (isPhoneRevealed) — сами цифры (ad.phone) уже приезжали в обычном
+  // ответе findOne, клик их просто показывал/прятал на экране. Теперь
+  // номера в ad вообще нет (см. ad.types.ts), храним то, что реально
+  // пришло по клику от отдельного защищённого эндпоинта — null, пока не
+  // раскрыт.
+  const [revealedPhone, setRevealedPhone] = useState<string | null>(null)
   // Контролируемое состояние для ReportAdDialog — пункт "Пожаловаться" в
   // мобильном дропдауне "..." открывает тот же диалог, что и текстовая
   // ссылка внизу страницы (см. ReportAdDialog: controlled-режим без
@@ -101,6 +107,7 @@ export const AdDetail = ({
   const { removeFavorite, isRemovingFavorite } = useRemoveFavorite()
   const { archiveAd, isLoadingArchive } = useArchiveAd()
   const { removeAd, isLoadingRemove } = useRemoveAd()
+  const { revealPhone, isRevealingPhone } = useAdPhone()
 
   const scrollToImage = (index: number) => {
     const slide = galleryRef.current?.children[index] as HTMLElement | undefined
@@ -148,6 +155,20 @@ export const AdDetail = ({
     } else {
       addFavorite(ad.id)
     }
+  }
+
+  // B2 в ROADMAP.md: тот же приём, что и в handleWriteClick выше — гостю
+  // сразу предлагаем войти, не дёргая сеть впустую (эндпоинт всё равно за
+  // AuthGuard, см. AdsController.getPhone). Без returnTo — после входа
+  // просто остаёмся на этой же странице объявления, отдельно нажимать
+  // "Показать телефон" второй раз можно сразу.
+  const handleShowPhone = () => {
+    if (!user) {
+      onOpen('login')
+      return
+    }
+
+    revealPhone(ad.id, { onSuccess: data => setRevealedPhone(data.phone) })
   }
 
   // Доп. меню владельца в мобильной верхней панели (см. ниже) — те же
@@ -490,11 +511,16 @@ export const AdDetail = ({
                   variant='default'
                   size='lg'
                   className='h-13! grow px-8'
-                  onClick={() => setIsPhoneRevealed(true)}
-                  nativeButton={!isPhoneRevealed}
-                  render={isPhoneRevealed ? <a href={`tel:+${ad.phone}`} /> : undefined}
+                  onClick={revealedPhone ? undefined : handleShowPhone}
+                  disabled={isRevealingPhone}
+                  nativeButton={!revealedPhone}
+                  render={revealedPhone ? <a href={`tel:+${revealedPhone}`} /> : undefined}
                 >
-                  {isPhoneRevealed ? formatPhoneNumber(ad.phone) : 'Показать телефон'}
+                  {revealedPhone
+                    ? formatPhoneNumber(revealedPhone)
+                    : isRevealingPhone
+                      ? 'Показ номера…'
+                      : 'Показать телефон'}
                 </Button>
                 <Button size='lg' variant='secondary' className='h-13! px-8' onClick={handleWriteClick}>
                   Написать

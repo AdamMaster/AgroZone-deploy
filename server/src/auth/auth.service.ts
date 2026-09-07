@@ -25,6 +25,7 @@ import { SmsCompleteDto } from './dto/sms-complete.dto'
 import { normalizePhone } from '@/libs/common/utils/phone.util'
 import { ZvonokService } from '@/libs/zvonok/zvonok.service'
 import { getClientIp } from '@/libs/common/utils/request-ip.util'
+import { SupportGuestsService } from '@/support/support-guests.service'
 
 @Injectable()
 export class AuthService {
@@ -35,7 +36,8 @@ export class AuthService {
     private readonly providerService: ProviderService,
     private readonly emailConfirmationService: EmailConfirmationService,
     private readonly twoFactorAuthService: TwoFactorAuthService,
-    private readonly zvonokService: ZvonokService
+    private readonly zvonokService: ZvonokService,
+    private readonly supportGuestsService: SupportGuestsService
   ) {}
 
   async registerSmsStart(dto: SmsRegisterDto) {
@@ -476,6 +478,27 @@ export class AuthService {
   async saveSession(req: Request, user: User) {
     const role = await this.ensureAdminRole(user)
     const sessionUser = role === user.role ? user : { ...user, role }
+
+    // "Долг" в ROADMAP.md — склейка гостя поддержки с аккаунтом. Если в
+    // ЭТОЙ ЖЕ сессии до входа/регистрации посетитель уже писал в чат
+    // поддержки (см. SupportGuestsService.getOrCreateForSession —
+    // единственное место, где вообще появляется supportGuestId), его
+    // гостевой диалог переезжает на новый userId. fire-and-forget и
+    // отдельный catch — перенос переписки не должен ронять сам вход, если
+    // вдруг не удастся: гость просто останется гостем, ничего не
+    // потеряется (guestConversation никуда не денется). Само поле чистим
+    // из сессии сразу — дальше SupportIdentityService всё равно смотрит
+    // сначала на userId, но незачем оставлять в сессии id, который уже
+    // никогда не должен использоваться как гостевой.
+    const supportGuestId = req.session.supportGuestId
+
+    if (supportGuestId) {
+      delete req.session.supportGuestId
+
+      void this.supportGuestsService.mergeIntoUser(supportGuestId, user.id).catch(error => {
+        console.error('SUPPORT GUEST MERGE ERROR:', error)
+      })
+    }
 
     return new Promise((resolve, reject) => {
       req.session.userId = user.id

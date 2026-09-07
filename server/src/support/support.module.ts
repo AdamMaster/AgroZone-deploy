@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common'
+import { forwardRef, Module } from '@nestjs/common'
 
 import { AuthModule } from '@/auth/auth.module'
 import { MailModule } from '@/libs/mail/mail.module'
@@ -13,7 +13,11 @@ import { SupportService } from './support.service'
 import { SupportIdentityGuard } from './guards/support-identity.guard'
 
 @Module({
-  imports: [UserModule, AuthModule, MailModule],
+  // forwardRef — AuthModule теперь тоже импортирует SupportModule (за
+  // SupportGuestsService, см. AuthService.saveSession и "Долг" в
+  // ROADMAP.md — склейка гостя поддержки с аккаунтом при входе), без
+  // forwardRef с обеих сторон Nest не смог бы разрешить цикл модулей.
+  imports: [UserModule, forwardRef(() => AuthModule), MailModule],
   controllers: [SupportController],
   providers: [
     SupportService,
@@ -24,6 +28,7 @@ import { SupportIdentityGuard } from './guards/support-identity.guard'
     // глобальный (см. session.module.ts), DI находит его сам.
     SupportGateway,
     PrismaService
-  ]
+  ],
+  exports: [SupportGuestsService]
 })
 export class SupportModule {}
