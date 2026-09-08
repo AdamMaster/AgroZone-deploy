@@ -191,7 +191,7 @@ export const CategoryGrid = ({ categories, className }: CategoryGridProps) => {
 
         {!isCatalog && (
           <div className='scrollbar-none overflow-auto'>
-            <div className='flex w-270 flex-wrap gap-1 sm:gap-2 md:hidden'>
+            <div className='flex w-280 flex-wrap gap-1 sm:gap-2 md:hidden'>
               {itemsToRender.map(item => (
                 <CategoryItem
                   key={item.id}

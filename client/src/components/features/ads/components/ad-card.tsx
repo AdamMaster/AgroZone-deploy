@@ -44,7 +44,7 @@ export const AdCard = ({ ad }: AdCardProps) => {
         className='relative block overflow-hidden rounded-lg bg-gray-100 pt-[100%] sm:rounded-xl'
       >
         {ad.images.length > 0 ? (
-          <Image src={ad.images[0]} alt={ad.title} className='h-full w-full object-cover' fill sizes='400px' />
+          <Image src={ad.images[0]} alt={ad.title} className='h-full w-full object-cover' fill sizes='310px' />
         ) : (
           <ImageIcon size={50} className='absolute top-[50%] left-[50%] translate-[-50%] text-gray-500' />
         )}
