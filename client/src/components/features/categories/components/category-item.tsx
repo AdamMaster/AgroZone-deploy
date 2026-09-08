@@ -59,22 +59,14 @@ export const CategoryItem = ({ category, href, className, onClick, priority }: C
       href={href}
       onClick={onClick}
       className={cn(
-        // text-sm (14px), а не text-[13px] — основной навигационный текст
-        // плиток категорий (аудит A1+A2, ROADMAP.md), не вспомогательная
-        // подпись.
         'relative flex min-h-[53px] max-w-[160px] gap-1 overflow-hidden rounded-lg bg-gray-100 text-[13px] leading-tight hover:bg-gray-200 md:max-w-[260px]',
         isTopLevelCard ? 'h-19 px-3.5 py-2.5 pr-8 md:h-25 md:max-w-75 md:pr-12' : 'px-4 py-2.5 md:max-w-75',
-        category.isSelected &&
-          'bg-secondary hover:bg-secondary-foreground text-white dark:bg-neutral-50 dark:text-neutral-900',
+        category.isSelected && 'bg-gray-200 dark:bg-neutral-50 dark:text-neutral-900',
         category.isParent && 'bg-primary hover:bg-primary-foreground text-white',
         className
       )}
     >
       {icon && (
-        // Реальный размер на экране задаётся классами ниже: 56px по
-        // ширине на мобильном и 80px с md. Без sizes Next ориентировался бы
-        // на width={230} и тянул w=256/w=640 — отсюда PNG по 300–640 КБ на
-        // иконку в 80 пикселей (см. аудит, P1).
         <Image
           src={icon}
           alt={category.name}

@@ -37,9 +37,9 @@ export function AdsGrid({ ads, layout, className, isLoading, emptyMessage }: Ads
 
   if (isLoading) {
     return (
-      <div className={cn('grid gap-6', classNames, className)}>
+      <div className={cn('grid gap-x-6 gap-y-4 sm:gap-x-2.5 md:gap-x-2.5 xl:gap-x-6', classNames, className)}>
         {Array.from({ length: SKELETON_COUNT }).map((_, i) =>
-          layout === 'cols-1' ? <AdCardList.Skeleton key={i} /> : <Skeleton key={i} className='h-82 rounded-lg' />
+          layout === 'cols-1' ? <AdCardList.Skeleton key={i} /> : <AdCard.Skeleton key={i} />
         )}
       </div>
     )

@@ -4,7 +4,7 @@ import { ImageIcon } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 
-import { Heading } from '@/components/ui'
+import { Heading, Skeleton } from '@/components/ui'
 
 import { formatDistance, formatPriceWithUnit, isFutureDate, isPremiumActive } from '@/shared/utils'
 
@@ -51,12 +51,6 @@ export const AdCard = ({ ad }: AdCardProps) => {
         {isBadgeShown && <AdBadgeChip badge={ad.badge!} className='absolute top-1 left-1' />}
       </Link>
       <div className='relative'>
-        {/* level={2} — сохраняет прежний визуальный размер/вес (тут он и так
-        полностью переопределён className ниже), as='h3' — семантический тег.
-        На странице ровно одна H1 (или H2 CategoryTitle на каталоге), а на
-        листинге таких карточек может быть 20+ — если каждая размечена как
-        H2, у страницы получается 20 заголовков одного уровня без какой-либо
-        вложенности, что и было найдено аудитом (S4 в ROADMAP.md). */}
         <Heading
           level={2}
           as='h3'
@@ -87,5 +81,13 @@ export const AdCard = ({ ad }: AdCardProps) => {
 }
 
 AdCard.Skeleton = function AdCardSkeleton() {
-  return <div></div>
+  return (
+    <div className='flex flex-col gap-2'>
+      <Skeleton className='rounded-lg pt-[100%]' />
+      <div className='flex flex-col gap-2'>
+        <Skeleton className='h-4 w-30 rounded-md' />
+        <Skeleton className='h-4 w-20 rounded-md' />
+      </div>
+    </div>
+  )
 }

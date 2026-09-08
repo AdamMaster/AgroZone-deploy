@@ -23,7 +23,15 @@ import { cn } from '@/lib/utils'
 
 import { UserAvatar } from '../../user/components'
 import { AD_PRICE_HIGHLIGHT_CLASS } from '../constants/ad-services.constants'
-import { useAd, useAdCounters, useAddFavorite, useAdPhone, useArchiveAd, useRemoveAd, useRemoveFavorite } from '../hooks'
+import {
+  useAd,
+  useAdCounters,
+  useAdPhone,
+  useAddFavorite,
+  useArchiveAd,
+  useRemoveAd,
+  useRemoveFavorite
+} from '../hooks'
 import { IAd, ICategoryFeature } from '../types/ad.types'
 import { AdBadgeChip } from './ad-badge-chip'
 import { AdCountersPanel } from './ad-counters-panel'
@@ -398,7 +406,7 @@ export const AdDetail = ({
                     key={image + index}
                     type='button'
                     onClick={() => setIsLightboxOpen(true)}
-                    className='relative w-full flex-shrink-0 snap-center pt-[76%] lg:pt-[66%]'
+                    className='relative w-full flex-shrink-0 snap-center pt-[76%] lg:pt-[80%]'
                   >
                     <Image
                       src={image}
@@ -413,7 +421,7 @@ export const AdDetail = ({
               </div>
             </div>
           ) : (
-            <div className='relative mb-2 overflow-hidden rounded-xl bg-gray-100 pt-[76%] lg:pt-[66%]'>
+            <div className='relative mb-2 overflow-hidden rounded-xl bg-gray-100 pt-[76%] lg:pt-[80%]'>
               <ImageIcon size={64} className='absolute top-1/2 left-1/2 -translate-1/2 text-gray-400' />
             </div>
           )}
