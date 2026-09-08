@@ -20,6 +20,16 @@ export function useSupportMyMessages(enabled: boolean) {
   const queryClient = useQueryClient()
   const [hasMore, setHasMore] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
+  // Первая страница уже может быть неполной (например, у тикета всего
+  // одно сообщение) — тогда "показывать дальше" нечего с самого начала,
+  // ещё до первого клика на "Показать предыдущие". Без этой проверки
+  // hasMore так и оставался бы true (он выставляется в false только
+  // внутри loadOlder), и кнопка светилась бы даже когда истории больше
+  // нет. Именно useState, а не useRef — refs нельзя трогать во время
+  // рендера (eslint react-hooks/refs), а adjusting state during render
+  // (https://react.dev/learn/you-might-not-need-an-effect) требует
+  // именно состояния для сравнения.
+  const [initialCheckDone, setInitialCheckDone] = useState(false)
 
   const query = useQuery({
     queryKey: ['support-my-messages'],
@@ -28,6 +38,14 @@ export function useSupportMyMessages(enabled: boolean) {
   })
 
   const messages = useMemo(() => query.data ?? [], [query.data])
+
+  if (!initialCheckDone && query.data) {
+    setInitialCheckDone(true)
+
+    if (query.data.length < PAGE_SIZE) {
+      setHasMore(false)
+    }
+  }
 
   const loadOlder = useCallback(async () => {
     if (isLoadingMore || !hasMore || messages.length === 0) return

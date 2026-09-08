@@ -39,6 +39,26 @@ export function useSupportAdminMessages(conversationId: string | null) {
 
   const messages = useMemo(() => query.data ?? [], [query.data])
 
+  // Та же логика, что и у useSupportMyMessages: первая страница тикета
+  // может сразу оказаться неполной (мало сообщений), и тогда "Показать
+  // предыдущие" показывать не за чем ещё до первого loadOlder.
+  // initialCheckedConversationId хранит conversationId, для которого уже
+  // сделали эту проверку — состояние, а не ref (refs нельзя трогать во
+  // время рендера, eslint react-hooks/refs), выставляется прямо в теле
+  // рендера, как и trackedConversationId выше: при переключении на
+  // другой тикет query.data ещё не готов в момент сброса hasMore=true
+  // (см. блок trackedConversationId), а как только данные придут —
+  // сработает уже здесь, на очередном рендере.
+  const [initialCheckedConversationId, setInitialCheckedConversationId] = useState<string | null>(null)
+
+  if (conversationId && query.data && initialCheckedConversationId !== conversationId) {
+    setInitialCheckedConversationId(conversationId)
+
+    if (query.data.length < PAGE_SIZE) {
+      setHasMore(false)
+    }
+  }
+
   const loadOlder = useCallback(async () => {
     if (!conversationId || isLoadingMore || !hasMore || messages.length === 0) return
 
