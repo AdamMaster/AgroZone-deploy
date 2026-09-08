@@ -78,12 +78,27 @@ export function AdsClient({ serverSlug, layout, className, locationOverride, ini
         ? 'Ничего не найдено — попробуйте изменить фильтры'
         : 'В этой категории пока нет объявлений'
 
+  // isLoadingCategories учитываем в общем isLoading, ТОЛЬКО когда categories
+  // реально нужны прямо сейчас — то есть когда есть slug и мы ждём
+  // categoryId (см. useMemo выше). На главной (HomeAdsFeed) slug никогда
+  // нет, а categoryId всегда undefined независимо от того, догрузились
+  // categories или нет — так что раньше главная держала initialAds под
+  // капотом готовыми, но всё равно рисовала скелетон, пока не догрузится
+  // ВООБЩЕ не нужный здесь список категорий (isLoadingCategories из
+  // useCategories() — чисто клиентский запрос без initialData, на сервере
+  // и до первого клиентского фетча всегда true). Из-за этого initialAds
+  // с сервера (см. page.tsx главной, S6 в ROADMAP.md) реально никогда не
+  // попадали в исходный HTML как видимые карточки — только как данные для
+  // гидратации, а LCP-фото так и оставалось недостижимо до клиентского
+  // фетча категорий.
+  const isWaitingForCategories = Boolean(slug) && isLoadingCategories
+
   return (
     <AdsGrid
       ads={ads}
       layout={layout}
       className={className}
-      isLoading={isLoadingCategories || isLoadingAds}
+      isLoading={isWaitingForCategories || isLoadingAds}
       emptyMessage={emptyMessage}
     />
   )
