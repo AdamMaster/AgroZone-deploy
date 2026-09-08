@@ -201,6 +201,7 @@ export const CategoryGrid = ({ categories, className }: CategoryGridProps) => {
                   }}
                   href={getCategoryHref(item)}
                   onClick={handleTopLevelTap(item)}
+                  priority
                 />
               ))}
             </div>
@@ -223,6 +224,7 @@ export const CategoryGrid = ({ categories, className }: CategoryGridProps) => {
                   isSelected: item.fullPath === params.slug?.join('/')
                 }}
                 href={getCategoryHref(item)}
+                priority
               />
             )
           })}

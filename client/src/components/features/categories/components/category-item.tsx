@@ -17,9 +17,19 @@ interface CategoryItemProps {
   href: string
   className?: string
   onClick?: (event: MouseEvent<HTMLAnchorElement>) => void
+  // Иконки категорий верхнего уровня (их всего 14, фиксированный список —
+  // не бесконечная лента) грузились с дефолтным loading="lazy" и на проде
+  // (в отличие от дева) реально НИКОГДА не догружались — пользователь
+  // 08.09.2026 прислал скриншот с половиной пустых плашек. Подтверждено
+  // руками: у живых <img> с loading="lazy" natural-размер так и остаётся
+  // 0 сколько ни жди, а стоит выставить loading="eager" на том же элементе
+  // — картинка тут же подгружается. Раз список короткий и конечный,
+  // помечаем все иконки priority (не только первые N, как обычно советуют
+  // для длинных лент) — см. проброс из CategoryGrid.
+  priority?: boolean
 }
 
-export const CategoryItem = ({ category, href, className, onClick }: CategoryItemProps) => {
+export const CategoryItem = ({ category, href, className, onClick, priority }: CategoryItemProps) => {
   // Ключи — реальные slug'и категорий (после переименования на короткие
   // названия slug пересчитывается заново), значения — пути к уже
   // существующим файлам картинок, их переименовывать не понадобилось.
@@ -71,6 +81,7 @@ export const CategoryItem = ({ category, href, className, onClick }: CategoryIte
           width={230}
           height={230}
           sizes='(min-width: 768px) 80px, 56px'
+          priority={priority}
           className='absolute -right-2 bottom-0 z-1 h-12 w-14 object-contain object-bottom-right md:h-18 md:w-20'
         />
       )}
