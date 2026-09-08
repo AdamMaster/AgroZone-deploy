@@ -21,6 +21,7 @@
     "prisma:seed": "dotenv -e .env -- ts-node prisma/seed.ts",
     "embeddings:precompute": "dotenv -e .env -- ts-node scripts/precompute-category-embeddings.ts",
     "categories:enrich-descriptions": "dotenv -e .env -- ts-node scripts/enrich-category-descriptions.ts",
+    "categories:debug-enrichment-status": "dotenv -e .env -- ts-node scripts/debug-category-enrichment-status.ts",
     "prisma:reset": "dotenv -e .env -- prisma migrate reset --force",
     "prisma:generate": "dotenv -e .env -- prisma generate",
     "prisma:deploy": "dotenv -e .env -- prisma migrate deploy"
