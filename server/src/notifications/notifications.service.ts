@@ -111,4 +111,55 @@ export class NotificationsService {
 
     return notification
   }
+
+  // Вызывается из ConversationsService при каждом новом сообщении в
+  // диалоге по объявлению — до этого получатель никак не узнавал о
+  // сообщении, кроме как сам зайдёт в "Мои сообщения" (см. обсуждение с
+  // владельцем: это реальная потеря сделок, а не мелочь). Тот же паттерн,
+  // что и у notifyAdRejected: in-app уведомление — гарантированный канал,
+  // письмо — попытка достучаться быстрее, но необязательная (email может
+  // отсутствовать — регистрация по телефону, см. User.email в схеме).
+  //
+  // messageText обрезается до превью — это уведомление/письмо, а не сам
+  // чат, длинное сообщение целиком тут не нужно и не помещается в
+  // разумный вид карточки уведомления.
+  async notifyNewMessage(
+    recipientId: string,
+    conversationId: string,
+    adTitle: string,
+    senderName: string,
+    messageText: string
+  ) {
+    const MESSAGE_PREVIEW_LENGTH = 200
+    const trimmedText = messageText.trim()
+    const preview =
+      trimmedText.length > MESSAGE_PREVIEW_LENGTH ? `${trimmedText.slice(0, MESSAGE_PREVIEW_LENGTH)}…` : trimmedText
+
+    const notification = await this.prisma.notification.create({
+      data: {
+        userId: recipientId,
+        type: NotificationType.NEW_MESSAGE,
+        title: 'Новое сообщение',
+        message: preview
+          ? `${senderName} написал(а) вам по объявлению «${adTitle}»: «${preview}»`
+          : `${senderName} написал(а) вам по объявлению «${adTitle}»`,
+        link: `/profile/settings/messages?c=${conversationId}`
+      }
+    })
+
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: recipientId },
+        select: { email: true }
+      })
+
+      if (user?.email) {
+        await this.mailService.sendNewMessageEmail(user.email, conversationId, adTitle, senderName, preview)
+      }
+    } catch (error) {
+      this.logger.error(`Не удалось отправить письмо о новом сообщении (диалог ${conversationId})`, error)
+    }
+
+    return notification
+  }
 }

@@ -7,6 +7,7 @@ import { ResetPasswordTemplate } from './templates/reset-password.template'
 import { TwoFactorAuthTemplate } from './templates/two-factor-auth.tamplate'
 import { EmailChangeTemplate } from './templates/email-change.tamplate'
 import { AdRejectedTemplate } from './templates/ad-rejected.template'
+import { NewMessageTemplate } from './templates/new-message.template'
 import { SupportMessageTemplate } from './templates/support-message.template'
 
 @Injectable()
@@ -48,6 +49,24 @@ export class MailService {
     const html = await render(AdRejectedTemplate({ domain, adId, adTitle, reason }))
 
     return this.sendMail(email, `Объявление «${adTitle}» отклонено`, html)
+  }
+
+  // Дублирует письмом in-app уведомление о новом сообщении в диалоге по
+  // объявлению (см. NotificationsService.notifyNewMessage) — тем же
+  // способом, что и sendAdRejectedEmail: письмо необязательно (у
+  // пользователя может не быть email, см. вызывающий код), падать из-за
+  // него отправка сообщения не должна.
+  async sendNewMessageEmail(
+    email: string,
+    conversationId: string,
+    adTitle: string,
+    senderName: string,
+    messageText: string
+  ) {
+    const domain = this.configService.getOrThrow<string>('ALLOWED_ORIGIN')
+    const html = await render(NewMessageTemplate({ domain, conversationId, adTitle, senderName, messageText }))
+
+    return this.sendMail(email, `${senderName}: новое сообщение по объявлению «${adTitle}»`, html)
   }
 
   // Уходит один раз на первое сообщение НОВОГО тикета в чате поддержки (см.

@@ -1,7 +1,8 @@
-// Пока единственный тип — отклонение объявления модератором (см.
-// обсуждение с пользователем), но enum на бэкенде сделан расширяемым, тип
-// здесь зеркалит это же намерение.
-export type NotificationType = 'AD_REJECTED'
+// Enum на бэкенде расширяемый (см. NotificationType в schema.prisma), тип
+// здесь зеркалит это же намерение. Компоненты рендерят title/message/link
+// полностью generic, без switch по типу — новое значение добавляется сюда
+// без изменений в компонентах.
+export type NotificationType = 'AD_REJECTED' | 'NEW_MESSAGE'
 
 export interface INotification {
   id: string

@@ -1,7 +1,8 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { AdStatus, ConversationType } from '@/generated/prisma/enums'
 
 import { BlockedUsersService } from '@/blocked-users/blocked-users.service'
+import { NotificationsService } from '@/notifications/notifications.service'
 import { PrismaService } from '@/prisma/prisma.service'
 
 import { FindMessagesQueryDto } from './dto/find-messages-query.dto'
@@ -10,9 +11,12 @@ import { StartConversationDto } from './dto/start-conversation.dto'
 
 @Injectable()
 export class ConversationsService {
+  private readonly logger = new Logger(ConversationsService.name)
+
   constructor(
     private readonly prisma: PrismaService,
-    private readonly blockedUsersService: BlockedUsersService
+    private readonly blockedUsersService: BlockedUsersService,
+    private readonly notificationsService: NotificationsService
   ) {}
 
   // Начать диалог с продавцом объявления. Всегда вызывается покупателем —
@@ -50,7 +54,7 @@ export class ConversationsService {
       create: { adId: dto.adId, buyerId: userId, sellerId: ad.userId, adTitleSnapshot: ad.title }
     })
 
-    const message = await this.createMessage(conversation.id, userId, dto.text)
+    const message = await this.createMessage(conversation.id, userId, dto.text, ad.userId, ad.title)
 
     return { conversation, message }
   }
@@ -67,7 +71,14 @@ export class ConversationsService {
       throw new ForbiddenException('Не удалось отправить сообщение')
     }
 
-    return this.createMessage(conversationId, userId, dto.text, dto.attachments)
+    return this.createMessage(
+      conversationId,
+      userId,
+      dto.text,
+      counterpartId,
+      conversation.adTitleSnapshot ?? '',
+      dto.attachments
+    )
   }
 
   // Список диалогов текущего юзера — и как покупателя, и как продавца
@@ -222,7 +233,14 @@ export class ConversationsService {
     })
   }
 
-  private async createMessage(conversationId: string, senderId: string, text: string, attachments: string[] = []) {
+  private async createMessage(
+    conversationId: string,
+    senderId: string,
+    text: string,
+    recipientId: string,
+    adTitle: string,
+    attachments: string[] = []
+  ) {
     const [message] = await this.prisma.$transaction([
       this.prisma.message.create({ data: { conversationId, senderId, text, attachments } }),
       // Сбрасываем скрытие с обеих сторон при любом новом сообщении — не
@@ -235,6 +253,25 @@ export class ConversationsService {
         data: { lastMessageAt: new Date(), hiddenByBuyer: false, hiddenBySeller: false }
       })
     ])
+
+    // Уведомление получателю о новом сообщении — best-effort: провал не
+    // должен ронять отправку самого сообщения. Здесь (в отличие от
+    // AdsService.reject/NotificationsService.notifyAdRejected, где в
+    // try/catch обёрнута только email-часть) в try/catch весь блок целиком —
+    // этот метод вызывается на порядки чаще, и создание самой записи Message
+    // не должно зависеть от доступности уведомлений.
+    try {
+      const sender = await this.prisma.user.findUnique({ where: { id: senderId }, select: { displayName: true } })
+      await this.notificationsService.notifyNewMessage(
+        recipientId,
+        conversationId,
+        adTitle,
+        sender?.displayName ?? 'Пользователь',
+        text
+      )
+    } catch (error) {
+      this.logger.error(`Не удалось отправить уведомление о новом сообщении: ${(error as Error).message}`)
+    }
 
     return message
   }

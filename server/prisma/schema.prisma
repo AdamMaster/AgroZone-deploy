@@ -1196,4 +1196,8 @@ model Notification {
 
 enum NotificationType {
   AD_REJECTED
+  // Новое сообщение в диалоге по объявлению (см. ConversationsService) —
+  // раньше получатель никак не узнавал о нём, кроме как сам зайдёт в "Мои
+  // сообщения" и заметит (см. обсуждение с владельцем).
+  NEW_MESSAGE
 }
