@@ -1331,7 +1331,7 @@ const DEFAULT_PRICE_UNITS_BY_FEATURES = new Map<CategoryFeatureSeed[], string[]>
   [VET_MED_STANDARD, ['ITEM', 'DOSE', 'KG', 'LITER']],
   [VET_CONSUMABLES_FEATURES, ['ITEM', 'BAG']],
   [SERVICE_FIELD_WORK_FEATURES, ['HA', 'HOUR', 'ITEM']],
-  [SERVICE_TRANSPORT_FEATURES, ['TON', 'ITEM']],
+  [SERVICE_TRANSPORT_FEATURES, ['ITEM']],
   [SERVICE_RENTAL_FEATURES, ['HOUR', 'ITEM']],
   [SERVICE_REPAIR_FEATURES, ['HOUR', 'ITEM']],
   [SERVICE_STORAGE_FEATURES, ['TON', 'ITEM']],
@@ -2744,7 +2744,8 @@ const CATEGORY_TREE = [
         name: 'Услуги по убою и первичной переработке',
         id: 'cat_13ubz4w',
         children: [],
-        categoryFeatures: SERVICE_PROCESSING_FEATURES
+        categoryFeatures: SERVICE_PROCESSING_FEATURES,
+        priceUnits: ['HEAD', 'KG', 'ITEM']
       },
       { name: 'Услуги сертификации', id: 'cat_1eqnmy1', children: [], categoryFeatures: SERVICE_CONSULTING_FEATURES },
       { name: 'Утилизация отходов', id: 'cat_1m9uawl', children: [], categoryFeatures: SERVICE_WASTE_FEATURES },
