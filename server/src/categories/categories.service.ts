@@ -42,13 +42,17 @@ export interface CategoryWithChildren {
   path: string[]
   fullPath: string
   priceUnits: string[]
-  // Список из 15-25 обиходных названий/сортов через запятую, сгенерированный
-  // GigaChat (см. scripts/enrich-category-descriptions.ts) — заведено для
-  // семантического поиска категорий (CategoryTerm/searchBySemantic), НЕ как
-  // готовый человекочитаемый текст. На клиенте поэтому не выводится как
-  // есть, а оборачивается в шаблон-предложение — см.
-  // buildCategoryMetaDescription в categories/utils/category-utils.ts.
-  description: string | null
+  // description сюда намеренно НЕ включён — см. подробный комментарий у
+  // findAll() и findMetaByFullPath() ниже. Раньше поле было здесь и
+  // раздувало ответ примерно на ~1МБ несжатого RSC-payload на КАЖДОЙ
+  // странице сайта (главная, каталог, объявления — всё под
+  // (main)/layout.tsx), хотя реально description нигде не читался из
+  // полученного здесь дерева (найдено 08.09.2026 при разборе Lighthouse
+  // Performance=89/100 на десктопе — "\"description\"" встречался 1277 раз
+  // в HTML главной). Поле убрано из типа целиком (не сделано опциональным),
+  // по тому же принципу, что и categoryFeatures в ICategory на клиенте —
+  // чтобы tsc сразу показал ошибкой любое место, которое попробует читать
+  // description из дерева.
   children: CategoryWithChildren[]
 }
 
@@ -127,7 +131,24 @@ export class CategoriesService implements OnModuleInit {
   // тянуть их все разом, только вторым запросом вместо одного.
   async findAll(): Promise<CategoryWithChildren[]> {
     const categories = await this.prisma.category.findMany({
-      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }]
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      // Явный select без description — см. комментарий у
+      // CategoryWithChildren выше. Без него Prisma тянула бы description
+      // из БД для всех 638 категорий, даже притом, что build() ниже его всё
+      // равно не мапит в ответ — лишняя работа и на БД, и в памяти Node.
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        code: true,
+        iconId: true,
+        parentId: true,
+        level: true,
+        sortOrder: true,
+        path: true,
+        fullPath: true,
+        priceUnits: true
+      }
     })
 
     const byParent = new Map<string, typeof categories>()
@@ -159,12 +180,25 @@ export class CategoriesService implements OnModuleInit {
         path: cat.path,
         fullPath: cat.fullPath,
         priceUnits: cat.priceUnits,
-        description: cat.description,
         children: build(cat.id)
       }))
     }
 
     return build(null)
+  }
+
+  // Точечный lookup ОДНОЙ категории по fullPath — специально для
+  // generateMetadata на странице каталога (buildCategoryMetaDescription
+  // читает name+description). Раньше это поле ехало в общем дереве
+  // findAll() — см. комментарий у CategoryWithChildren.children выше (там,
+  // где раньше было description). Тот же принцип, что и у getFeatures()
+  // ниже: полные данные одной категории — по требованию, а не оптом на
+  // каждую навигацию по сайту.
+  async findMetaByFullPath(fullPath: string): Promise<{ name: string; description: string | null } | null> {
+    return this.prisma.category.findUnique({
+      where: { fullPath },
+      select: { name: true, description: true }
+    })
   }
 
   // Определения атрибутов (features) ОДНОЙ категории — на замену прежнему

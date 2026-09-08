@@ -1,6 +1,6 @@
 import { api } from '@/shared/api'
 
-import { ICategory, ICategoryFeature, ICategorySearchSuggestion } from '../types/categories.types'
+import { ICategory, ICategoryFeature, ICategoryMeta, ICategorySearchSuggestion } from '../types/categories.types'
 
 class CategoriesService {
   private URL = 'categories'
@@ -38,6 +38,14 @@ class CategoriesService {
   // переиспользует результат между компонентами по categoryId.
   async findFeatures(categoryId: string): Promise<ICategoryFeature[]> {
     return api.get<ICategoryFeature[]>(`${this.URL}/${categoryId}/features`)
+  }
+
+  // name+description ОДНОЙ категории по fullPath — для generateMetadata
+  // страницы каталога (buildCategoryMetaDescription). См. комментарий у
+  // ICategory.description о том, почему это отдельный запрос, а не поле
+  // в общем дереве.
+  async findMeta(fullPath: string): Promise<ICategoryMeta | null> {
+    return api.get<ICategoryMeta | null>(`${this.URL}/meta`, { params: { fullPath } })
   }
 }
 

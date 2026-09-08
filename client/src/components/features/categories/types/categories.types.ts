@@ -61,14 +61,23 @@ export interface ICategory {
   path: string[]
   fullPath: string
   priceUnits: string[]
-  // Список из 15-25 обиходных названий/сортов через запятую (сгенерирован
-  // GigaChat на бэкенде, см. комментарий у CategoryWithChildren.description
-  // в categories.service.ts) — заведено для семантического поиска, а не как
-  // готовый текст для показа пользователю. Для meta-описания категории
-  // используется через buildCategoryMetaDescription (category-utils.ts),
-  // который оборачивает список в читаемое предложение — само поле напрямую
-  // в разметке не выводить.
-  description: string | null
+  // description сюда намеренно НЕ включён — раньше раздувал каждую
+  // страницу сайта на ~1МБ несжатого RSC-payload (дерево грузится в
+  // (main)/layout.tsx на каждой навигации, а description нигде из него не
+  // читался). Для meta-описания одной категории (единственный, кто его
+  // реально использовал) есть отдельный точечный запрос — см.
+  // categoriesService.findMeta()/ICategoryMeta ниже и
+  // buildCategoryMetaDescription в category-utils.ts. Поле убрано из типа
+  // целиком (не опционально) — тот же приём, что и с categoryFeatures чуть
+  // выше: tsc сразу подсветит ошибкой любую попытку прочитать
+  // category.description из дерева.
   children?: ICategory[]
   isBack?: boolean
+}
+
+// Ответ GET /categories/meta — только то, что нужно для meta description
+// ОДНОЙ категории (см. CategoriesService.findMetaByFullPath на бэкенде).
+export interface ICategoryMeta {
+  name: string
+  description: string | null
 }

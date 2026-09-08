@@ -116,13 +116,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // пользуются хлебные крошки (catalog-breadcrumbs.tsx).
     const currentCategory = slugPath ? buildCategoryMap(categories).get(slugPath)?.category : null
 
-    if (!currentCategory) {
+    if (!currentCategory || !slugPath) {
       return buildPageMetadata({
         title: 'Каталог объявлений',
         description: 'Каталог объявлений на агропромышленной площадке AgroZone: продукция, сырьё, техника и оборудование от проверенных поставщиков.',
         path
       })
     }
+
+    // description у currentCategory больше нет (см. комментарий у
+    // ICategory.description) — общее дерево категорий его больше не везёт,
+    // чтобы не раздувать RSC-payload каждой страницы сайта. Здесь, в
+    // generateMetadata ОДНОЙ конкретной страницы каталога, он реально нужен
+    // — берём его точечным запросом, а не оптом из дерева. .catch(() =>
+    // null) — чтобы падение этого запроса не роняло всю generateMetadata
+    // (она и так обёрнута в try/catch снаружи, но тут достаточно откатиться
+    // на generic-описание, не теряя уже найденные title/path).
+    const meta = await categoriesService.findMeta(slugPath).catch(() => null)
 
     return buildPageMetadata({
       // Заголовок уже содержит «AgroZone» сам по себе — title.absolute
@@ -131,7 +141,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       // найдено ранее при закрытии другой задачи, S3 «убрать дубль бренда
       // в title», но не было исправлено там).
       title: `${currentCategory.name} — купить в каталоге AgroZone`,
-      description: buildCategoryMetaDescription(currentCategory),
+      description: buildCategoryMetaDescription(meta ?? { name: currentCategory.name, description: null }),
       path,
       brandInTitle: true
     })

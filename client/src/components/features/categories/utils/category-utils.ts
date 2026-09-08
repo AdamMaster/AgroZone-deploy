@@ -1,4 +1,4 @@
-import { ICategory } from '../types'
+import { ICategory, ICategoryMeta } from '../types'
 import { truncateForMeta } from '@/shared/utils/metadata'
 
 export interface CategoryLookup {
@@ -59,12 +59,13 @@ export const findCategoryIdBySlug = (categories: ICategory[], slug?: string | nu
 
 // Category.description — НЕ готовый текст, а список из 15-25 обиходных
 // названий/сортов через запятую, который GigaChat сгенерировал для
-// семантического поиска (см. комментарий у ICategory.description и у
-// CategoryWithChildren.description на бэкенде — сам промпт прямо просит
-// GigaChat вернуть "только список через запятую, без вступления и
-// пояснений"). Показать его пользователю как есть — значит подсунуть в
-// meta description сырой перечень ключевых слов, что выглядит спамом и не
-// про то же самое пользы: это данные для эмбеддингов, а не маркетинговый
+// семантического поиска (см. подробности у CategoryMetaDto/
+// CategoriesService.findMetaByFullPath на бэкенде и у ICategory на клиенте
+// — почему это отдельный точечный запрос, а не поле в общем дереве
+// категорий; сам промпт прямо просит GigaChat вернуть "только список через
+// запятую, без вступления и пояснений"). Показать его пользователю как
+// есть — значит подсунуть в meta description сырой перечень ключевых слов,
+// что выглядит спамом: это данные для эмбеддингов, а не маркетинговый
 // текст. Поэтому здесь он не транслируется дословно, а оборачивается в
 // шаблон-предложение, куда попадают только первые несколько терминов —
 // ровно так же формулируют auto-описания категорий и другие маркетплейсы
@@ -74,7 +75,7 @@ export const findCategoryIdBySlug = (categories: ICategory[], slug?: string | nu
 // Категории без description (ещё не обогащены GigaChat, см.
 // enrich-category-descriptions.ts) получают общий шаблон без примеров —
 // тот же текст, что раньше был единственным вариантом для всех категорий.
-export function buildCategoryMetaDescription(category: ICategory): string {
+export function buildCategoryMetaDescription(category: ICategoryMeta): string {
   const terms = (category.description ?? '')
     .split(',')
     .map(term => term.trim())
