@@ -23,6 +23,16 @@ import { GigaChatService } from '../src/libs/gigachat/gigachat.service'
 //
 //   npx dotenv -e .env -- ts-node scripts/enrich-category-descriptions.ts
 //   npx dotenv -e .env -- ts-node scripts/enrich-category-descriptions.ts --force
+//   npx dotenv -e .env -- ts-node scripts/enrich-category-descriptions.ts --only="Горчица,Комбайны"
+//
+// --only — точечно перегенерировать конкретные категории по имени (через
+// запятую), НЕЗАВИСИМО от того, есть у них уже description или нет —
+// удобно, чтобы проверить эффект правки промпта/фильтра на конкретном
+// известном случае (см. пример с "Горчицей" в комментарии ниже), не
+// перегоняя через GigaChat всё дерево целиком с --force. Совпадение по
+// имени, а не по id — специально: одноимённые категории в разных ветках
+// (как раз "Горчица" в Технических и в Масличных культурах) обе попадут
+// под перегенерацию, что и нужно для сравнения до/после.
 //
 // Через Nest DI не идём (как и остальные скрипты в scripts/) — GigaChatService
 // и ConfigService прекрасно работают и как обычные классы вне Nest-контекста.
@@ -88,6 +98,15 @@ const MIN_TERM_SIMILARITY = 0.83
 // повторный запуск (после добавления новых категорий) не жёг токены
 // впустую на те, что уже обогащены.
 const force = process.argv.includes('--force')
+
+const onlyArg = process.argv.find(arg => arg.startsWith('--only='))
+const onlyNames = onlyArg
+  ? onlyArg
+      .slice('--only='.length)
+      .split(',')
+      .map(name => name.trim())
+      .filter(Boolean)
+  : null
 
 // Между запросами — небольшая пауза, чтобы не долбить GigaChat пачкой
 // параллельных запросов и не словить лимит по RPS у бесплатного тарифа.
@@ -198,12 +217,16 @@ async function run() {
   const byId = new Map(allCategories.map(c => [c.id, { name: c.name, parentId: c.parentId }]))
 
   const categories = await prisma.category.findMany({
-    where: force ? {} : { OR: [{ description: null }, { description: '' }] },
+    where: onlyNames ? { name: { in: onlyNames } } : force ? {} : { OR: [{ description: null }, { description: '' }] },
     select: { id: true, name: true, description: true }
   })
 
   if (categories.length === 0) {
-    console.log('Нечего обогащать — у всех категорий уже есть описание (используйте --force для перегенерации).')
+    console.log(
+      onlyNames
+        ? `Не нашёл категорий с именами: ${onlyNames.join(', ')} — проверьте написание.`
+        : 'Нечего обогащать — у всех категорий уже есть описание (используйте --force для перегенерации).'
+    )
 
     return
   }
