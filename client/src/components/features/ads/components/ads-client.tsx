@@ -8,6 +8,7 @@ import { findCategoryIdBySlug } from '@/components/features/categories/utils/cat
 import { useCategories } from '../../categories/hooks/use-categories'
 import { useCatalogFilters } from '../../filter/hooks/use-catalog-filters'
 import { useAds } from '../hooks'
+import { IAdsListResponse } from '../types/ad.types'
 import { buildAdsQueryParams } from '../utils/build-ads-query-params'
 import { AdsGrid } from './ads-grid'
 
@@ -26,15 +27,17 @@ interface AdsClientProps {
   // каталога не влияет — там этот проп никогда не передаётся, и
   // используются только filters.* как раньше.
   locationOverride?: AdsLocationOverride
+  // Первая страница, отрисованная сервером для пустого запроса (см.
+  // page.tsx главной). Используем её как initialData для useAds ТОЛЬКО
+  // когда реальный запрос клиента гарантированно совпадает с тем, что
+  // получил сервер (см. canUseInitialAds ниже) — иначе, например,
+  // подставленный из localStorage домашний регион пользователя (которого
+  // сервер на первом запросе не знает) на миг покажет неотфильтрованную
+  // ленту вместо региональной.
+  initialAds?: IAdsListResponse
 }
 
-// Без SSR и без пагинации — один запрос первой страницы целиком на клиенте.
-// Используется на главной (HomeAdsFeed, лента объявлений с капом в
-// CATALOG_PAGE_SIZE без «Показать ещё») и как общий шаблон для случаев, где
-// заранее полученных с сервера данных нет. Для страницы каталога — см.
-// CatalogAdsGrid (initialData с SSR + useInfiniteQuery + «Показать ещё»,
-// S1 в ROADMAP.md).
-export function AdsClient({ serverSlug, layout, className, locationOverride }: AdsClientProps) {
+export function AdsClient({ serverSlug, layout, className, locationOverride, initialAds }: AdsClientProps) {
   const searchParams = useSearchParams()
   const { categories, isLoadingCategories } = useCategories()
   const filters = useCatalogFilters()
@@ -50,8 +53,20 @@ export function AdsClient({ serverSlug, layout, className, locationOverride }: A
     locationOverride && (locationOverride.regionIsoCode || locationOverride.localityFiasId)
   )
 
+  // initialAds сервер посчитал для ПУСТОГО запроса (без категории, поиска,
+  // региона и прочих фильтров) — используем его как initialData, только
+  // если клиент прямо сейчас запрашивает то же самое. Как только
+  // появляется categoryId (страница категории через AdsClient),
+  // поисковый запрос, домашний регион пользователя из localStorage или
+  // активные фильтры каталога — initialAds сервера этому запросу уже не
+  // соответствует, и useAds должен уйти в обычный клиентский фетч.
+  const canUseInitialAds = Boolean(
+    initialAds && !categoryId && !searchQuery && !hasLocationOverride && !filters.hasActiveFilters
+  )
+
   const { ads, isLoadingAds } = useAds(
-    buildAdsQueryParams({ categoryId, search: searchQuery, filters, locationOverride })
+    buildAdsQueryParams({ categoryId, search: searchQuery, filters, locationOverride }),
+    canUseInitialAds ? initialAds : undefined
   )
 
   const trimmedSearchQuery = searchQuery?.trim()

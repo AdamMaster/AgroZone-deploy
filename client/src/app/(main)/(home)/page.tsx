@@ -1,5 +1,9 @@
 import { Suspense } from 'react'
 
+import { adsService } from '@/components/features/ads/services'
+import { IAdsListResponse } from '@/components/features/ads/types/ad.types'
+import { buildAdsQueryParams, CATALOG_PAGE_SIZE } from '@/components/features/ads/utils/build-ads-query-params'
+import { EMPTY_STATE } from '@/components/features/filter/utils/parse-catalog-filters'
 import { HomeAdsFeed } from '@/components/features/home/components'
 import { Container, JsonLd, WelcomeBanner } from '@/components/layout'
 import { Heading } from '@/components/ui'
@@ -7,6 +11,39 @@ import { Heading } from '@/components/ui'
 import { buildOrganizationJsonLd, buildWebSiteJsonLd } from '@/shared/utils/json-ld'
 
 export default async function Home() {
+  // LCP на главной — фото объявления из этой самой ленты (см. аудит
+  // Lighthouse/PSI, S6 в ROADMAP.md): без SSR лента объявлений грузилась
+  // только на клиенте (HomeAdsFeed → AdsClient → useAds, обычный
+  // useQuery без initialData), из-за чего <img> LCP-элемента физически
+  // отсутствовал в исходном HTML-документе ("Запрос можно найти в
+  // исходном документе" — красный, в PSI). Получаем здесь первую
+  // страницу без каких-либо фильтров (у главной их и не может быть —
+  // это не /catalog, URL-параметров фильтра тут нет) и без categoryId —
+  // тот же пустой запрос, что соберёт на клиенте AdsClient, когда
+  // домашний регион пользователя (locationOverride, см. HomeAdsFeed) ещё
+  // не подставлен. Именно поэтому это безопасно передавать как
+  // initialData только когда домашний регион не задан — переопределение
+  // региона живёт в localStorage и серверу недоступно на первом
+  // запросе (см. ads-client.tsx, canUseInitialAds).
+  //
+  // revalidate: 120 — тот же интервал, что и на /catalog (см. там же),
+  // чтобы не долбить бэкенд на каждый запрос главной, но и не показывать
+  // совсем протухшую ленту.
+  let initialAds: IAdsListResponse = { items: [], total: 0, page: 1, limit: CATALOG_PAGE_SIZE }
+
+  try {
+    const adsParams = buildAdsQueryParams({ filters: EMPTY_STATE })
+
+    initialAds = await adsService.findAll(
+      { ...adsParams, page: 1, limit: CATALOG_PAGE_SIZE },
+      { next: { revalidate: 120 } }
+    )
+  } catch {
+    // Не роняем главную целиком, если бэкенд на секунду недоступен —
+    // просто отрисуется без initialData, лента подтянется на клиенте как
+    // раньше.
+  }
+
   return (
     <div className='pt-0 sm:pt-4'>
       {/* Organization + WebSite (с SearchAction для строки поиска в выдаче
@@ -38,7 +75,7 @@ export default async function Home() {
         </Heading>
         <WelcomeBanner />
         <Suspense fallback={null}>
-          <HomeAdsFeed />
+          <HomeAdsFeed initialAds={initialAds} />
         </Suspense>
       </Container>
     </div>
