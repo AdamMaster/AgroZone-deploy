@@ -170,7 +170,16 @@ export const FormRegisterSms = ({ returnTo }: RegisterSmsFormProps) => {
       {step === 2 && (
         <div className='flex flex-col items-center gap-4 text-center'>
           <p className='text-sm text-gray-500'>Позвоните с номера {formatPhoneNumber(regData.phone)} на</p>
-          <p className='text-2xl font-semibold'>{callNumber}</p>
+          {/* tel: — на мобильных открывает штатный набор номера, чтобы не
+          заставлять пользователя перепечатывать номер руками (он и так
+          должен позвонить именно с этого телефона, иначе zvonok не
+          опознает звонок — см. checkCallbackConfirmed). Пробелы/скобки/
+          дефисы из отображаемого номера в href не годятся — некоторые
+          мобильные браузеры их не разбирают, поэтому чистим до
+          цифр+плюса отдельно от того, что показываем на экране. */}
+          <a href={`tel:${callNumber.replace(/[^\d+]/g, '')}`} className='text-2xl font-semibold'>
+            {callNumber}
+          </a>
           <p className='text-sm text-gray-500'>
             Звонок бесплатный, трубку можно сразу положить — подтверждение придёт автоматически
           </p>

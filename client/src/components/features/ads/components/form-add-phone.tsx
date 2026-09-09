@@ -212,7 +212,11 @@ export const FormAddPhone = ({ onSuccessComplete, phones = [], mode = 'ad' }: Fo
       {step === 2 && (
         <div className='flex flex-col items-center gap-4 text-center'>
           <p className='text-muted-foreground text-sm'>Позвоните с номера {formatPhoneNumber(phone)} на</p>
-          <p className='text-2xl font-semibold'>{callNumber}</p>
+          {/* tel: — на мобильных открывает штатный набор номера (см. тот же
+          приём в form-register-sms.tsx). */}
+          <a href={`tel:${callNumber.replace(/[^\d+]/g, '')}`} className='text-2xl font-semibold'>
+            {callNumber}
+          </a>
           <p className='text-muted-foreground text-sm'>
             Звонок бесплатный, трубку можно сразу положить — подтверждение придёт автоматически
           </p>
