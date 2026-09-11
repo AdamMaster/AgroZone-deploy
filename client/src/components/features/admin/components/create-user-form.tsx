@@ -5,7 +5,7 @@ import { Check, Copy, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 
-import { Button, Field, FieldError, FieldGroup, Heading, Input } from '@/components/ui'
+import { Button, Field, FieldError, FieldGroup, Heading, Input, InputGroup } from '@/components/ui'
 
 import { formatPhoneNumber } from '@/shared/utils'
 
@@ -25,7 +25,8 @@ const ADMIN_BUTTON_CLASS = 'rounded-sm bg-neutral-100 text-neutral-950 hover:bg-
 // символов (0/O, 1/l/I) — чтобы легко было продиктовать или переписать на
 // бумаге. Длина 10 — с запасом выше минимума в 6 (см. AdminCreateUserSchema).
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
-const generatePassword = () => Array.from({ length: 10 }, () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)]).join('')
+const generatePassword = () =>
+  Array.from({ length: 10 }, () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)]).join('')
 
 // Форма создания продавцу аккаунта вручную, минуя звонок для подтверждения
 // телефона (см. UserService.createVerifiedByAdmin на сервере). Раньше это
@@ -70,11 +71,10 @@ export const CreateUserForm = () => {
     form.reset({ phone: '', password: generatePassword(), displayName: '' })
   }
 
-  // Пароль после успешного создания не возвращается с сервера (в ответе
-  // только id/displayName/телефон — пароль там появляться не должен даже
-  // в открытом виде), поэтому показываем именно то, что реально было
-  // отправлено в форме.
   const submittedPassword = form.getValues('password')
+
+  const fieldClassName =
+    'bg-neutral-700 border-none hover:bg-neutral-600 focus-visible:bg-neutral-600 placeholder:text-neutral-400 rounded-sm'
 
   if (createdUser) {
     return (
@@ -119,7 +119,7 @@ export const CreateUserForm = () => {
           </div>
         </div>
 
-        <Button type='button' size='sm' className={cn(ADMIN_BUTTON_CLASS, 'mt-6 w-full')} onClick={handleCreateAnother}>
+        <Button type='button' size='lg' className={cn(ADMIN_BUTTON_CLASS, 'mt-6 px-5')} onClick={handleCreateAnother}>
           Создать ещё один аккаунт
         </Button>
       </div>
@@ -150,6 +150,7 @@ export const CreateUserForm = () => {
                   placeholder='+7 (999) 999-99-99'
                   maxLength={18}
                   onChange={e => onChange(formatPhoneNumber(e.target.value))}
+                  className={fieldClassName}
                 />
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
@@ -161,7 +162,7 @@ export const CreateUserForm = () => {
             control={form.control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid} className={cn(fieldState.invalid && 'pb-5', 'group')}>
-                <Input {...field} placeholder='Имя продавца (необязательно)' />
+                <Input {...field} placeholder='Имя продавца (необязательно)' className={fieldClassName} />
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
             )}
@@ -175,29 +176,25 @@ export const CreateUserForm = () => {
                 {/* Пароль виден открытым текстом, а не под type='password' —
                 администратор должен его прочитать и передать продавцу, а не
                 просто ввести и забыть, как в обычной форме регистрации. */}
-                <Input {...field} type='text' placeholder='Пароль' />
+                <InputGroup className='relative'>
+                  <Input {...field} type='text' placeholder='Пароль' className={fieldClassName} />
+                  <Button
+                    type='button'
+                    size='sm'
+                    className={cn(ADMIN_BUTTON_CLASS, 'absolute top-[50%] right-2 w-fit translate-y-[-50%]')}
+                    onClick={() => form.setValue('password', generatePassword(), { shouldValidate: true })}
+                  >
+                    <RefreshCw className='size-4' />
+                    Сгенерировать пароль
+                  </Button>
+                </InputGroup>
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
             )}
           />
-
-          <Button
-            type='button'
-            size='sm'
-            className={cn(ADMIN_BUTTON_CLASS, 'w-fit')}
-            onClick={() => form.setValue('password', generatePassword(), { shouldValidate: true })}
-          >
-            <RefreshCw className='size-4' />
-            Сгенерировать новый пароль
-          </Button>
         </FieldGroup>
 
-        <Button
-          type='submit'
-          size='sm'
-          className={cn(ADMIN_BUTTON_CLASS, 'mt-6 w-full')}
-          disabled={isCreatingVerifiedUser}
-        >
+        <Button type='submit' size='lg' className={cn(ADMIN_BUTTON_CLASS, 'mt-6')} disabled={isCreatingVerifiedUser}>
           {isCreatingVerifiedUser ? 'Создаём...' : 'Создать аккаунт'}
         </Button>
       </form>
