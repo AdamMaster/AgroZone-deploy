@@ -128,7 +128,7 @@ export const CreateUserForm = () => {
 
   return (
     <div className='max-w-md py-6 text-neutral-50'>
-      <Heading level={3} className='mb-1 font-medium'>
+      <Heading level={3} className='mb-1 font-medium text-neutral-100'>
         Новый аккаунт продавца
       </Heading>
       <p className='mb-6 text-sm text-neutral-300'>
@@ -181,7 +181,7 @@ export const CreateUserForm = () => {
                   <Button
                     type='button'
                     size='sm'
-                    className={cn(ADMIN_BUTTON_CLASS, 'absolute top-[50%] right-2 w-fit translate-y-[-50%]')}
+                    className={cn(ADMIN_BUTTON_CLASS, 'absolute top-[50%] right-1.75 w-fit translate-y-[-50%]')}
                     onClick={() => form.setValue('password', generatePassword(), { shouldValidate: true })}
                   >
                     <RefreshCw className='size-4' />
