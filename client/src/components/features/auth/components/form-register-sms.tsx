@@ -29,9 +29,14 @@ import { AuthFormWrapper } from './auth-form-wrapper'
 interface RegisterSmsFormProps {
   // См. form-login.tsx — тот же приём (U1 в ROADMAP.md).
   returnTo?: string
+  // Телефон/логин, который пользователь уже начал вводить на форме входа,
+  // но переключился на вкладку «Регистрация» (см. authTabs в form-login.tsx
+  // и AuthFormWrapper). Подставляем как стартовое значение первого шага,
+  // чтобы не заставлять перепечатывать заново.
+  initialPhone?: string
 }
 
-export const FormRegisterSms = ({ returnTo }: RegisterSmsFormProps) => {
+export const FormRegisterSms = ({ returnTo, initialPhone }: RegisterSmsFormProps) => {
   const { setView, onOpen, onClose } = useAppModal()
   const router = useRouter()
   const [step, setStep] = useState(1)
@@ -50,7 +55,7 @@ export const FormRegisterSms = ({ returnTo }: RegisterSmsFormProps) => {
 
   const formPhone = useForm<TypeRegisterSmsPhoneSchema>({
     resolver: zodResolver(RegisterSmsPhoneSchema),
-    defaultValues: { phone: '' }
+    defaultValues: { phone: initialPhone ? formatPhoneNumber(initialPhone) : '' }
   })
 
   const formFinal = useForm<TypeRegisterSmsFinalSchema>({
@@ -133,12 +138,24 @@ export const FormRegisterSms = ({ returnTo }: RegisterSmsFormProps) => {
       description={
         step === 1 ? 'Введите номер телефона' : step === 2 ? 'Позвоните для подтверждения' : 'Придумайте пароль'
       }
-      switchButtonLabel={
-        <>
-          Уже есть аккаунт? <span className='text-primary'>Войти</span>
-        </>
+      authTabs={
+        step === 1
+          ? {
+              active: 'register-sms',
+              onSelect: () => {
+                // Текущее значение поля телефона — передаём на форму входа,
+                // чтобы не пропадало при переключении вкладки (см.
+                // initialLogin в FormLogin).
+                const typedValue = formPhone.getValues('phone')?.trim()
+
+                onOpen('login', {
+                  ...(returnTo && { returnTo }),
+                  ...(typedValue && { initialLogin: typedValue })
+                })
+              }
+            }
+          : undefined
       }
-      onSwitchButtonClick={() => onOpen('login', returnTo ? { returnTo } : undefined)}
     >
       {step === 1 && (
         <form id='form-rhf-demo' onSubmit={formPhone.handleSubmit(onFormPhoneSubmit)}>

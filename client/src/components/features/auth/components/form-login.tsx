@@ -28,9 +28,14 @@ interface LoginFormProps {
   // все места, что кладут returnTo в props модалки, уже либо жёстко
   // прописанный в коде путь, либо сами проверяют перед этим.
   returnTo?: string
+  // Значение, с которым пользователь уже начал вводить телефон/логин на
+  // форме регистрации, но передумал и переключился на вкладку «Войти»
+  // (см. authTabs ниже и FormRegisterSms). Подставляется как стартовое
+  // значение поля, чтобы не заставлять перепечатывать номер заново.
+  initialLogin?: string
 }
 
-export const FormLogin = ({ isShowSocial = true, returnTo }: LoginFormProps) => {
+export const FormLogin = ({ isShowSocial = true, returnTo, initialLogin }: LoginFormProps) => {
   const [showPassword, setShowPassword] = useState(false)
   const [isShowTwoFactor, setIsShowTwoFactor] = useState(false)
   const { onOpen, onClose } = useAppModal()
@@ -41,7 +46,7 @@ export const FormLogin = ({ isShowSocial = true, returnTo }: LoginFormProps) => 
   const form = useForm<TypeLoginSchema>({
     resolver: zodResolver(LoginSchema),
     defaultValues: {
-      login: '',
+      login: initialLogin ?? '',
       password: '',
       code: ''
     }
@@ -91,15 +96,28 @@ export const FormLogin = ({ isShowSocial = true, returnTo }: LoginFormProps) => 
           ? 'Войти с помощью:'
           : 'Мы отправили одноразовый код подтверждения. Пожалуйста, введите его ниже'
       }
-      switchButtonLabel={
-        !isShowTwoFactor && (
-          <>
-            Еще нет аккаунта? <span className='text-primary'>Зарегистрироваться</span>
-          </>
-        )
-      }
       isShowSocial={isShowSocial && !isShowTwoFactor}
-      onSwitchButtonClick={() => onOpen('register-sms', returnTo ? { returnTo } : undefined)}
+      authTabs={
+        !isShowTwoFactor
+          ? {
+              active: 'login',
+              onSelect: () => {
+                // Текущее значение поля «Почта или номер телефона» — если
+                // пользователь уже начал его вводить, передаём дальше на
+                // форму регистрации, чтобы не пропадало при переключении
+                // вкладки (см. initialPhone в FormRegisterSms).
+                const typedValue = form.getValues('login')?.trim()
+                const digitsOnly = typedValue ? typedValue.replace(/\D/g, '') : ''
+                const looksLikePhone = digitsOnly.length >= 10
+
+                onOpen('register-sms', {
+                  ...(returnTo && { returnTo }),
+                  ...(looksLikePhone && { initialPhone: typedValue })
+                })
+              }
+            }
+          : undefined
+      }
     >
       <form id='form-rhf-demo' onSubmit={form.handleSubmit(onSubmit)}>
         <FieldGroup className={cn('group', !isShowTwoFactor && 'hidden')}>
