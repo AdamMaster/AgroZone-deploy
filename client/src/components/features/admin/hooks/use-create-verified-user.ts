@@ -4,7 +4,7 @@ import { useMutation } from '@tanstack/react-query'
 
 import { toastMessageHandler } from '@/shared/utils'
 
-import { usersAdminService } from '../services/users-admin.service'
+import { CreateVerifiedUserPayload, usersAdminService } from '../services/users-admin.service'
 
 // onSuccess тут не показывает toast сам (в отличие от большинства admin-
 // мутаций, см. use-approve-dealer-feed.ts) — созданные телефон/пароль
@@ -19,7 +19,7 @@ export function useCreateVerifiedUser() {
     reset: resetCreatedUser
   } = useMutation({
     mutationKey: ['admin-create-verified-user'],
-    mutationFn: usersAdminService.createVerified,
+    mutationFn: (payload: CreateVerifiedUserPayload) => usersAdminService.createVerified(payload),
     onError(error) {
       toastMessageHandler(error)
     }

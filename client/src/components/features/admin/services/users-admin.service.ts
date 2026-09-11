@@ -1,6 +1,6 @@
 import { api } from '@/shared/api'
 
-interface CreateVerifiedUserPayload {
+export interface CreateVerifiedUserPayload {
   phone: string
   password: string
   displayName?: string
