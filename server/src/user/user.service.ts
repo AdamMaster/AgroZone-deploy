@@ -1,5 +1,5 @@
 import { PrismaService } from '@/prisma/prisma.service'
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common'
 import { hash, verify } from 'argon2'
 import { AdStatus, AuthMethod, ConversationType, TokenType, UserRole, UserType } from '@/generated/prisma/enums'
 import { UpdateUserDto } from './dto/update-user.dto'
@@ -12,6 +12,7 @@ import { isPremiumActive } from '@/premium/utils/is-premium-active.util'
 import { normalizePhone } from '@/libs/common/utils/phone.util'
 import { ZvonokService } from '@/libs/zvonok/zvonok.service'
 import { PERSONAL_DATA_CONSENT_DOCUMENT_VERSION } from '@/libs/common/constants/legal.constants'
+import { AdminCreateVerifiedUserDto } from './dto/admin-create-verified-user.dto'
 
 @Injectable()
 export class UserService {
@@ -199,6 +200,59 @@ export class UserService {
     })
 
     return user
+  }
+
+  // Создание аккаунта продавцу вручную администратором — см.
+  // AdminCreateVerifiedUserDto и UserController.createVerifiedByAdmin
+  // (доступно только UserRole.ADMIN). В отличие от обычной регистрации
+  // (три пути — email/SMS/OAuth, все через create() выше) здесь нет ни
+  // формы, ни звонка, ни согласия пользователя из его собственного
+  // браузера — аккаунт полностью заводит администратор. Поэтому:
+  // - isVerified/UserPhone.isVerified сразу true — телефон считается
+  //   подтверждённым административно, продавец сможет войти по
+  //   телефону+паролю сразу, без звонка.
+  // - personalDataConsentAt осознанно НЕ проставляется (в отличие от
+  //   create()) — обычное согласие фиксируется с реальным IP/User-Agent
+  //   браузера пользователя (152-ФЗ, см. PersonalDataConsent в
+  //   schema.prisma), а здесь такого контекста нет и подделывать его
+  //   нельзя. Согласие в этом случае администратор должен получить и
+  //   зафиксировать отдельно, вне приложения.
+  async createVerifiedByAdmin(dto: AdminCreateVerifiedUserDto) {
+    const phone = normalizePhone(dto.phone)
+
+    const existingPhone = await this.prismaService.userPhone.findUnique({ where: { phone } })
+
+    if (existingPhone) {
+      throw new ConflictException('Этот номер телефона уже привязан к другому аккаунту')
+    }
+
+    const passwordHash = await hash(dto.password)
+    const displayName = dto.displayName?.trim() || 'Продавец'
+
+    const user = await this.prismaService.user.create({
+      data: {
+        email: null,
+        password: passwordHash,
+        displayName,
+        picture: '',
+        method: AuthMethod.CREDENTIALS,
+        isVerified: true,
+        phones: {
+          create: {
+            phone,
+            isPrimary: true,
+            isVerified: true
+          }
+        }
+      },
+      include: { phones: true }
+    })
+
+    return {
+      id: user.id,
+      displayName: user.displayName,
+      phone: user.phones[0]?.phone ?? phone
+    }
   }
 
   async update(userId: string, dto: UpdateUserDto) {

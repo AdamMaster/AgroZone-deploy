@@ -31,6 +31,7 @@ import { PhoneChangeDto } from './dto/phone-change.dto'
 import { ConfirmPhoneChangeDto } from './dto/confirm-phone-change.dto'
 import { SetPrimaryPhoneDto } from './dto/set-primary-phone.dto'
 import { DeleteAccountDto } from './dto/delete-account.dto'
+import { AdminCreateVerifiedUserDto } from './dto/admin-create-verified-user.dto'
 import { PhoneThrottlerGuard } from '@/libs/common/guards/phone-throttler.guard'
 import { ConfigService } from '@nestjs/config'
 
@@ -54,6 +55,16 @@ export class UserController {
   @Get('by-id/:id')
   async findById(@Param('id') id: string) {
     return this.userService.findById(id)
+  }
+
+  // Создать продавцу аккаунт вручную, минуя подтверждение звонком (см.
+  // UserService.createVerifiedByAdmin) — используется из админ-панели
+  // (/admin/users).
+  @Authorization(UserRole.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @Post('admin/create-verified')
+  async createVerifiedByAdmin(@Body() dto: AdminCreateVerifiedUserDto) {
+    return this.userService.createVerifiedByAdmin(dto)
   }
 
   // Публичная страница продавца (/sellers/:id на фронте) и блок "Ещё от

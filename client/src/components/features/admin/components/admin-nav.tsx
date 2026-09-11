@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft, Building2, Flag, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Building2, Flag, ShieldCheck, UserPlus } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -13,7 +13,8 @@ import { cn } from '@/lib/utils'
 const items = [
   { label: 'Модерация объявлений', icon: ShieldCheck, id: 'moderation', href: '/admin/moderation' },
   { label: 'Жалобы', icon: Flag, id: 'reports', href: '/admin/reports' },
-  { label: 'Фиды дилеров', icon: Building2, id: 'dealers', href: '/admin/dealers' }
+  { label: 'Фиды дилеров', icon: Building2, id: 'dealers', href: '/admin/dealers' },
+  { label: 'Пользователи', icon: UserPlus, id: 'users', href: '/admin/users' }
 ]
 
 export const AdminNav = () => {
