@@ -155,9 +155,21 @@ export class AuthController {
       )
     }
 
-    await this.authService.extractProfileFromCode(req, provider, code)
+    const { isNewUser } = await this.authService.extractProfileFromCode(req, provider, code)
 
-    return res.redirect(`${this.configService.getOrThrow<string>('ALLOWED_ORIGIN')}/profile/settings`)
+    // /profile/settings — это просто server-side redirect() на
+    // /profile/settings/general (см. app/(main)/profile/settings/page.tsx),
+    // а next/navigation.redirect() не переносит query-строку исходного
+    // запроса на новый URL — ?newUser=1 отсюда до RegistrationGoalHandler
+    // просто не долетел бы. Ведём сразу на конечный адрес.
+    // isNewUser — единственный способ узнать на фронте, что это только что
+    // созданный аккаунт (не просто "оба пути ведут на одну страницу" — у
+    // входа через соцсеть нет отдельного экрана "Регистрация", см.
+    // AuthService.extractProfileFromCode), нужен для цели "registration" в
+    // Яндекс.Метрике (F15 в ROADMAP.md).
+    const redirectPath = isNewUser ? '/profile/settings/general?newUser=1' : '/profile/settings/general'
+
+    return res.redirect(`${this.configService.getOrThrow<string>('ALLOWED_ORIGIN')}${redirectPath}`)
   }
 
   @Post('logout')

@@ -2,7 +2,7 @@
 
 import { useMutation } from '@tanstack/react-query'
 
-import { toastMessageHandler } from '@/shared/utils'
+import { METRIKA_GOALS, reachGoal, toastMessageHandler } from '@/shared/utils'
 
 import { adsService } from '../services/ads.service'
 
@@ -20,6 +20,12 @@ export function useAdPhone() {
   const { mutate: revealPhone, isPending: isRevealingPhone } = useMutation({
     mutationKey: ['ad-phone'],
     mutationFn: (id: string) => adsService.getPhone(id),
+    // Цель "phone_reveal" (F15 в ROADMAP.md) — здесь, а не на вызывающей
+    // стороне (AdDetail), потому что это единственное место в приложении,
+    // где вообще раскрывается телефон продавца. onSuccess на уровне
+    // useMutation и onSuccess, переданный в сам вызов revealPhone(id, {...}),
+    // не конфликтуют — React Query вызывает оба.
+    onSuccess: () => reachGoal(METRIKA_GOALS.PHONE_REVEAL),
     onError: toastMessageHandler
   })
 

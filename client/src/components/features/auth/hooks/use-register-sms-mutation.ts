@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
-import { toastMessageHandler } from '@/shared/utils'
+import { METRIKA_GOALS, reachGoal, toastMessageHandler } from '@/shared/utils'
 
 import { TypeRegisterSmsFinalSchema, TypeRegisterSmsPhoneSchema } from '../schemes'
 import { authService } from '../services'
@@ -36,6 +36,11 @@ export function useRegisterSmsMutation() {
     onSuccess() {
       toast.success('Регистрация успешно завершена!')
       queryClient.invalidateQueries({ queryKey: ['profile'] })
+
+      // Цель "registration" (F15 в ROADMAP.md) — см. также use-register-
+      // mutation.ts (email) и RegistrationGoalHandler (OAuth) для двух
+      // других способов зарегистрироваться.
+      reachGoal(METRIKA_GOALS.REGISTRATION)
     },
     onError(error) {
       toastMessageHandler(error)

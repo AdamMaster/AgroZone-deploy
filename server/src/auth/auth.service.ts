@@ -370,7 +370,15 @@ export class AuthService {
           }
         })
       }
-      return this.saveSession(req, user)
+      await this.saveSession(req, user)
+      // isNewUser — контроллер использует его, чтобы отправить фронт с
+      // ?newUser=1 (см. AuthController.callback) для цели "registration" в
+      // Яндекс.Метрике (F15 в ROADMAP.md). У OAuth нет отдельного шага
+      // "нажал Зарегистрироваться" — вход и регистрация неотличимы для
+      // пользователя, поэтому единственный надёжный признак "это новый
+      // аккаунт" — то, что мы сами только что создали его ниже, а не нашли
+      // существующий.
+      return { isNewUser: false }
     }
 
     const providerKey = (profile?.provider?.toUpperCase() ?? '') as keyof typeof AuthMethod
@@ -406,7 +414,8 @@ export class AuthService {
       })
     }
 
-    return this.saveSession(req, user)
+    await this.saveSession(req, user)
+    return { isNewUser: true }
   }
 
   async login(req: Request, dto: LoginDto) {

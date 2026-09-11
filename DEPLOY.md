@@ -66,6 +66,25 @@ cd agro-zone
    подтверждения просто не рендерится (см. `app/layout.tsx`), ошибки не
    будет. После добавления значений — пересобрать и передеплоить клиент,
    затем нажать «Подтвердить» в панели.
+   Туда же — `NEXT_PUBLIC_YANDEX_METRIKA_ID` (F15 в ROADMAP.md, счётчик +
+   Вебвизор + 5 целей). Завести счётчик самостоятельно на
+   metrika.yandex.ru (я не логинюсь в чужие аккаунты Яндекс/Google, см.
+   правила): добавить сайт (agro-zone.ru, https), скопировать номер
+   счётчика. Затем:
+   1. В корневой `.env` — `NEXT_PUBLIC_YANDEX_METRIKA_ID=<номер счётчика>`.
+   2. Пересобрать и передеплоить клиент (это NEXT_PUBLIC_-ключ — как и
+      остальные три выше, нужен только на этапе сборки, см.
+      `client/Dockerfile`): `docker compose -f docker-compose.prod.yml
+      --env-file .env build client && docker compose -f
+      docker-compose.prod.yml --env-file .env up -d client`.
+   3. В панели Метрики: Настройки счётчика → Цели → добавить 5 целей типа
+      «JavaScript-событие» с идентификаторами ровно `search`,
+      `phone_reveal`, `message_to_seller`, `ad_submit`, `registration`
+      (см. `client/src/shared/utils/metrika.ts`, `METRIKA_GOALS`) — без
+      этого шага события всё равно будут долетать до Метрики, но не
+      попадут в отчёты по конверсиям как цели.
+   Без этой переменной счётчик просто не подключается — ошибок сборки и
+   рантайма нет (см. `YandexMetrika`, `components/layout/analytics`).
 2. `server/.env` — берёте текущий рабочий `.env` с dev-машины и правите:
    - `NODE_ENV=production`
    - `APPLICATION_URL=https://api.agro-zone.ru`

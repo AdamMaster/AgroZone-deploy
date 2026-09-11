@@ -76,6 +76,10 @@ services:
         NEXT_PUBLIC_YANDEX_CAPTCHA_CLIENT_KEY: ${NEXT_PUBLIC_YANDEX_CAPTCHA_CLIENT_KEY}
         NEXT_PUBLIC_2GIS_KEY: ${NEXT_PUBLIC_2GIS_KEY}
         NEXT_PUBLIC_DADATA_KEY: ${NEXT_PUBLIC_DADATA_KEY}
+        # Счётчик Яндекс.Метрики (F15 в ROADMAP.md) — не задан в .env, просто
+        # станет пустой строкой, YandexMetrika это уже учитывает (компонент
+        # ничего не рендерит).
+        NEXT_PUBLIC_YANDEX_METRIKA_ID: ${NEXT_PUBLIC_YANDEX_METRIKA_ID}
         # Подтверждение сайта в Google Search Console / Яндекс.Вебмастере
         # (S2 в ROADMAP.md) — та же логика, что у переменных выше: нужны на
         # этапе сборки (см. комментарий в client/Dockerfile). Не заданы в

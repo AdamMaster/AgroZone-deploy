@@ -7,6 +7,8 @@ import { useState } from 'react'
 
 import { Button, Input } from '@/components/ui'
 
+import { METRIKA_GOALS, reachGoal } from '@/shared/utils'
+
 import { cn } from '@/lib/utils'
 
 import { useSearch } from '../hooks/use-search'
@@ -34,6 +36,12 @@ export const SearchBar = ({ className }: SearchBarProps) => {
       router.push('/catalog')
       return
     }
+
+    // Цель "search" (F15 в ROADMAP.md) — именно тут, а не в useSearch
+    // (там же живут только подсказки-автокомплит), потому что это момент
+    // реального пользовательского действия "искать", а не каждой буквы,
+    // напечатанной в поле.
+    reachGoal(METRIKA_GOALS.SEARCH, { query: trimmedQuery })
 
     router.push(`/catalog?search=${encodeURIComponent(trimmedQuery)}`)
 

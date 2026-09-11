@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 
 import { LEGAL_DETAILS, SITE_URL } from '@/components/features/legal/legal-details'
 import { SupportChatWidget } from '@/components/features/support/components'
-import { CookieConsentBanner } from '@/components/layout'
+import { CookieConsentBanner, YandexMetrika } from '@/components/layout'
 import { AppModal } from '@/components/modals/app'
 import { CategoriesModal } from '@/components/modals/categories'
 import { FilterModal } from '@/components/modals/filter'
@@ -103,6 +103,12 @@ export default function RootLayout({
           </Suspense>
           <CookieConsentBanner />
           <SupportChatWidget />
+          {/* useSearchParams внутри — нужен Suspense (тот же приём, что и у
+          FilterModal выше), иначе `next build` падает с ошибкой
+          "missing Suspense boundary". */}
+          <Suspense fallback={null}>
+            <YandexMetrika />
+          </Suspense>
         </MainProvider>
       </body>
     </html>
