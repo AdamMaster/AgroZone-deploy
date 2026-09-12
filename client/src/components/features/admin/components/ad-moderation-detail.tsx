@@ -12,7 +12,7 @@ import { useModerationAd, usePublishAd } from '@/components/features/ads/hooks'
 import { ICategoryFeature } from '@/components/features/ads/types/ad.types'
 import { useCategories } from '@/components/features/categories/hooks/use-categories'
 import { useCategoryFeatures } from '@/components/features/categories/hooks/use-category-features'
-import { Avatar, AvatarFallback, Button, ButtonBack, Heading, Loading } from '@/components/ui'
+import { Avatar, AvatarFallback, Button, ButtonBack, Heading, Loading, MultilineText } from '@/components/ui'
 
 import { PRICE_UNITS } from '@/shared/constants/units'
 import { findCategoryById, formatFeatureValue, formatPhoneNumber, getPathToCategory } from '@/shared/utils'
@@ -229,7 +229,7 @@ export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
           <Heading level={4} className='mb-2'>
             Описание
           </Heading>
-          <p className='leading-6 whitespace-pre-wrap'>{ad.description}</p>
+          <MultilineText text={ad.description} />
         </div>
       )}
 

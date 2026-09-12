@@ -11,7 +11,7 @@ import Lightbox from 'yet-another-react-lightbox'
 import Zoom from 'yet-another-react-lightbox/plugins/zoom'
 
 import { UserType } from '@/components/features/auth/types'
-import { Avatar, AvatarFallback, AvatarImage, Button, ButtonBack, Heading } from '@/components/ui'
+import { Avatar, AvatarFallback, AvatarImage, Button, ButtonBack, Heading, MultilineText } from '@/components/ui'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 import { PRICE_UNITS } from '@/shared/constants/units'
@@ -550,7 +550,7 @@ export const AdDetail = ({
               <Heading level={4} className='mb-2'>
                 Описание
               </Heading>
-              <p className='leading-6 whitespace-pre-wrap'>{ad.description}</p>
+              <MultilineText text={ad.description} />
             </div>
           )}
 
