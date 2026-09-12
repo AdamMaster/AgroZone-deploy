@@ -1,5 +1,4 @@
 import { useState } from 'react'
-
 import { Control, Controller, ControllerRenderProps } from 'react-hook-form'
 
 import {
@@ -226,8 +225,6 @@ const CaliberInput = ({ field, unit }: CaliberInputProps) => {
       <Input
         className='h-11! px-4 sm:h-12! md:h-13!'
         value={text}
-        // Пускаем в поле только цифры, запятую, плюс и пробел — чтобы нельзя
-        // было напечатать буквы или минус, не дожидаясь потери фокуса.
         onChange={e => setText(e.target.value.replace(/[^\d,+\s]/g, ''))}
         onBlur={() => field.onChange(parseCaliberInput(text))}
         placeholder='Например: 45+, 55+, 65'
