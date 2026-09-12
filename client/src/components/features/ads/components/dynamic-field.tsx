@@ -1,4 +1,6 @@
-import { Control, Controller } from 'react-hook-form'
+import { useState } from 'react'
+
+import { Control, Controller, ControllerRenderProps } from 'react-hook-form'
 
 import {
   Checkbox,
@@ -84,50 +86,68 @@ export const DynamicField = ({ feature, control }: DynamicFieldProps) => {
                 <span className='text-sm'>{feature.label}</span>
               </label>
             ) : feature.type === 'NUMBER' ? (
-              <div className='flex items-center gap-2'>
-                <Input
-                  className='h-11! px-4 sm:h-12! md:h-13!'
-                  {...field}
-                  type='number'
-                  value={field.value === null || field.value === undefined ? '' : String(field.value)}
-                  onChange={e => {
-                    const val = e.target.value
-                    field.onChange(val === '' ? null : Number(val))
-                  }}
-                />
-                {!!feature.units?.length &&
-                  (feature.units.length === 1 ? (
-                    <span className='shrink-0 text-sm text-gray-500'>{feature.units[0]}</span>
-                  ) : (
-                    <Controller
-                      name={`categoryFeatures.${feature.name}__unit`}
-                      control={control}
-                      defaultValue={feature.units[0]}
-                      render={({ field: unitField }) => (
-                        <div className='flex shrink-0 gap-1'>
-                          {feature.units!.map(u => {
-                            const selected = (unitField.value ?? feature.units![0]) === u
+              // "Калибр/размер" (см. AGRO_FRESH_FEATURES в server/prisma/data/
+              // categories.ts) — единственная NUMBER-характеристика, где
+              // продавцу нужно указать сразу НЕСКОЛЬКО значений (он может
+              // продавать сразу несколько калибров одной культуры), а не одно
+              // число, как у остальных NUMBER-полей. Переопределяем обычный
+              // числовой инпут на текстовое поле по имени фичи — тот же приём,
+              // что уже применён к полю "year" в filter-feature-field.tsx
+              // (там по имени поля подставляется YearRangeField вместо
+              // обычного NumberRangeField). Тип фичи в базе остаётся NUMBER
+              // намеренно: страница поиска показывает для калибра тот же
+              // фильтр "От"/"До", что и для любой другой числовой
+              // характеристики, без единой правки на клиенте — см.
+              // AdsService.resolveFeatureFilters на сервере, который теперь
+              // понимает и старое одиночное число, и новый массив.
+              feature.name === 'caliber' ? (
+                <CaliberInput field={field} unit={feature.units?.[0]} />
+              ) : (
+                <div className='flex items-center gap-2'>
+                  <Input
+                    className='h-11! px-4 sm:h-12! md:h-13!'
+                    {...field}
+                    type='number'
+                    value={field.value === null || field.value === undefined ? '' : String(field.value)}
+                    onChange={e => {
+                      const val = e.target.value
+                      field.onChange(val === '' ? null : Number(val))
+                    }}
+                  />
+                  {!!feature.units?.length &&
+                    (feature.units.length === 1 ? (
+                      <span className='shrink-0 text-sm text-gray-500'>{feature.units[0]}</span>
+                    ) : (
+                      <Controller
+                        name={`categoryFeatures.${feature.name}__unit`}
+                        control={control}
+                        defaultValue={feature.units[0]}
+                        render={({ field: unitField }) => (
+                          <div className='flex shrink-0 gap-1'>
+                            {feature.units!.map(u => {
+                              const selected = (unitField.value ?? feature.units![0]) === u
 
-                            return (
-                              <button
-                                key={u}
-                                type='button'
-                                onClick={() => unitField.onChange(u)}
-                                className={`size-10 rounded-full border px-3 py-2 text-sm whitespace-nowrap transition-colors ${
-                                  selected
-                                    ? 'border-secondary bg-secondary text-white'
-                                    : 'border-border bg-background hover:bg-muted'
-                                }`}
-                              >
-                                {u}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      )}
-                    />
-                  ))}
-              </div>
+                              return (
+                                <button
+                                  key={u}
+                                  type='button'
+                                  onClick={() => unitField.onChange(u)}
+                                  className={`size-10 rounded-full border px-3 py-2 text-sm whitespace-nowrap transition-colors ${
+                                    selected
+                                      ? 'border-secondary bg-secondary text-white'
+                                      : 'border-border bg-background hover:bg-muted'
+                                  }`}
+                                >
+                                  {u}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
+                      />
+                    ))}
+                </div>
+              )
             ) : (
               <Input
                 className='h-11! px-4 sm:h-12! md:h-13!'
@@ -146,5 +166,74 @@ export const DynamicField = ({ feature, control }: DynamicFieldProps) => {
         </Field>
       )}
     />
+  )
+}
+
+interface CaliberInputProps {
+  field: ControllerRenderProps<TypeCreateAdSchema, `categoryFeatures.${string}`>
+  unit?: string
+}
+
+// Значение может быть уже сохранённым массивом строк (["45+", "55+", "65"])
+// или — для объявлений, созданных до этой доработки — голым числом (65).
+// Приводим оба случая к тому, что реально показывается в текстовом поле.
+const caliberValueToText = (value: unknown): string => {
+  if (Array.isArray(value)) return value.join(', ')
+  if (value === null || value === undefined || value === '') return ''
+  return String(value)
+}
+
+// Разбирает то, что продавец напечатал ("45+, 55, 65"), в массив строк для
+// сохранения: делит по запятой, обрезает пробелы, отбрасывает пустые куски и
+// всё, что не выглядит как "число" или "число+" (защита от мусора, который
+// мог проскочить через фильтр ввода при вставке текста мышью/со сканера
+// штрих-кодов и т.п.), убирает дубликаты, сохраняя порядок первого
+// появления.
+const parseCaliberInput = (text: string): string[] => {
+  const seen = new Set<string>()
+  const result: string[] = []
+
+  for (const rawToken of text.split(',')) {
+    const token = rawToken.trim()
+    if (!token || !/^\d+\+?$/.test(token)) continue
+    if (seen.has(token)) continue
+    seen.add(token)
+    result.push(token)
+  }
+
+  return result
+}
+
+const CaliberInput = ({ field, unit }: CaliberInputProps) => {
+  const [text, setText] = useState(() => caliberValueToText(field.value))
+
+  // Синхронизация с внешним изменением значения формы (сброс формы,
+  // переключение категории и т.п.) — тот же приём, что у NumberRangeField в
+  // filter-feature-field.tsx: сравнение прямо в теле рендера, а не в
+  // useEffect (правило react-hooks/set-state-in-effect включено в проекте).
+  // Проверка "!== text" — чтобы не перетирать то, что продавец печатает
+  // прямо сейчас, ещё не закоммиченное через onBlur (например, лишний
+  // пробел после запятой, который parseCaliberInput бы просто убрал).
+  const externalText = caliberValueToText(field.value)
+  const [prevExternalText, setPrevExternalText] = useState(externalText)
+  if (externalText !== prevExternalText && externalText !== text) {
+    setPrevExternalText(externalText)
+    setText(externalText)
+  }
+
+  return (
+    <div className='flex items-center gap-2'>
+      <Input
+        className='h-11! px-4 sm:h-12! md:h-13!'
+        value={text}
+        // Пускаем в поле только цифры, запятую, плюс и пробел — чтобы нельзя
+        // было напечатать буквы или минус, не дожидаясь потери фокуса.
+        onChange={e => setText(e.target.value.replace(/[^\d,+\s]/g, ''))}
+        onBlur={() => field.onChange(parseCaliberInput(text))}
+        placeholder='Например: 45+, 55+, 65'
+        inputMode='text'
+      />
+      {unit && <span className='shrink-0 text-sm text-gray-500'>{unit}</span>}
+    </div>
   )
 }

@@ -566,18 +566,37 @@ export class AdsService {
 
           const { min, max } = value as { min?: unknown; max?: unknown }
 
-          // Значения хранятся как JSON-число, но ->>'ключ' достаёт их
-          // текстом — на случай "грязных" исторических данных сверяем
-          // регуляркой перед ::numeric, чтобы битое значение у одного
-          // объявления не роняло весь запрос ошибкой каста.
-          const numericGuard = Prisma.sql`ads.features->>${key} ~ '^-?[0-9]+(\\.[0-9]+)?$'`
+          // Раньше у NUMBER-фичи всегда было одно число, и ->>'ключ' сразу
+          // доставало его текстом. Теперь так тоже бывает (обычные числовые
+          // характеристики), но у "калибра" (см. CaliberInput в
+          // dynamic-field.tsx) продавец может перечислить сразу НЕСКОЛЬКО
+          // значений — они хранятся JSON-массивом строк вида "45+", "55+".
+          // Оборачиваем скаляр в одноэлементный массив перед разбором, чтобы
+          // один и тот же запрос обрабатывал оба формата и уже
+          // опубликованные объявления с одним числом не переставали
+          // попадать под фильтр после этой доработки.
+          const arrayOrScalar = Prisma.sql`(CASE WHEN jsonb_typeof(ads.features->${key}) = 'array' THEN ads.features->${key} ELSE jsonb_build_array(ads.features->${key}) END)`
+
+          // "+" на конце значения — не часть числа, а отметка "и выше"
+          // (продавец пишет "65+"), отбрасываем её перед приведением к
+          // numeric. "Грязные" исторические значения (не число вообще)
+          // по-прежнему отсеиваются регуляркой, чтобы битое значение у
+          // одного объявления не роняло весь запрос ошибкой каста.
+          const numericElement = Prisma.sql`regexp_replace(elem.value, '\\+$', '')`
+          const numericGuard = Prisma.sql`${numericElement} ~ '^-?[0-9]+(\\.[0-9]+)?$'`
 
           if (typeof min === 'number' && Number.isFinite(min)) {
-            conditions.push(Prisma.sql`(${numericGuard} AND (ads.features->>${key})::numeric >= ${min})`)
+            conditions.push(Prisma.sql`EXISTS (
+              SELECT 1 FROM jsonb_array_elements_text(${arrayOrScalar}) AS elem(value)
+              WHERE ${numericGuard} AND ${numericElement}::numeric >= ${min}
+            )`)
           }
 
           if (typeof max === 'number' && Number.isFinite(max)) {
-            conditions.push(Prisma.sql`(${numericGuard} AND (ads.features->>${key})::numeric <= ${max})`)
+            conditions.push(Prisma.sql`EXISTS (
+              SELECT 1 FROM jsonb_array_elements_text(${arrayOrScalar}) AS elem(value)
+              WHERE ${numericGuard} AND ${numericElement}::numeric <= ${max}
+            )`)
           }
 
           break

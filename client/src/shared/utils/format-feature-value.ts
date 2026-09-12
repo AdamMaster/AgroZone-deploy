@@ -22,7 +22,22 @@ export function formatFeatureValue(feature: ICategoryFeature, rawFeatures: Recor
   if (value === null || value === undefined || value === '') return null
 
   if (feature.type === 'BOOLEAN') return value ? 'Да' : 'Нет'
-  if (Array.isArray(value)) return value.length ? value.join(', ') : null
+
+  if (Array.isArray(value)) {
+    if (!value.length) return null
+
+    // NUMBER-характеристика может хранить сразу НЕСКОЛЬКО значений (см.
+    // калибр — CaliberInput в dynamic-field.tsx: продавец может продавать
+    // сразу несколько калибров одной культуры). Обычный MULTI_SELECT/SELECT
+    // и так состоит из готовых подписей и не нуждается в единице измерения,
+    // а вот для чисел без неё было бы "45+, 55+, 65" без "мм" — единицу
+    // добавляем один раз в конце списка, а не к каждому значению.
+    const joined = value.join(', ')
+    if (feature.type !== 'NUMBER') return joined
+
+    const unit = feature.units?.[0]
+    return unit ? `${joined} ${unit}` : joined
+  }
 
   if (feature.type !== 'NUMBER') return String(value)
 
