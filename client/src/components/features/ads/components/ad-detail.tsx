@@ -390,11 +390,6 @@ export const AdDetail = ({
             )}
           </div>
           <div>
-            {/* Тот же заголовок, что и выше (desktop-версия) — на мобильных он
-                визуально нужен именно здесь, но настоящий <h1> на странице
-                должен быть только один (см. Heading.as), иначе поисковые
-                роботы и парсеры разметки видят два одинаковых H1 в исходном
-                HTML, даже если для пользователя виден всегда только один. */}
             <Heading level={1} as='p' className='mb-2 block text-lg sm:hidden'>
               {ad.title}
             </Heading>
@@ -403,25 +398,13 @@ export const AdDetail = ({
                 <span className={cn(isPriceHighlighted && AD_PRICE_HIGHLIGHT_CLASS)}>
                   {ad.price ? `${ad.price.toLocaleString('ru-RU')} ₽` : 'Цена договорная'}
                 </span>
-                {/* ITEM ("Целиком") — цена без разбивки на единицы измерения,
-                    суффикс "за X" для него не нужен (см. shared/constants/units.ts) */}
                 {ad.price && ad.unit && ad.unit !== 'ITEM' && PRICE_UNITS[ad.unit] && (
                   <span className='block text-sm font-normal text-gray-500'>
                     за {PRICE_UNITS[ad.unit].toLowerCase()}
                   </span>
                 )}
               </p>
-              {/* На мобилке "Поделиться" уже есть в дропдауне "..." верхней
-                  sticky-панели (см. выше) — здесь дублируем для десктопа,
-                  где той панели нет вообще. */}
               <DropdownMenu>
-                {/* Та же "кнопка-обёртка 32px / иконка 20px" схема, что и у
-                    FavoriteButton ниже (аудит A1+A2, ROADMAP.md) — раньше у
-                    этой кнопки не было отступа вокруг иконки вообще (box =
-                    icon = 20px), а у FavoriteButton уже появился, из-за чего
-                    две соседние кнопки визуально разъехались по высоте.
-                    right-8, а не right-7 — вплотную к 32px-боксу
-                    FavoriteButton (тот сидит на right-0). */}
                 <DropdownMenuTrigger
                   aria-label='Поделиться'
                   className='absolute top-0 right-8 hidden size-8 items-center justify-center text-gray-400 transition-colors hover:text-gray-600 sm:flex'
@@ -438,8 +421,6 @@ export const AdDetail = ({
                 onClick={onClickFavorite}
                 isFavorite={!!ad.isFavorite}
                 isLoading={isAddingFavorite || isRemovingFavorite}
-                // sm:flex, а не sm:block — база компонента центрирует иконку
-                // через flex, block сломал бы это центрирование.
                 className='hidden sm:flex'
               />
             </div>
@@ -477,10 +458,6 @@ export const AdDetail = ({
                 </div>
               )}
             </div>
-
-            {/* Ведёт на публичную страницу продавца (/sellers/:id) — весь
-                блок кликабелен целиком, а не только текст "Ещё N
-                объявлений", чтобы было легко попасть туда и с аватара/имени. */}
             <Link href={`/sellers/${ad.user!.id}`} className='mb-4 flex items-center gap-3'>
               <UserAvatar user={ad.user!} className='size-12' />
               <div>
@@ -498,13 +475,6 @@ export const AdDetail = ({
               </div>
             </Link>
             <div className='mb-6 flex gap-2'>
-              {/* "Частное лицо" — просто самозаявленный тип, показываем всегда.
-                  ИП/Компания — без подтверждения ИНН это ничем не обеспеченное
-                  заявление продавца о себе, поэтому бейдж для них показываем,
-                  только когда businessVerifiedAt подтверждён через DaData (см.
-                  UserService.verifyBusiness), и тогда используем реальное
-                  название вместо общей подписи ("ИП Иванов И.И." вместо
-                  просто "ИП"). */}
               {ad.user?.type === UserType.Individual && (
                 <span className='rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600'>
                   {USER_TYPE_LABELS[ad.user.type]}
@@ -522,10 +492,6 @@ export const AdDetail = ({
                 </span>
               )}
             </div>
-            {/* На мобилке теперь то же самое действие есть в дропдауне "..."
-                в верхней панели (см. выше, isReportDialogOpen) — эта версия
-                с текстовой ссылкой становится дублем, прячем её на мобилке,
-                оставляем только на десктопе. */}
             {!isOwner && user && (
               <div className='hidden sm:block'>
                 <ReportAdDialog adId={ad.id} />
