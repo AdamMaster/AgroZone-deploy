@@ -551,7 +551,7 @@ export const AdDetail = ({
         )}
       </div>
       {similarAds.length > 0 && (
-        <div className='mt-10'>
+        <div className='mt-12'>
           <SimilarAdsSection ads={similarAds} />
         </div>
       )}

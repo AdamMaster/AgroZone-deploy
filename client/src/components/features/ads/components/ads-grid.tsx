@@ -20,7 +20,7 @@ export function getAdsGridClassNames(layout?: string): string {
   return layout === 'cols-1'
     ? 'grid-cols-1'
     : layout === 'cols-4'
-      ? 'grid-cols-2 min-[48rem]:grid-cols-2 min-[55rem]:grid-cols-3 sm:grid-cols-3  xl:grid-cols-4 gap-x-1 md:gap-y-4 '
+      ? 'grid-cols-2 min-[48rem]:grid-cols-2 min-[55rem]:grid-cols-3 sm:grid-cols-3  xl:grid-cols-4 gap-x-1 md:gap-y-4'
       : 'grid-cols-2 xl:grid-cols-5 lg:grid-cols-4 md:grid-cols-4 sm:grid-cols-3 gap-x-1'
 }
 
