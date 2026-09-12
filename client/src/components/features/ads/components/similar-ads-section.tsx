@@ -10,7 +10,7 @@ interface SimilarAdsSectionProps {
 export function SimilarAdsSection({ ads }: SimilarAdsSectionProps) {
   return (
     <div>
-      <Heading level={4} className='mb-3'>
+      <Heading level={3} className='mb-3'>
         Похожие объявления
       </Heading>
       <div className='flex snap-x snap-mandatory [scrollbar-width:none] gap-3 overflow-x-auto overscroll-x-contain pb-1 sm:gap-4 [&::-webkit-scrollbar]:hidden'>
