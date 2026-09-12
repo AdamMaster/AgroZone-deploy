@@ -8,7 +8,7 @@ import { categoriesService } from '@/components/features/categories/services'
 import { Container, JsonLd } from '@/components/layout'
 
 import { findCategoryById, getPathToCategory } from '@/shared/utils'
-import { buildBreadcrumbListJsonLd, buildProductJsonLd, JsonLdBreadcrumbItem } from '@/shared/utils/json-ld'
+import { JsonLdBreadcrumbItem, buildBreadcrumbListJsonLd, buildProductJsonLd } from '@/shared/utils/json-ld'
 import { buildPageMetadata, truncateForMeta } from '@/shared/utils/metadata'
 
 interface AdPageProps {
@@ -34,17 +34,13 @@ export async function generateMetadata({ params }: AdPageProps): Promise<Metadat
   if (!ad) {
     return buildPageMetadata({
       title: 'Объявление не найдено',
-      description: 'Такого объявления нет на AgroZone — возможно, оно снято с публикации или срок его размещения истёк.',
+      description:
+        'Такого объявления нет на AgroZone — возможно, оно снято с публикации или срок его размещения истёк.',
       path: `/ads/${id}`
     })
   }
 
   return buildPageMetadata({
-    // Заголовок уже содержит «AgroZone» сам по себе — title.absolute
-    // (brandInTitle) не даёт общему template в app/layout.tsx приписать
-    // бренд второй раз (см. buildPageMetadata и найденный ранее, но не
-    // исправленный там смежный нюанс — ROADMAP.md, S3 «убрать дубль бренда
-    // в title»).
     title: `${ad.title} — купить на AgroZone`,
     description: truncateForMeta(ad.description, 160),
     path: `/ads/${ad.id}`,
@@ -62,21 +58,6 @@ export default async function AdPage({ params }: AdPageProps) {
     return notFound()
   }
 
-  // Объявление всегда привязано к листовой категории (см.
-  // CategoryCascader.handleCategorySelect — выбрать можно только лист),
-  // поэтому атрибуты нужной категории можно запросить сразу по
-  // ad.categoryId — отдельным точечным запросом, а не через дерево целиком
-  // (см. комментарий у ICategory.categoryFeatures: раньше это поле ехало
-  // для всех 610 категорий в GET /categories, теперь есть отдельный GET
-  // /categories/:id/features). Дерево всё ещё нужно — но только для
-  // хлебных крошек (categoryPath) и priceUnits, которые остаются в нём.
-  // "Похожие объявления" — та же категория, без самого текущего
-  // объявления, только опубликованные и не просроченные (это уже
-  // гарантирует AdsService.findAll). revalidate: 120 — тот же ISR-кэш, что
-  // и у самого объявления/каталога (см. adsService.findAll в
-  // catalog/[[...slug]]/page.tsx). Все три запроса независимы друг от
-  // друга — грузим параллельно, каждый со своим catch, чтобы сбой одного
-  // не ронял всю страницу объявления.
   const [categories, categoryFeatures, similarAds] = await Promise.all([
     categoriesService.findAll().catch(() => []),
     categoriesService.findFeatures(ad.categoryId).catch(() => []),
@@ -92,11 +73,6 @@ export default async function AdPage({ params }: AdPageProps) {
 
   const categoryPath = categoryChain.map(c => ({ name: c.name, href: `/catalog/${c.fullPath}` }))
 
-  // BreadcrumbList для JSON-LD — та же цепочка, что уже строится выше для
-  // видимых хлебных крошек (categoryPath, проп AdDetail), плюс корень
-  // "Объявления" и само объявление последним пунктом (крайний узел цепочки
-  // — общепринятая практика для BreadcrumbList, хотя schema.org и не
-  // требует его строго).
   const breadcrumbItems: JsonLdBreadcrumbItem[] = [
     { name: 'Объявления', path: '/catalog' },
     ...categoryPath.map(c => ({ name: c.name, path: c.href })),

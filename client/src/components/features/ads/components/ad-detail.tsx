@@ -76,14 +76,6 @@ export const AdDetail = ({
   const { onOpen } = useAppModal()
   const { ad } = useAd(initialAd.id, initialAd)
 
-  // U1 в ROADMAP.md: раньше это была голая <Link href="/profile/settings/
-  // messages?ad=...">. Гость по ней улетал в middleware.ts, который для
-  // защищённых /profile/*-страниц просто редиректил на главную —
-  // объявление терялось, диалог с продавцом не открывался вообще никогда.
-  // Теперь для гостя вместо перехода открываем модалку входа прямо здесь
-  // (страница объявления никуда не уходит), а после входа/регистрации
-  // returnTo сам унесёт на нужный диалог — см. form-login.tsx,
-  // form-register-sms.tsx.
   const handleWriteClick = () => {
     const target = `/profile/settings/messages?ad=${ad.id}`
 
@@ -98,17 +90,7 @@ export const AdDetail = ({
 
   const [activeImage, setActiveImage] = useState(0)
   const [isLightboxOpen, setIsLightboxOpen] = useState(false)
-  // B2 в ROADMAP.md: раньше это был чисто визуальный флаг
-  // (isPhoneRevealed) — сами цифры (ad.phone) уже приезжали в обычном
-  // ответе findOne, клик их просто показывал/прятал на экране. Теперь
-  // номера в ad вообще нет (см. ad.types.ts), храним то, что реально
-  // пришло по клику от отдельного защищённого эндпоинта — null, пока не
-  // раскрыт.
   const [revealedPhone, setRevealedPhone] = useState<string | null>(null)
-  // Контролируемое состояние для ReportAdDialog — пункт "Пожаловаться" в
-  // мобильном дропдауне "..." открывает тот же диалог, что и текстовая
-  // ссылка внизу страницы (см. ReportAdDialog: controlled-режим без
-  // собственного триггера).
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
 
   const { addFavorite, isAddingFavorite } = useAddFavorite()
@@ -119,9 +101,7 @@ export const AdDetail = ({
 
   const scrollToImage = (index: number) => {
     const slide = galleryRef.current?.children[index] as HTMLElement | undefined
-    // behavior: 'auto' — без плавной прокрутки (аналог swipe: 0 в
-    // Lightbox выше), клик по миниатюре сразу переключает фото, без
-    // анимации скольжения.
+
     slide?.scrollIntoView({ behavior: 'auto', inline: 'center', block: 'nearest' })
   }
 
@@ -148,15 +128,6 @@ export const AdDetail = ({
 
   const isOwner = !!user && user.id === ad.userId
 
-  // isFavorite больше не отдельный локальный стейт — раньше он менялся тут
-  // же безусловно на каждый клик (setIsFavorite(prev => !prev)), независимо
-  // от результата мутации, из-за чего при ошибке (например, у
-  // неавторизованного пользователя) сердечко оставалось закрашенным,
-  // несмотря на всплывший тост с ошибкой. Теперь значение берётся напрямую
-  // из ad.isFavorite (кэш react-query, ключ ['ad-public', id] — см.
-  // use-ad.ts), который сами хуки избранного корректно оптимистично
-  // обновляют и откатывают при ошибке (см. use-add-favorite.ts /
-  // use-remove-favorite.ts).
   const onClickFavorite = () => {
     if (ad.isFavorite) {
       removeFavorite(ad.id)
@@ -165,11 +136,6 @@ export const AdDetail = ({
     }
   }
 
-  // B2 в ROADMAP.md: тот же приём, что и в handleWriteClick выше — гостю
-  // сразу предлагаем войти, не дёргая сеть впустую (эндпоинт всё равно за
-  // AuthGuard, см. AdsController.getPhone). Без returnTo — после входа
-  // просто остаёмся на этой же странице объявления, отдельно нажимать
-  // "Показать телефон" второй раз можно сразу.
   const handleShowPhone = () => {
     if (!user) {
       onOpen('login')
@@ -179,23 +145,9 @@ export const AdDetail = ({
     revealPhone(ad.id, { onSuccess: data => setRevealedPhone(data.phone) })
   }
 
-  // Доп. меню владельца в мобильной верхней панели (см. ниже) — те же
-  // действия и хуки, что уже используются в списке "Мои объявления"
-  // (ad-short-card.tsx), просто без полного разбора по всем статусам:
-  // сюда обычно попадают через опубликованное объявление.
   const handleArchive = () => archiveAd(ad.id)
   const handleRemove = () => removeAd(ad.id, { onSuccess: () => router.push('/profile/settings/ads') })
 
-  // "Поделиться" — раньше был только Web Share API (navigator.share) с
-  // фолбэком на копирование ссылки: на мобилках открывал системное меню
-  // шаринга, а на десктопе (где navigator.share почти нигде не
-  // поддерживается) кнопки "Поделиться" не было вообще — только в
-  // мобильной sticky-панели сверху. По ROADMAP.md (U11) нужны явные кнопки
-  // Telegram/WhatsApp — основные каналы, которыми продавцы техники реально
-  // договариваются о сделках, и не только на мобилке. Заменили на три
-  // явных пункта, одинаковых на любом устройстве и в любом браузере: два
-  // прямых диплинка в мессенджеры и копирование ссылки как универсальный
-  // вариант на случай другого приложения.
   const handleShareTelegram = () => {
     const url = window.location.href
     window.open(
@@ -230,23 +182,6 @@ export const AdDetail = ({
 
   const publishedDate = formatDate(ad.publishedAt)
 
-  // "Обновлено" — намеренно НЕ updatedAt: это поле трогает вообще любой
-  // update() строки в базе (архивация, снятие с архива, покупка бейджа/
-  // выделения цены и т.п.), а не только реальное обновление контента, и
-  // показывать его буквально означало бы "обновлено сегодня" почти всегда.
-  // bumpedAt — тот же признак свежести, что уже используется для
-  // сортировки каталога (COALESCE(bumped_at, created_at), см.
-  // AdsService.findAll) и обновляется только платным "Поднять объявление"
-  // или премиумом (в том числе автоматически раз в сутки, пока услуга
-  // активна, см. AdAutoBumpWorker) — то есть ровно тогда, когда объявление
-  // реально "поднялось" и должно выглядеть свежим для покупателя. Условие
-  // "bumpedAt позже publishedAt" — от случая, когда объявление подняли, а
-  // потом отредактировали и оно прошло повторную модерацию: publish()
-  // всегда перезаписывает publishedAt текущим моментом, так что старая
-  // дата подъёма может оказаться РАНЬШЕ новой даты публикации — тогда
-  // "Обновлено" показывать не нужно. Сравнение отформатированных строк, а
-  // не самих дат — чтобы не показывать две одинаковые на вид даты, если
-  // подъём случился в тот же день, что и публикация.
   const bumpedDate =
     ad.bumpedAt && ad.publishedAt && new Date(ad.bumpedAt) > new Date(ad.publishedAt) ? formatDate(ad.bumpedAt) : null
   const updatedDate = bumpedDate && bumpedDate !== publishedDate ? bumpedDate : null
