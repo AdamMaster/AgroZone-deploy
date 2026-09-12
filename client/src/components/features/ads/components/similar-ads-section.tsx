@@ -15,7 +15,7 @@ export function SimilarAdsSection({ ads }: SimilarAdsSectionProps) {
       </Heading>
       <div className='flex snap-x snap-mandatory [scrollbar-width:none] gap-3 overflow-x-auto overscroll-x-contain pb-1 sm:gap-4 [&::-webkit-scrollbar]:hidden'>
         {ads.map(ad => (
-          <div key={ad.id} className='w-36 flex-shrink-0 snap-start sm:w-[260.8px]'>
+          <div key={ad.id} className='w-36 w-[196px] flex-shrink-0 snap-start lg:w-[238.5px] xl:w-[260.8px]'>
             <AdCard ad={ad} />
           </div>
         ))}
