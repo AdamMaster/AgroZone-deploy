@@ -17,7 +17,14 @@ const nextConfig: NextConfig = {
   reactCompiler: process.env.NODE_ENV === 'production',
   env: {
     SERVER_URL: process.env.SERVER_URL,
-    GOOGLE_RECAPTCHA_SITE_KEY: process.env.GOOGLE_RECAPTCHA_SITE_KEY
+    GOOGLE_RECAPTCHA_SITE_KEY: process.env.GOOGLE_RECAPTCHA_SITE_KEY,
+    // Имя cookie сессии должно совпадать с SESSION_NAME на сервере
+    // (server/.env) — middleware.ts читает её отсюда, а не хардкодит
+    // 'session', иначе при любом отличающемся имени (например, в E2E-тестах
+    // используется отдельное 'e2e_session', чтобы не пересекаться с
+    // обычной dev-сессией на том же localhost) middleware решит, что
+    // пользователь не залогинен, и будет заворачивать его с /profile/*.
+    SESSION_NAME: process.env.SESSION_NAME
   },
   images: {
     // Хосты, с которых оптимизатору Next разрешено брать исходники картинок.

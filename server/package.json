@@ -25,7 +25,11 @@
     "users:create-verified": "dotenv -e .env -- ts-node scripts/create-verified-user.ts",
     "prisma:reset": "dotenv -e .env -- prisma migrate reset --force",
     "prisma:generate": "dotenv -e .env -- prisma generate",
-    "prisma:deploy": "dotenv -e .env -- prisma migrate deploy"
+    "prisma:deploy": "dotenv -e .env -- prisma migrate deploy",
+    "test:e2e:db:deploy": "dotenv -e .env.test -- prisma migrate deploy",
+    "test:e2e:create-user": "dotenv -e .env.test -- ts-node scripts/create-verified-user.ts",
+    "test:e2e:mock-zvonok": "dotenv -e .env.test -- ts-node scripts/mock-zvonok-server.ts",
+    "test:e2e:server": "dotenv -e .env.test -- nest start"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1062.0",
@@ -113,13 +117,20 @@
     "moduleFileExtensions": [
       "js",
       "json",
-      "ts"
+      "ts",
+      "tsx"
     ],
     "rootDir": "src",
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/$1"
+    },
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.(t|j)sx?$": "ts-jest"
     },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(uuid)/)"
+    ],
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],

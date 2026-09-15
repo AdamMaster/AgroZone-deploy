@@ -13,7 +13,12 @@ function getServerUrl() {
 export default async function middleware(request: NextRequest) {
   const { url, cookies, nextUrl } = request
 
-  const session = cookies.get('session')?.value
+  // Имя cookie задаётся SESSION_NAME (см. next.config.ts) — раньше было
+  // жёстко зашито 'session', что совпадало с обычной разработкой, но
+  // ломалось в E2E-тестах, где сервер поднимается с SESSION_NAME=e2e_session
+  // специально для изоляции от dev-сессии на том же localhost.
+  const sessionCookieName = process.env.SESSION_NAME ?? 'session'
+  const session = cookies.get(sessionCookieName)?.value
   const isProfilePage = nextUrl.pathname.startsWith(PROFILE_PATH_PREFIX)
   const isAdminPage = nextUrl.pathname === ADMIN_PATH_PREFIX || nextUrl.pathname.startsWith(`${ADMIN_PATH_PREFIX}/`)
 
