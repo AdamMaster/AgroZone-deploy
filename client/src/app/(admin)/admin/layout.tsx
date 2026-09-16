@@ -8,9 +8,9 @@ export default function AdminLayout({
   children: React.ReactNode
 }>) {
   return (
-    <div className='bg-neutral-800'>
+    <div className='bg-neutral-900'>
       <div className='grid min-h-screen grid-cols-[280px_1fr] gap-6'>
-        <div className='bg-neutral-700/30'>
+        <div className='bg-neutral-800/30'>
           <AdminNav />
         </div>
         <div className='relative w-full'>{children}</div>

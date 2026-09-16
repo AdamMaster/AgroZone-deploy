@@ -32,7 +32,7 @@ export const UsersSearch = () => {
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder='Имя, email или телефон'
-          className='rounded-sm border-none bg-neutral-700 pl-9 hover:bg-neutral-600 focus-visible:bg-neutral-600 placeholder:text-neutral-400'
+          className='rounded-sm border-none bg-neutral-700 pl-9 placeholder:text-neutral-400 hover:bg-neutral-600 focus-visible:bg-neutral-600'
         />
       </div>
 
@@ -72,8 +72,8 @@ export const UsersSearch = () => {
                 </p>
 
                 <p className='mt-0.5 text-xs text-neutral-400'>
-                  {USER_TYPE_LABELS[user.type]} · с {formatFullDate(user.createdAt)} ·{' '}
-                  {user._count.ads} {pluralizeRu(user._count.ads, ['объявление', 'объявления', 'объявлений'])}
+                  {USER_TYPE_LABELS[user.type]} · с {formatFullDate(user.createdAt)} · {user._count.ads}{' '}
+                  {pluralizeRu(user._count.ads, ['объявление', 'объявления', 'объявлений'])}
                 </p>
               </div>
             </Link>
