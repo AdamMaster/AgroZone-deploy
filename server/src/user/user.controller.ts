@@ -34,6 +34,7 @@ import { SetPrimaryPhoneDto } from './dto/set-primary-phone.dto'
 import { DeleteAccountDto } from './dto/delete-account.dto'
 import { AdminCreateVerifiedUserDto } from './dto/admin-create-verified-user.dto'
 import { AdminSearchUsersQueryDto } from './dto/admin-search-users-query.dto'
+import { AdminSetPremiumDto } from './dto/admin-set-premium.dto'
 import { PhoneThrottlerGuard } from '@/libs/common/guards/phone-throttler.guard'
 import { ConfigService } from '@nestjs/config'
 
@@ -99,6 +100,15 @@ export class UserController {
   @Post('admin/create-verified')
   async createVerifiedByAdmin(@Body() dto: AdminCreateVerifiedUserDto) {
     return this.userService.createVerifiedByAdmin(dto)
+  }
+
+  // Ручная выдача/снятие premium с карточки пользователя в админке (см.
+  // UserService.setPremiumByAdmin).
+  @Authorization(UserRole.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @Patch('admin/:id/premium')
+  async setPremiumByAdmin(@Param('id') id: string, @Body() dto: AdminSetPremiumDto) {
+    return this.userService.setPremiumByAdmin(id, dto)
   }
 
   // Публичная страница продавца (/sellers/:id на фронте) и блок "Ещё от

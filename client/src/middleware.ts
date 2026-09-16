@@ -14,9 +14,10 @@ export default async function middleware(request: NextRequest) {
   const { url, cookies, nextUrl } = request
 
   // Имя cookie задаётся SESSION_NAME (см. next.config.ts) — раньше было
-  // жёстко зашито 'session', что совпадало с обычной разработкой, но
-  // ломалось в E2E-тестах, где сервер поднимается с SESSION_NAME=e2e_session
-  // специально для изоляции от dev-сессии на том же localhost.
+  // жёстко зашито 'session', хотя сервер (main.ts) уже читает своё имя
+  // cookie сессии из того же SESSION_NAME в server/.env. Держим оба конца
+  // на одной переменной, а не дублируем значение, чтобы они не могли
+  // разойтись.
   const sessionCookieName = process.env.SESSION_NAME ?? 'session'
   const session = cookies.get(sessionCookieName)?.value
   const isProfilePage = nextUrl.pathname.startsWith(PROFILE_PATH_PREFIX)

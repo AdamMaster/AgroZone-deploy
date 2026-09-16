@@ -35,6 +35,7 @@ import { AdPhoneThrottlerGuard } from './guards/ad-phone-throttler.guard'
 import { FindAdsQueryDto } from './dto/find-ads-query.dto'
 import { FindMyAdsQueryDto } from './dto/find-my-ads-query.dto'
 import { FindUserAdsAdminQueryDto } from './dto/find-user-ads-admin-query.dto'
+import { AdminSetAdExpirationDto } from './dto/admin-set-ad-expiration.dto'
 import { User } from '@/generated/prisma/client'
 
 // B2 в ROADMAP.md: 20 запросов в минуту на аккаунт — с запасом хватает
@@ -339,5 +340,15 @@ export class AdsController {
   @UseGuards(AuthGuard, RolesGuard)
   removeByAdmin(@Param('id') id: string) {
     return this.adsService.removeByAdmin(id)
+  }
+
+  // Ручная правка срока жизни ЛЮБОГО объявления администратором — с той же
+  // карточки пользователя (/admin/users/:id), см.
+  // AdsService.setExpirationByAdmin.
+  @Patch('admin/:id/expiration')
+  @Roles(UserRole.ADMIN)
+  @UseGuards(AuthGuard, RolesGuard)
+  setExpirationByAdmin(@Param('id') id: string, @Body() dto: AdminSetAdExpirationDto) {
+    return this.adsService.setExpirationByAdmin(id, dto)
   }
 }

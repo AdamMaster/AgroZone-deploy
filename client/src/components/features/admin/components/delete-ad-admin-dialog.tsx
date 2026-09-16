@@ -13,6 +13,8 @@ import {
   DialogTrigger
 } from '@/components/ui'
 
+import { cn } from '@/lib/utils'
+
 import { useRemoveAdAdmin } from '../../ads/hooks'
 
 interface DeleteAdAdminDialogProps {
@@ -42,7 +44,16 @@ export const DeleteAdAdminDialog = ({ adId, adTitle, userId, className }: Delete
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button type='button' variant='destructive' size='sm' className={className} />}>
+      <DialogTrigger
+        render={
+          <Button
+            type='button'
+            variant='destructive'
+            size='sm'
+            className={cn(className, 'rounded-sm bg-red-400 text-neutral-950 hover:bg-red-400')}
+          />
+        }
+      >
         Удалить
       </DialogTrigger>
 

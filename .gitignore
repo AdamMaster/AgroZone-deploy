@@ -2,10 +2,8 @@
 .env
 .env.prod
 .env.production
-.env.test
 server/.env
 client/.env
-server/.env.test
 
 # Volumes/данные, которые живут только на сервере
 nginx/certs

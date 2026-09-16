@@ -12,6 +12,7 @@ import { AdStateMachineService } from './ad-state-machine.service'
 import { AdsSortBy, FindAdsQueryDto } from './dto/find-ads-query.dto'
 import { FindMyAdsQueryDto } from './dto/find-my-ads-query.dto'
 import { FindUserAdsAdminQueryDto } from './dto/find-user-ads-admin-query.dto'
+import { AdminSetAdExpirationDto } from './dto/admin-set-ad-expiration.dto'
 import { CategoriesService } from '@/categories/categories.service'
 import { randomBytes } from 'crypto'
 import slugify from 'slugify'
@@ -1686,5 +1687,49 @@ export class AdsService {
     })
 
     return { success: true }
+  }
+
+  // Ручная правка срока жизни объявления с карточки пользователя в админке
+  // (см. AdsController.setExpirationByAdmin). expiresAt задаётся напрямую
+  // (не продлевается сверх текущего) — null снимает срок вовсе, объявление
+  // тогда не попадёт в выборку AdsExpirationWorker (там expiresAt: { lte:
+  // now }, null туда не проходит) и не истечёт само, пока админ явно не
+  // выставит дату обратно.
+  //
+  // Единственный побочный эффект статуса, который мы допускаем здесь: если
+  // объявление сейчас PUBLISHED и новая дата уже в прошлом/настоящем —
+  // сразу переводим в EXPIRED, а не ждём ближайший проход воркера (тот
+  // делает ровно то же самое отдельным прямым UPDATE в БД, минуя
+  // AdStateMachineService — см. AdsExpirationWorker.handleExpiredAds, тут
+  // повторяем тот же паттерн для мгновенного эффекта).
+  //
+  // Обратный переход — EXPIRED обратно в PUBLISHED просто продлением даты
+  // вперёд — намеренно НЕ делаем: по стейт-машине (AdStateMachineService)
+  // из EXPIRED объявление может уйти только в PENDING (через ACTIVATE) и
+  // заново пройти модерацию, ни один из существующих сценариев не приводит
+  // его в PUBLISHED напрямую. Молча обходить это здесь было бы тихим
+  // отступлением от правила "истёкшее объявление возвращается в эфир
+  // только после повторной модерации" — если понадобится и такая
+  // возможность, это отдельное, осознанное решение, а не побочный эффект
+  // правки даты.
+  async setExpirationByAdmin(id: string, dto: AdminSetAdExpirationDto) {
+    const ad = await this.prisma.ad.findUnique({ where: { id } })
+
+    if (!ad) {
+      throw new NotFoundException('Объявление не найдено')
+    }
+
+    const expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : null
+    const now = new Date()
+
+    const shouldExpireNow = ad.status === AdStatus.PUBLISHED && expiresAt !== null && expiresAt <= now
+
+    return this.prisma.ad.update({
+      where: { id },
+      data: {
+        expiresAt,
+        ...(shouldExpireNow && { status: AdStatus.EXPIRED })
+      }
+    })
   }
 }

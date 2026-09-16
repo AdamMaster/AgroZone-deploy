@@ -94,17 +94,6 @@ export class ZvonokService {
 
   constructor(private readonly configService: ConfigService) {}
 
-  // Базовый URL API zvonok — в проде и обычной разработке всегда
-  // https://zvonok.com (это боевой, платный сервис, дефолт сохранён без
-  // изменений). Единственная причина параметризовать: E2E-тесты (Playwright)
-  // не должны звонить по-настоящему и тратить баланс аккаунта — для них
-  // ZVONOK_API_BASE_URL в .env.test указывает на локальный мок-сервер
-  // (см. server/scripts/mock-zvonok-server.ts), который отвечает в том же
-  // формате, что и настоящий zvonok.
-  private get baseUrl(): string {
-    return this.configService.get<string>('ZVONOK_API_BASE_URL') || 'https://zvonok.com'
-  }
-
   // Не используется активно (заменено на requestCallbackConfirmation +
   // checkCallbackConfirmed, см. ниже) — оставлен на случай, если придётся
   // откатиться на диктовку кода роботом.
@@ -126,7 +115,7 @@ export class ZvonokService {
       // звонили, и трубку брать было не нужно). Кампания в кабинете zvonok
       // должна быть типа "Диктовка кода роботом", ZVONOK_CAMPAIGN_ID — id
       // именно такой кампании.
-      response = await fetch(`${this.baseUrl}/manager/cabapi_external/api/v1/phones/tellcode/`, {
+      response = await fetch('https://zvonok.com/manager/cabapi_external/api/v1/phones/tellcode/', {
         method: 'POST',
         body: formData
       })
@@ -189,7 +178,7 @@ export class ZvonokService {
     let response: globalThis.Response
 
     try {
-      response = await fetch(`${this.baseUrl}/manager/cabapi_external/api/v1/phones/confirm/`, {
+      response = await fetch('https://zvonok.com/manager/cabapi_external/api/v1/phones/confirm/', {
         method: 'POST',
         body: formData
       })
@@ -247,7 +236,7 @@ export class ZvonokService {
     let response: globalThis.Response
 
     try {
-      response = await fetch(`${this.baseUrl}/manager/cabapi_external/api/v1/phones/calls_by_phone/?${params}`)
+      response = await fetch(`https://zvonok.com/manager/cabapi_external/api/v1/phones/calls_by_phone/?${params}`)
     } catch (error) {
       this.logger.error('Zvonok недоступен при проверке статуса', error as Error)
 

@@ -4,6 +4,7 @@ import { RequestOptions } from '@/shared/fetch'
 import {
   IAd,
   IAdCounters,
+  IAdminUserAd,
   IAdminUserAdsResponse,
   IAdsListResponse,
   IAdViewStats,
@@ -178,6 +179,14 @@ class AdsService {
   // use-remove-ad.ts).
   async removeByAdmin(id: string): Promise<{ success: boolean }> {
     return api.delete<{ success: boolean }>(`${this.URL}/admin/${id}`)
+  }
+
+  // Ручная правка срока жизни ЛЮБОГО объявления администратором — с той же
+  // карточки пользователя (/admin/users/:id), см.
+  // AdsController.setExpirationByAdmin/AdsService.setExpirationByAdmin.
+  // expiresAt: null снимает срок — объявление не истечёт само.
+  async setExpirationByAdmin(id: string, expiresAt: string | null): Promise<IAdminUserAd> {
+    return api.patch<IAdminUserAd>(`${this.URL}/admin/${id}/expiration`, { expiresAt })
   }
 
   // Полная карточка для предпросмотра модератором — только для админа (см.

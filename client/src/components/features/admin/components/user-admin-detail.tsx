@@ -17,6 +17,8 @@ import { useAdminUserAds } from '../../ads/hooks'
 import { ADMIN_BUTTON_CLASS } from '../constants/admin-ui.constants'
 import { useAdminUserDetail } from '../hooks'
 import { DeleteAdAdminDialog } from './delete-ad-admin-dialog'
+import { SetAdExpirationDialog } from './set-ad-expiration-dialog'
+import { SetPremiumDialog } from './set-premium-dialog'
 import { UserBadges } from './user-badges'
 
 const AUTH_METHOD_LABELS: Record<string, string> = {
@@ -112,7 +114,10 @@ export const UserAdminDetail = ({ id }: UserAdminDetailProps) => {
 
         <div className='bg-neutral-600/50 p-3'>
           <p className='text-xs text-neutral-400'>Premium до</p>
-          <p className='text-sm'>{user.premiumUntil ? formatFullDate(user.premiumUntil) : 'Не активен'}</p>
+          <div className='mt-0.5 flex items-center justify-between gap-2'>
+            <p className='text-sm'>{user.premiumUntil ? formatFullDate(user.premiumUntil) : 'Не активен'}</p>
+            <SetPremiumDialog userId={id} premiumUntil={user.premiumUntil} />
+          </div>
         </div>
 
         {user.businessVerifiedAt && (
@@ -151,7 +156,10 @@ export const UserAdminDetail = ({ id }: UserAdminDetailProps) => {
               </div>
             </Link>
 
-            <DeleteAdAdminDialog adId={ad.id} adTitle={ad.title} userId={id} className='shrink-0' />
+            <div className='flex shrink-0 gap-1'>
+              <SetAdExpirationDialog adId={ad.id} userId={id} expiresAt={ad.expiresAt} />
+              <DeleteAdAdminDialog adId={ad.id} adTitle={ad.title} userId={id} />
+            </div>
           </div>
         ))}
       </div>

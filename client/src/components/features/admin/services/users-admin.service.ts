@@ -49,6 +49,18 @@ class UsersAdminService {
   async findById(id: string): Promise<IAdminUserDetail> {
     return api.get<IAdminUserDetail>(`${this.URL}/by-id/${id}`)
   }
+
+  // Ручная выдача/продление/снятие premium — см.
+  // UserController.setPremiumByAdmin/UserService.setPremiumByAdmin.
+  // premiumUntil: null снимает premium немедленно. Сервер намеренно
+  // возвращает только { id, premiumUntil } (select явный, без пароля) — на
+  // экране карточки всё равно полагаемся на инвалидацию 'admin-user-detail'
+  // и перезапрос через findById, а не на тело этого ответа.
+  async setPremium(userId: string, premiumUntil: string | null): Promise<{ id: string; premiumUntil: string | null }> {
+    return api.patch<{ id: string; premiumUntil: string | null }>(`${this.URL}/admin/${userId}/premium`, {
+      premiumUntil
+    })
+  }
 }
 
 export const usersAdminService = new UsersAdminService()

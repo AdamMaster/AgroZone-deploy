@@ -42,6 +42,9 @@ describe('UserService', () => {
         create: jest.fn(),
         delete: jest.fn(),
         deleteMany: jest.fn()
+      },
+      ad: {
+        updateMany: jest.fn()
       }
     }
     // $transaction в реальном коде даёт колбэку транзакционный клиент — в
@@ -476,6 +479,65 @@ describe('UserService', () => {
       const result = await service.getProfileForClient('user-2')
 
       expect(result.hasPassword).toBe(false)
+    })
+  })
+
+  describe('setPremiumByAdmin', () => {
+    it('выбрасывает NotFoundException, если пользователь не найден', async () => {
+      prisma.user.findUnique.mockResolvedValue(null)
+
+      await expect(service.setPremiumByAdmin('missing-user', { premiumUntil: '2026-01-01' })).rejects.toThrow(
+        NotFoundException
+      )
+      expect(prisma.user.update).not.toHaveBeenCalled()
+    })
+
+    it('задаёт premiumUntil конкретной датой (не продлевает сверх текущей)', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1' })
+      prisma.user.update.mockResolvedValue({ id: 'user-1', premiumUntil: new Date('2099-01-01') })
+
+      await service.setPremiumByAdmin('user-1', { premiumUntil: '2099-01-01T00:00:00.000Z' })
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { premiumUntil: new Date('2099-01-01T00:00:00.000Z') },
+        select: { id: true, premiumUntil: true }
+      })
+    })
+
+    it('premiumUntil: null снимает premium и не бампает объявления', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1' })
+      prisma.user.update.mockResolvedValue({ id: 'user-1', premiumUntil: null })
+
+      await service.setPremiumByAdmin('user-1', { premiumUntil: null })
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { premiumUntil: null },
+        select: { id: true, premiumUntil: true }
+      })
+      expect(prisma.ad.updateMany).not.toHaveBeenCalled()
+    })
+
+    it('при активном (будущем) premiumUntil сразу бампает опубликованные объявления пользователя', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1' })
+      prisma.user.update.mockResolvedValue({ id: 'user-1', premiumUntil: new Date('2099-01-01') })
+
+      await service.setPremiumByAdmin('user-1', { premiumUntil: '2099-01-01T00:00:00.000Z' })
+
+      expect(prisma.ad.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', status: 'PUBLISHED' },
+        data: { bumpedAt: expect.any(Date) }
+      })
+    })
+
+    it('при дате в прошлом не бампает объявления (premium фактически неактивен)', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1' })
+      prisma.user.update.mockResolvedValue({ id: 'user-1', premiumUntil: new Date('2020-01-01') })
+
+      await service.setPremiumByAdmin('user-1', { premiumUntil: '2020-01-01T00:00:00.000Z' })
+
+      expect(prisma.ad.updateMany).not.toHaveBeenCalled()
     })
   })
 })

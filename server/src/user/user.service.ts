@@ -14,6 +14,7 @@ import { ZvonokService } from '@/libs/zvonok/zvonok.service'
 import { PERSONAL_DATA_CONSENT_DOCUMENT_VERSION } from '@/libs/common/constants/legal.constants'
 import { AdminCreateVerifiedUserDto } from './dto/admin-create-verified-user.dto'
 import { AdminSearchUsersQueryDto } from './dto/admin-search-users-query.dto'
+import { AdminSetPremiumDto } from './dto/admin-set-premium.dto'
 
 @Injectable()
 export class UserService {
@@ -341,6 +342,47 @@ export class UserService {
     ])
 
     return { items, total, page, limit }
+  }
+
+  // Ручная выдача/снятие premium администратором (/admin/users/:id, см.
+  // UserController.setPremiumByAdmin) — в отличие от PremiumService.reconcilePayment
+  // (продлевает существующий срок сверху при оплате), тут админ задаёт
+  // итоговую дату напрямую: и на выдачу задним/будущим числом, и на
+  // немедленное снятие (premiumUntil: null). Проверяем существование
+  // пользователя явно, а не полагаемся на P2025 от update — чтобы вернуть
+  // осмысленный 404, а не голую ошибку Prisma.
+  async setPremiumByAdmin(userId: string, dto: AdminSetPremiumDto) {
+    const user = await this.prismaService.user.findUnique({ where: { id: userId } })
+
+    if (!user) {
+      throw new NotFoundException('Пользователь не найден')
+    }
+
+    const premiumUntil = dto.premiumUntil ? new Date(dto.premiumUntil) : null
+
+    // select явно (не update() без select, который вернул бы всю строку
+    // User целиком, включая password) — та же причина, что и в
+    // findById/getProfileForClient выше: хэш пароля не должен уходить в
+    // HTTP-ответ ни при каких обстоятельствах, в том числе случайно, через
+    // метод, которому он для его собственной задачи не нужен вовсе.
+    const updated = await this.prismaService.user.update({
+      where: { id: userId },
+      data: { premiumUntil },
+      select: { id: true, premiumUntil: true }
+    })
+
+    // Мгновенный эффект, как и при обычной покупке (см.
+    // PremiumService.reconcilePayment) — если premium в результате активен,
+    // поднимаем все опубликованные объявления сразу, не дожидаясь
+    // ближайшего прохода AdAutoBumpWorker.
+    if (premiumUntil && premiumUntil > new Date()) {
+      await this.prismaService.ad.updateMany({
+        where: { userId, status: AdStatus.PUBLISHED },
+        data: { bumpedAt: new Date() }
+      })
+    }
+
+    return updated
   }
 
   async update(userId: string, dto: UpdateUserDto) {
