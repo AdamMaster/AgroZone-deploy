@@ -131,7 +131,7 @@ export const DynamicField = ({ feature, control }: DynamicFieldProps) => {
                                   key={u}
                                   type='button'
                                   onClick={() => unitField.onChange(u)}
-                                  className={`size-10 rounded-full border px-3 py-2 text-sm whitespace-nowrap transition-colors ${
+                                  className={`h-10 min-w-10 rounded-[100px] border px-3 py-2 text-sm whitespace-nowrap transition-colors ${
                                     selected
                                       ? 'border-secondary bg-secondary text-white'
                                       : 'border-border bg-background hover:bg-muted'

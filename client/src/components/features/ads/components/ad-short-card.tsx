@@ -167,7 +167,7 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
 
           <div className='flex w-full max-w-90 flex-grow flex-col sm:flex'>
             <div className='mb-0 flex flex-col gap-0 sm:mb-1'>
-              <Heading level={4} className='font-normal sm:text-lg sm:font-bold'>
+              <Heading level={4} className='leading-tight font-normal sm:text-lg sm:font-bold'>
                 <Link href={detailHref} className='hover:text-primary'>
                   {ad.title}
                 </Link>
@@ -199,9 +199,7 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
                 </Tooltip>
               )}
             </div>
-            <p className='mb-0 text-[16px] font-bold sm:mb-3 sm:text-lg'>
-              {formatPriceWithUnit(ad.price, ad.unit)}
-            </p>
+            <p className='mb-0 text-[16px] font-bold sm:mb-3 sm:text-lg'>{formatPriceWithUnit(ad.price, ad.unit)}</p>
             <p className='text-[13px] text-gray-500'>{ad.address}</p>
           </div>
 
@@ -250,7 +248,10 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
             </Button>
             {ad.status === 'PUBLISHED' && (
               <DropdownMenu>
-                <DropdownMenuTrigger aria-label='Ещё' className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'>
+                <DropdownMenuTrigger
+                  aria-label='Ещё'
+                  className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'
+                >
                   <Ellipsis className='size-5' />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className='w-40' align='end'>
@@ -267,7 +268,10 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
             )}
             {ad.status === 'PENDING' && (
               <DropdownMenu>
-                <DropdownMenuTrigger aria-label='Ещё' className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'>
+                <DropdownMenuTrigger
+                  aria-label='Ещё'
+                  className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'
+                >
                   <Ellipsis className='size-5' />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className='w-40' align='end'>
@@ -282,7 +286,10 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
             )}
             {ad.status === 'REJECTED' && (
               <DropdownMenu>
-                <DropdownMenuTrigger aria-label='Ещё' className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'>
+                <DropdownMenuTrigger
+                  aria-label='Ещё'
+                  className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'
+                >
                   <Ellipsis className='size-5' />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className='w-40' align='end'>
@@ -297,7 +304,10 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
             )}
             {ad.status === 'ARCHIVED' && (
               <DropdownMenu>
-                <DropdownMenuTrigger aria-label='Ещё' className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'>
+                <DropdownMenuTrigger
+                  aria-label='Ещё'
+                  className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'
+                >
                   <Ellipsis className='size-5' />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className='w-40' align='end'>
@@ -309,7 +319,10 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
             )}
             {ad.status === 'DRAFT' && (
               <DropdownMenu>
-                <DropdownMenuTrigger aria-label='Ещё' className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'>
+                <DropdownMenuTrigger
+                  aria-label='Ещё'
+                  className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'
+                >
                   <Ellipsis className='size-5' />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className='w-40' align='end'>
