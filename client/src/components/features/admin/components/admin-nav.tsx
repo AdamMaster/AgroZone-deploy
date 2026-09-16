@@ -24,10 +24,6 @@ export const AdminNav = () => {
     <nav>
       <ul className='flex flex-col'>
         {items.map(item => {
-          const Icon = item.icon
-          // startsWith, а не точное совпадение — иначе на вложенных
-          // страницах раздела (например /admin/users/:id или
-          // /admin/moderation/:id) не подсвечивался бы ни один пункт меню.
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
 
           return (
@@ -35,8 +31,8 @@ export const AdminNav = () => {
               <Link
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-2 px-4 py-3 text-neutral-50 hover:bg-neutral-600/30',
-                  isActive && 'bg-neutral-600/40'
+                  'flex items-center gap-2 px-4 py-3 text-neutral-50 hover:bg-neutral-600/10',
+                  isActive && 'bg-neutral-600/30'
                 )}
               >
                 {item.label}

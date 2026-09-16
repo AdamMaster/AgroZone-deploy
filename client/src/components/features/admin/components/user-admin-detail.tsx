@@ -75,7 +75,7 @@ export const UserAdminDetail = ({ id }: UserAdminDetailProps) => {
       </div>
 
       <div className='mb-6 grid grid-cols-1 gap-2 sm:grid-cols-2'>
-        <div className='bg-neutral-700/30 p-3'>
+        <div className='rounded-md bg-neutral-700/30 p-3'>
           <p className='text-xs text-neutral-400'>Телефоны</p>
           {user.phones.length === 0 ? (
             <p className='text-sm'>—</p>
@@ -91,12 +91,12 @@ export const UserAdminDetail = ({ id }: UserAdminDetailProps) => {
             </div>
           )}
         </div>
-        <div className='bg-neutral-700/30 p-3'>
+        <div className='rounded-md bg-neutral-700/30 p-3'>
           <p className='text-xs text-neutral-400'>Email</p>
           <p className='text-sm'>{user.email ?? '—'}</p>
         </div>
 
-        <div className='bg-neutral-700/30 p-3'>
+        <div className='rounded-md bg-neutral-700/30 p-3'>
           <p className='text-xs text-neutral-400'>Вход</p>
           <p className='text-sm'>
             {primaryPhone ? 'По телефону (звонок)' : 'Только через OAuth'}
@@ -112,7 +112,7 @@ export const UserAdminDetail = ({ id }: UserAdminDetailProps) => {
           )}
         </div>
 
-        <div className='bg-neutral-700/30 p-3'>
+        <div className='rounded-md bg-neutral-700/30 p-3'>
           <p className='text-xs text-neutral-400'>Premium до</p>
           <div className='mt-0.5 flex items-center justify-between gap-2'>
             <p className='text-sm'>{user.premiumUntil ? formatFullDate(user.premiumUntil) : 'Не активен'}</p>
@@ -121,7 +121,7 @@ export const UserAdminDetail = ({ id }: UserAdminDetailProps) => {
         </div>
 
         {user.businessVerifiedAt && (
-          <div className='bg-neutral-700/30 p-3 sm:col-span-2'>
+          <div className='rounded-md bg-neutral-700/30 p-3 sm:col-span-2'>
             <p className='text-xs text-neutral-400'>Бизнес подтверждён (ИНН {user.businessInn})</p>
             <p className='text-sm'>{user.businessName}</p>
           </div>
@@ -134,7 +134,7 @@ export const UserAdminDetail = ({ id }: UserAdminDetailProps) => {
 
       <div className='flex flex-col gap-2'>
         {ads.map(ad => (
-          <div key={ad.id} className='flex items-center gap-3 bg-neutral-700/30 p-3 hover:bg-neutral-700/40'>
+          <div key={ad.id} className='flex items-center gap-3 rounded-md bg-neutral-700/30 p-3 hover:bg-neutral-700/40'>
             <Link href={`/ads/${ad.id}`} target='_blank' className='flex min-w-0 flex-1 items-center gap-3'>
               <div className='relative size-14 shrink-0 overflow-hidden rounded-sm bg-neutral-700'>
                 {ad.images[0] && <Image src={ad.images[0]} alt={ad.title} fill className='object-cover' sizes='56px' />}

@@ -32,7 +32,7 @@ export const UsersSearch = () => {
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder='Имя, email или телефон'
-          className='rounded-sm border-none bg-neutral-700 pl-9 placeholder:text-neutral-400 hover:bg-neutral-600 focus-visible:bg-neutral-600'
+          className='rounded-md border-none bg-neutral-700 pl-9 placeholder:text-neutral-400 hover:bg-neutral-600 focus-visible:bg-neutral-600'
         />
       </div>
 
@@ -56,7 +56,7 @@ export const UsersSearch = () => {
             <Link
               key={user.id}
               href={`/admin/users/${user.id}`}
-              className='flex items-center gap-3 bg-neutral-600/50 p-3 hover:bg-neutral-600/70'
+              className='flex items-center gap-3 rounded-md bg-neutral-600/30 p-3 hover:bg-neutral-600/50'
             >
               <UserAvatar user={user} />
 
