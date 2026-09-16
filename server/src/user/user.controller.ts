@@ -11,6 +11,7 @@ import {
   ParseFilePipe,
   Patch,
   Post,
+  Query,
   Req,
   Res,
   UploadedFile,
@@ -32,6 +33,7 @@ import { ConfirmPhoneChangeDto } from './dto/confirm-phone-change.dto'
 import { SetPrimaryPhoneDto } from './dto/set-primary-phone.dto'
 import { DeleteAccountDto } from './dto/delete-account.dto'
 import { AdminCreateVerifiedUserDto } from './dto/admin-create-verified-user.dto'
+import { AdminSearchUsersQueryDto } from './dto/admin-search-users-query.dto'
 import { PhoneThrottlerGuard } from '@/libs/common/guards/phone-throttler.guard'
 import { ConfigService } from '@nestjs/config'
 
@@ -50,11 +52,43 @@ export class UserController {
     return this.userService.getProfileForClient(userId)
   }
 
+  // Полная карточка пользователя для админки (/admin/users/:id) — те же
+  // данные, что видел бы сам пользователь на своей странице настроек
+  // (телефоны, email, связанные OAuth-аккаунты и т.д.), но по любому id, а
+  // не только своему. userService.findById() отдаёт "сырую" запись из базы
+  // (нужна как есть другим внутренним методам сервиса — см. комментарий
+  // там же), включая хэш пароля и живые OAuth access/refresh токены
+  // аккаунтов — ни то, ни другое наружу, в HTTP-ответ, уходить не должно.
+  // Тот же приём, что и в UserService.getProfileForClient (там это уже
+  // было нужно для собственного профиля пользователя, здесь — для
+  // админского просмотра чужого).
   @Authorization(UserRole.ADMIN)
   @HttpCode(HttpStatus.OK)
   @Get('by-id/:id')
   async findById(@Param('id') id: string) {
-    return this.userService.findById(id)
+    const { password, accounts, ...safeUser } = await this.userService.findById(id)
+
+    return {
+      ...safeUser,
+      hasPassword: password !== null,
+      accounts: accounts.map(({ id: accountId, provider, type, createdAt }) => ({
+        id: accountId,
+        provider,
+        type,
+        createdAt
+      }))
+    }
+  }
+
+  // Поиск пользователей для /admin/users — одна строка сразу по имени,
+  // email и телефону, см. UserService.searchByAdmin. Отдельно от findById
+  // выше: тут короткая карточка на строку списка результатов, без
+  // подробностей, которые нужны только на детальной странице.
+  @Authorization(UserRole.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @Get('admin/search')
+  async searchByAdmin(@Query() dto: AdminSearchUsersQueryDto) {
+    return this.userService.searchByAdmin(dto)
   }
 
   // Создать продавцу аккаунт вручную, минуя подтверждение звонком (см.

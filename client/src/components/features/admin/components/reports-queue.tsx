@@ -6,6 +6,7 @@ import { Button, Heading } from '@/components/ui'
 
 import { AD_REPORT_REASON_LABELS } from '@/shared/constants/ad-report-reasons'
 
+import { ADMIN_BUTTON_CLASS } from '../constants/admin-ui.constants'
 import { useAdminReports, useUpdateReportStatus } from '../hooks'
 import { AdReportStatus } from '../types/admin.types'
 
@@ -46,7 +47,7 @@ export const ReportsQueue = () => {
               <div className='flex shrink-0 gap-1'>
                 <Button
                   size='sm'
-                  className='rounded-sm bg-neutral-100 text-neutral-950 hover:bg-neutral-200'
+                  className={ADMIN_BUTTON_CLASS}
                   disabled={isUpdating}
                   onClick={() => updateReportStatus({ id: report.id, status: AdReportStatus.Reviewed })}
                 >
@@ -54,7 +55,7 @@ export const ReportsQueue = () => {
                 </Button>
                 <Button
                   size='sm'
-                  className='rounded-sm bg-neutral-100 text-neutral-950 hover:bg-neutral-200'
+                  className={ADMIN_BUTTON_CLASS}
                   disabled={isUpdating}
                   onClick={() => updateReportStatus({ id: report.id, status: AdReportStatus.Dismissed })}
                 >

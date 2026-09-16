@@ -11,13 +11,9 @@ import { formatPhoneNumber } from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
 
+import { ADMIN_BUTTON_CLASS } from '../constants/admin-ui.constants'
 import { useCreateVerifiedUser } from '../hooks'
 import { AdminCreateUserSchema, TypeAdminCreateUserSchema } from '../schemes'
-
-// Стили кнопок в админке — единый паттерн из moderation-queue.tsx/
-// dealer-feeds-queue.tsx: светлая кнопка на тёмном фоне вместо стандартных
-// вариантов Button (которые рассчитаны на светлую тему).
-const ADMIN_BUTTON_CLASS = 'rounded-sm bg-neutral-100 text-neutral-950 hover:bg-neutral-200'
 
 // Случайный пароль по умолчанию, чтобы администратору не пришлось
 // придумывать его самому под каждого продавца — можно стереть и ввести

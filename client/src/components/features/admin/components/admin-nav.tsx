@@ -25,7 +25,10 @@ export const AdminNav = () => {
       <ul className='flex flex-col'>
         {items.map(item => {
           const Icon = item.icon
-          const isActive = pathname === item.href
+          // startsWith, а не точное совпадение — иначе на вложенных
+          // страницах раздела (например /admin/users/:id или
+          // /admin/moderation/:id) не подсвечивался бы ни один пункт меню.
+          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
 
           return (
             <li key={item.id}>

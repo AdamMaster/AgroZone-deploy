@@ -18,7 +18,7 @@ import { UserFormWrapper } from './user-form-wrapper'
 
 export const FormDeleteAccount = () => {
   const { user } = useProfile()
-  const isOAuthOnly = !user?.password
+  const isOAuthOnly = !user?.hasPassword
   const [showPassword, setShowPassword] = useState(false)
   const { onClose } = useAppModal()
 

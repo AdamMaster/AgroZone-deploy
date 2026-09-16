@@ -2,6 +2,7 @@
 
 import { Button, Heading } from '@/components/ui'
 
+import { ADMIN_BUTTON_CLASS } from '../constants/admin-ui.constants'
 import { useApproveDealerFeed, usePendingDealerFeeds } from '../hooks'
 import { DealerFeedPreviewDialog } from './dealer-feed-preview-dialog'
 import { RejectDealerFeedDialog } from './reject-dealer-feed-dialog'
@@ -43,10 +44,10 @@ export const DealerFeedsQueue = () => {
             <div className='flex shrink-0 items-start gap-1'>
               <DealerFeedPreviewDialog
                 feedId={feed.id}
-                className='rounded-sm bg-neutral-100 text-neutral-950 hover:bg-neutral-200'
+                className={ADMIN_BUTTON_CLASS}
               />
               <Button
-                className='rounded-sm bg-neutral-100 text-neutral-950 hover:bg-neutral-200'
+                className={ADMIN_BUTTON_CLASS}
                 size='sm'
                 disabled={isApprovingDealerFeed}
                 onClick={() => approveDealerFeed(feed.id)}
@@ -55,7 +56,7 @@ export const DealerFeedsQueue = () => {
               </Button>
               <RejectDealerFeedDialog
                 feedId={feed.id}
-                className='rounded-sm bg-neutral-100 text-neutral-950 hover:bg-neutral-200'
+                className={ADMIN_BUTTON_CLASS}
               />
             </div>
           </div>

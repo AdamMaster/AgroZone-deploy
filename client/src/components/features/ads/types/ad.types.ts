@@ -164,6 +164,32 @@ export interface IPendingAd {
   user: IPendingAdUser
 }
 
+// Объявление в списке "Объявления пользователя" на карточке админки
+// (/admin/users/:id, GET ads/admin/by-user/:userId, см.
+// AdsService.findByUserForAdmin) — намеренно отдельный слим-тип, а не
+// полный IAd: для читаемого списка строк нужны не все поля объявления, а
+// сервер их и не отдаёт (там явный select, а не include).
+export interface IAdminUserAd {
+  id: string
+  title: string
+  slug: string
+  status: IAd['status']
+  price: number | null
+  unit: string
+  images: string[]
+  createdAt: string
+  publishedAt: string | null
+  expiresAt: string | null
+  rejectionReason: string | null
+}
+
+export interface IAdminUserAdsResponse {
+  items: IAdminUserAd[]
+  total: number
+  page: number
+  limit: number
+}
+
 // Полная карточка объявления для превью модератора (GET /ads/:id/moderation)
 // — по сути тот же IAd, но с "владельческим" видом на продавца (email и
 // телефон напрямую, как в IPendingAd/IPendingAdUser, а не скрытый номер

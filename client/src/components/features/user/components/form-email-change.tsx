@@ -68,7 +68,7 @@ export const FormEmailChange = () => {
     }
   }
 
-  if (!user?.password) {
+  if (!user?.hasPassword) {
     return (
       <div className='flex flex-col items-center text-center'>
         <OctagonAlert className='text-primary mb-3 size-8' />

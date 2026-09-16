@@ -13,6 +13,7 @@ import { normalizePhone } from '@/libs/common/utils/phone.util'
 import { ZvonokService } from '@/libs/zvonok/zvonok.service'
 import { PERSONAL_DATA_CONSENT_DOCUMENT_VERSION } from '@/libs/common/constants/legal.constants'
 import { AdminCreateVerifiedUserDto } from './dto/admin-create-verified-user.dto'
+import { AdminSearchUsersQueryDto } from './dto/admin-search-users-query.dto'
 
 @Injectable()
 export class UserService {
@@ -53,9 +54,30 @@ export class UserService {
     // нет, но номера есть, считаем основным первый, а не оставляем null.
     const primaryPhone = user.phones.find(phone => phone.isPrimary)?.phone ?? user.phones[0]?.phone ?? null
 
+    // findById() отдаёт "сырую" запись из базы для внутреннего
+    // использования — например password нужен другим методам сервиса,
+    // чтобы проверить текущий пароль при его смене (см. updatePassword,
+    // deleteAccount). Ни хэш пароля, ни тем более живые OAuth
+    // access/refresh токены аккаунтов (Account.accessToken/refreshToken —
+    // ими можно действовать от имени пользователя у провайдера) не должны
+    // улетать в браузер клиента. Раньше это происходило: весь объект
+    // целиком уходил в ответ GET /users/profile через `...user`, просто
+    // фронт эти поля нигде не читал (IAccount.accessToken/refreshToken
+    // были объявлены в типе только "про запас"). Режем здесь, на границе
+    // "для клиента".
+    const { password, accounts, ...safeUser } = user
+
     return {
-      ...user,
+      ...safeUser,
+      accounts: accounts.map(({ id, provider, type, createdAt }) => ({ id, provider, type, createdAt })),
       primaryPhone,
+      // Фронт раньше смотрел прямо на user.password (значение/null), чтобы
+      // понять, установлен ли у аккаунта пароль (OAuth-only аккаунт создан
+      // без него) — см. ContentSecurity/FormDeleteAccount/FormEmailChange/
+      // FormPasswordChange. Сам хэш для этого не нужен, булева флага
+      // достаточно — и именно так теперь и передаём, не отправляя хэш в
+      // браузер.
+      hasPassword: password !== null,
       // Раньше сверялись с role === 'PREMIUM' — устарело, см. тот же
       // комментарий в AdsService.validateFileLimits.
       maxUploadLimit: isPremiumActive(user.premiumUntil) ? AD_LIMITS.PREMIUM : AD_LIMITS.REGULAR
@@ -253,6 +275,72 @@ export class UserService {
       displayName: user.displayName,
       phone: user.phones[0]?.phone ?? phone
     }
+  }
+
+  // Поиск пользователей для /admin/users (см. AdminSearchUsersQueryDto) —
+  // одна строка ищется сразу по имени, email и телефону: так проще
+  // администратору (не нужно угадывать, в каком именно поле искать), и
+  // так же устроен общий поиск объявлений на публичном сайте
+  // (FindAdsQueryDto.search). Возвращает короткую карточку на строку
+  // списка — без пароля и OAuth-токенов (их тут и не было: select ниже
+  // явный, а не include, в отличие от findById) и без списка объявлений
+  // пользователя — тот отдельным запросом на карточке пользователя, см.
+  // AdsService.findByUserForAdmin.
+  async searchByAdmin(dto: AdminSearchUsersQueryDto) {
+    const page = dto.page ?? 1
+    const limit = Math.min(dto.limit ?? 20, 100)
+    const skip = (page - 1) * limit
+
+    const query = dto.query?.trim() ?? ''
+
+    // Телефоны в базе хранятся нормализованными — только цифры (см.
+    // normalizePhone) — поэтому для поиска по телефону сравниваем именно
+    // цифры из запроса, независимо от того, ввёл админ номер с маской
+    // ("+7 (999) 123-45-67") или без неё. Порог в 3 цифры — защита от
+    // случая, когда в строке поиска случайно оказалась одна-две цифры
+    // (например "офис 1"): без порога это превратилось бы в contains по
+    // почти любому номеру и выдало бы бессмысленно широкий результат.
+    const digitsOnly = query.replace(/\D/g, '')
+
+    const where =
+      query.length === 0
+        ? {}
+        : {
+            OR: [
+              { displayName: { contains: query, mode: 'insensitive' as const } },
+              { email: { contains: query, mode: 'insensitive' as const } },
+              ...(digitsOnly.length >= 3 ? [{ phones: { some: { phone: { contains: digitsOnly } } } }] : [])
+            ]
+          }
+
+    const [items, total] = await Promise.all([
+      this.prismaService.user.findMany({
+        where,
+        select: {
+          id: true,
+          displayName: true,
+          email: true,
+          picture: true,
+          type: true,
+          role: true,
+          premiumUntil: true,
+          isVerified: true,
+          deletedAt: true,
+          createdAt: true,
+          phones: {
+            select: { phone: true, isPrimary: true },
+            orderBy: { isPrimary: 'desc' }
+          },
+          _count: { select: { ads: true } }
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit
+      }),
+      this.prismaService.user.count({ where })
+    ])
+
+    return { items, total, page, limit }
   }
 
   async update(userId: string, dto: UpdateUserDto) {

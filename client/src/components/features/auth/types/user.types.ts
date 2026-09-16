@@ -18,16 +18,15 @@ export enum UserType {
   Business = 'BUSINESS'
 }
 
+// Сервер (UserService.getProfileForClient) отдаёт по каждому связанному
+// аккаунту только эти безопасные поля — ни хэш пароля, ни тем более живые
+// OAuth access/refresh токены (Account.accessToken/refreshToken на
+// бэкенде) в ответ клиенту не попадают, см. комментарий там же.
 export interface IAccount {
   id: string
   createdAt: string
-  updatedAt: string
   type: string
   provider: string
-  refreshToken: string
-  accessToken: string
-  expiresAt: number
-  userId: string
 }
 
 export interface IUser {
@@ -37,7 +36,10 @@ export interface IUser {
   email?: string
   phones: IUserPhone[]
   primaryPhone?: string | null
-  password: string
+  // Сервер отдаёт только булев флаг — установлен пароль у аккаунта или
+  // нет (OAuth-only аккаунт создан без него), сам хэш в ответ не
+  // попадает (см. UserService.getProfileForClient).
+  hasPassword: boolean
   displayName?: string
   picture?: string
   role: UserRole

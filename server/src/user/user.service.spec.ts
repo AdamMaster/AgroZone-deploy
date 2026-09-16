@@ -25,7 +25,9 @@ describe('UserService', () => {
     prisma = {
       user: {
         findUnique: jest.fn(),
-        update: jest.fn()
+        update: jest.fn(),
+        findMany: jest.fn(),
+        count: jest.fn()
       },
       userPhone: {
         findUnique: jest.fn(),
@@ -388,6 +390,92 @@ describe('UserService', () => {
         data: { isPrimary: true }
       })
       expect(result).toEqual({ success: true, message: 'Основной номер изменён' })
+    })
+  })
+
+  describe('searchByAdmin', () => {
+    beforeEach(() => {
+      prisma.user.findMany.mockResolvedValue([])
+      prisma.user.count.mockResolvedValue(0)
+    })
+
+    it('без запроса отдаёт весь список без фильтра, с дефолтной пагинацией', async () => {
+      const result = await service.searchByAdmin({})
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: {}, skip: 0, take: 20, orderBy: { createdAt: 'desc' } })
+      )
+      expect(prisma.user.count).toHaveBeenCalledWith({ where: {} })
+      expect(result).toEqual({ items: [], total: 0, page: 1, limit: 20 })
+    })
+
+    it('короткий текстовый запрос ищет по имени/email, но не по телефону (< 3 цифр)', async () => {
+      await service.searchByAdmin({ query: 'Иван 79' })
+
+      const call = prisma.user.findMany.mock.calls[0][0]
+      expect(call.where.OR).toEqual([
+        { displayName: { contains: 'Иван 79', mode: 'insensitive' } },
+        { email: { contains: 'Иван 79', mode: 'insensitive' } }
+      ])
+    })
+
+    it('запрос с 3+ цифрами дополнительно ищет по нормализованному телефону', async () => {
+      await service.searchByAdmin({ query: '+7 (999) 123-45-67' })
+
+      const call = prisma.user.findMany.mock.calls[0][0]
+      expect(call.where.OR).toContainEqual({ phones: { some: { phone: { contains: '79991234567' } } } })
+    })
+
+    it('ограничивает limit сотней, даже если запросили больше', async () => {
+      await service.searchByAdmin({ page: 2, limit: 500 })
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 100, take: 100 }))
+    })
+  })
+
+  describe('getProfileForClient (см. UserController.findProfile — GET /users/profile)', () => {
+    it('не отдаёт хэш пароля и OAuth-токены, но отдаёт hasPassword', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        password: 'argon2-hash',
+        premiumUntil: null,
+        phones: [{ phone: '79991234567', isPrimary: true }],
+        accounts: [
+          {
+            id: 'account-1',
+            provider: 'yandex',
+            type: 'oauth',
+            createdAt: new Date('2026-01-01'),
+            accessToken: 'live-access-token',
+            refreshToken: 'live-refresh-token',
+            expiresAt: 123
+          }
+        ]
+      })
+
+      const result = await service.getProfileForClient('user-1')
+
+      expect(result).not.toHaveProperty('password')
+      expect(result.hasPassword).toBe(true)
+      expect(result.accounts).toEqual([
+        { id: 'account-1', provider: 'yandex', type: 'oauth', createdAt: new Date('2026-01-01') }
+      ])
+      expect(result.accounts[0]).not.toHaveProperty('accessToken')
+      expect(result.accounts[0]).not.toHaveProperty('refreshToken')
+    })
+
+    it('hasPassword=false для OAuth-only аккаунта без пароля', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'user-2',
+        password: null,
+        premiumUntil: null,
+        phones: [],
+        accounts: []
+      })
+
+      const result = await service.getProfileForClient('user-2')
+
+      expect(result.hasPassword).toBe(false)
     })
   })
 })

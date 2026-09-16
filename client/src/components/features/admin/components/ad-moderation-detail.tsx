@@ -14,6 +14,7 @@ import { useCategories } from '@/components/features/categories/hooks/use-catego
 import { useCategoryFeatures } from '@/components/features/categories/hooks/use-category-features'
 import { Avatar, AvatarFallback, Button, ButtonBack, Heading, Loading, MultilineText } from '@/components/ui'
 
+import { AD_STATUS_LABELS } from '@/shared/constants/ad-statuses'
 import { PRICE_UNITS } from '@/shared/constants/units'
 import { findCategoryById, formatFeatureValue, formatPhoneNumber, getPathToCategory } from '@/shared/utils'
 
@@ -25,15 +26,6 @@ import 'yet-another-react-lightbox/styles.css'
 
 interface AdModerationDetailProps {
   id: string
-}
-
-const STATUS_LABELS: Partial<Record<string, string>> = {
-  PENDING: 'На модерации',
-  REJECTED: 'Отклонено',
-  PUBLISHED: 'Опубликовано',
-  EXPIRED: 'Срок действия истёк',
-  DRAFT: 'Черновик',
-  ARCHIVED: 'Снято с публикации'
 }
 
 export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
@@ -119,7 +111,7 @@ export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
 
       <div className='mb-6 flex items-center gap-2'>
         <Heading level={1}>{ad.title}</Heading>
-        <span className='rounded-2xl bg-orange-200 px-2 py-0.5 text-xs'>{STATUS_LABELS[ad.status] ?? ad.status}</span>
+        <span className='rounded-2xl bg-orange-200 px-2 py-0.5 text-xs'>{AD_STATUS_LABELS[ad.status] ?? ad.status}</span>
       </div>
 
       <div className='mb-8 grid grid-cols-1 gap-10 lg:grid-cols-[1fr_360px]'>

@@ -34,6 +34,7 @@ import { computeViewerKey } from './utils/viewer-key.util'
 import { AdPhoneThrottlerGuard } from './guards/ad-phone-throttler.guard'
 import { FindAdsQueryDto } from './dto/find-ads-query.dto'
 import { FindMyAdsQueryDto } from './dto/find-my-ads-query.dto'
+import { FindUserAdsAdminQueryDto } from './dto/find-user-ads-admin-query.dto'
 import { User } from '@/generated/prisma/client'
 
 // B2 в ROADMAP.md: 20 запросов в минуту на аккаунт — с запасом хватает
@@ -108,6 +109,18 @@ export class AdsController {
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number
   ) {
     return this.adsService.findPending(page, limit)
+  }
+
+  // Объявления конкретного пользователя для его карточки в админке
+  // (/admin/users/:id) — см. AdsService.findByUserForAdmin. 'admin/by-user/:userId',
+  // а не что-то вроде 'my/:userId' — та ветка с префиксом 'my' зарезервирована
+  // под эндпоинты владельца объявления (см. findOneForOwner/getMyAdViewStats
+  // ниже), здесь же доступ любому чужому userId, только админу.
+  @Get('admin/by-user/:userId')
+  @Roles(UserRole.ADMIN)
+  @UseGuards(AuthGuard, RolesGuard)
+  findByUserForAdmin(@Param('userId') userId: string, @Query() query: FindUserAdsAdminQueryDto) {
+    return this.adsService.findByUserForAdmin(userId, query)
   }
 
   @Patch(':id/publish')
@@ -314,5 +327,17 @@ export class AdsController {
   @UseGuards(AuthGuard)
   remove(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.adsService.remove(id, userId)
+  }
+
+  // Удаление ЛЮБОГО объявления администратором — с карточки пользователя в
+  // админке (/admin/users/:id), см. AdsService.removeByAdmin. Отдельный
+  // явный путь 'admin/:id', а не переиспользование ':id' выше — тот жёстко
+  // проверяет владельца (см. getUserAdOrThrow), здесь же нужен доступ к
+  // чужому объявлению, только для админа.
+  @Delete('admin/:id')
+  @Roles(UserRole.ADMIN)
+  @UseGuards(AuthGuard, RolesGuard)
+  removeByAdmin(@Param('id') id: string) {
+    return this.adsService.removeByAdmin(id)
   }
 }

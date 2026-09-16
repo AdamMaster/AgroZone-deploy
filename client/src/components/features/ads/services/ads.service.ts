@@ -4,6 +4,7 @@ import { RequestOptions } from '@/shared/fetch'
 import {
   IAd,
   IAdCounters,
+  IAdminUserAdsResponse,
   IAdsListResponse,
   IAdViewStats,
   ICreateAdReportDto,
@@ -159,6 +160,24 @@ class AdsService {
   // Очередь модерации — только для админа (см. AdsController.findPending).
   async findPending(): Promise<IPendingAd[]> {
     return api.get<IPendingAd[]>(`${this.URL}/pending`)
+  }
+
+  // Объявления конкретного пользователя для его карточки в админке
+  // (/admin/users/:id) — только для админа, см.
+  // AdsController.findByUserForAdmin/AdsService.findByUserForAdmin.
+  async findByUserForAdmin(
+    userId: string,
+    params?: { page?: number; limit?: number }
+  ): Promise<IAdminUserAdsResponse> {
+    return api.get<IAdminUserAdsResponse>(`${this.URL}/admin/by-user/${userId}`, { params })
+  }
+
+  // Удаление ЛЮБОГО объявления администратором — с карточки пользователя
+  // (/admin/users/:id), см. AdsController.removeByAdmin. Отдельно от
+  // обычного remove() (тот удаляет только своё объявление, см.
+  // use-remove-ad.ts).
+  async removeByAdmin(id: string): Promise<{ success: boolean }> {
+    return api.delete<{ success: boolean }>(`${this.URL}/admin/${id}`)
   }
 
   // Полная карточка для предпросмотра модератором — только для админа (см.

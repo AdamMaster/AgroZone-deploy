@@ -40,9 +40,9 @@ export const ContentSecurity = () => {
           ) : (
             <Field>
               <div className='relative'>
-                <Input readOnly placeholder={user?.password ? '••••••' : 'Пароль не установлен'}></Input>
+                <Input readOnly placeholder={user?.hasPassword ? '••••••' : 'Пароль не установлен'}></Input>
                 <FieldButton onClick={() => onOpen('change-password')}>
-                  {user?.password ? 'Сменить пароль' : 'Установить пароль'}
+                  {user?.hasPassword ? 'Сменить пароль' : 'Установить пароль'}
                 </FieldButton>
               </div>
             </Field>

@@ -18,7 +18,7 @@ import { UserFormWrapper } from './user-form-wrapper'
 
 export const FormPasswordChange = () => {
   const { user, isLoading } = useProfile()
-  const isOAuthOnly = user?.password === null
+  const isOAuthOnly = !user?.hasPassword
   const [showPassword, setShowPassword] = useState(false)
   const { setView } = useAppModal()
 

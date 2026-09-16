@@ -8,6 +8,7 @@ import { Button, Heading } from '@/components/ui'
 import { formatPhoneNumber } from '@/shared/utils'
 
 import { usePendingAds, usePublishAd } from '../../ads/hooks'
+import { ADMIN_BUTTON_CLASS } from '../constants/admin-ui.constants'
 import { RejectAdDialog } from './reject-ad-dialog'
 
 export const ModerationQueue = () => {
@@ -39,7 +40,7 @@ export const ModerationQueue = () => {
 
             <div className='flex shrink-0 gap-1'>
               <Button
-                className='rounded-sm bg-neutral-100 text-neutral-950 hover:bg-neutral-200'
+                className={ADMIN_BUTTON_CLASS}
                 size='sm'
                 disabled={isLoadingPublish}
                 onClick={() => publishAd(ad.id)}
@@ -48,7 +49,7 @@ export const ModerationQueue = () => {
               </Button>
               <RejectAdDialog
                 adId={ad.id}
-                className='rounded-sm bg-neutral-100 text-neutral-950 hover:bg-neutral-200'
+                className={ADMIN_BUTTON_CLASS}
               />
             </div>
           </div>

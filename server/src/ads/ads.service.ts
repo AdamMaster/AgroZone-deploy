@@ -11,6 +11,7 @@ import { UpdateAdDto } from './dto/update-ad.dto'
 import { AdStateMachineService } from './ad-state-machine.service'
 import { AdsSortBy, FindAdsQueryDto } from './dto/find-ads-query.dto'
 import { FindMyAdsQueryDto } from './dto/find-my-ads-query.dto'
+import { FindUserAdsAdminQueryDto } from './dto/find-user-ads-admin-query.dto'
 import { CategoriesService } from '@/categories/categories.service'
 import { randomBytes } from 'crypto'
 import slugify from 'slugify'
@@ -667,6 +668,54 @@ export class AdsService {
       ...ad,
       isExpired: ad.expiresAt ? ad.expiresAt <= now : false
     }))
+  }
+
+  // Объявления конкретного пользователя для карточки в админке
+  // (/admin/users/:id, см. AdsController.findByUserForAdmin) — тот же
+  // принцип, что и в findMyAds выше (все статусы сразу, включая
+  // черновики/отклонённые, не только PUBLISHED), но по ЛЮБОМУ userId, а не
+  // только текущему авторизованному пользователю — доступ ограничен на
+  // уровне контроллера (@Roles(UserRole.ADMIN)), не здесь. С total —
+  // в отличие от findMyAds, фронту тут нужно знать общее число объявлений
+  // для пагинации "Показать ещё" на карточке пользователя.
+  async findByUserForAdmin(userId: string, query: FindUserAdsAdminQueryDto) {
+    const page = query.page ?? 1
+    const limit = Math.min(query.limit ?? 20, 50)
+    const skip = (page - 1) * limit
+
+    const where = {
+      userId,
+      ...(query.status ? { status: query.status } : {})
+    }
+
+    const [items, total] = await Promise.all([
+      this.prisma.ad.findMany({
+        where,
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          status: true,
+          price: true,
+          unit: true,
+          images: true,
+          createdAt: true,
+          publishedAt: true,
+          expiresAt: true,
+          rejectionReason: true
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit
+      }),
+      this.prisma.ad.count({ where })
+    ])
+
+    // Ad.price — BigInt в базе, но в JSON-ответ уходит уже как обычное
+    // число: глобальный BigInt.prototype.toJSON (см. main.ts) сериализует
+    // его сам, отдельно конвертировать не нужно — так же, как и в
+    // findMyAds выше.
+    return { items, total, page, limit }
   }
 
   // userId опционален — эндпоинт публичный (доступен без авторизации), но
@@ -1595,6 +1644,34 @@ export class AdsService {
 
   async remove(id: string, userId: string) {
     const ad = await this.getUserAdOrThrow(id, userId)
+
+    if (!ad) {
+      throw new NotFoundException('Объявление не найдено')
+    }
+
+    if (ad.images?.length) {
+      await this.deleteImagesFromS3(ad.images)
+    }
+
+    await this.prisma.ad.delete({
+      where: { id }
+    })
+
+    return { success: true }
+  }
+
+  // Удаление объявления администратором с карточки пользователя
+  // (/admin/users/:id, см. AdsController.removeByAdmin) — например, если
+  // объявление нарушает правила площадки, а сам продавец недоступен или не
+  // реагирует на жалобы. Та же логика, что и в remove() выше (подчистить
+  // картинки из S3, затем удалить саму запись — связанные избранное/
+  // просмотры/жалобы/поднятия удалятся каскадом на уровне БД, см.
+  // onDelete: Cascade у соответствующих моделей в schema.prisma; чат с
+  // покупателем не удаляется, а теряет привязку к объявлению — Conversation.adId
+  // это onDelete: SetNull), но без проверки владельца — доступ сюда уже
+  // ограничен на уровне контроллера (@Roles(UserRole.ADMIN)).
+  async removeByAdmin(id: string) {
+    const ad = await this.prisma.ad.findUnique({ where: { id } })
 
     if (!ad) {
       throw new NotFoundException('Объявление не найдено')
