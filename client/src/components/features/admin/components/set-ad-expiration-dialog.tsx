@@ -8,10 +8,9 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
-  DialogTitle,
-  DialogTrigger
+  DialogTrigger,
+  Heading
 } from '@/components/ui'
 
 import { toDateInputValue } from '@/shared/utils'
@@ -77,46 +76,55 @@ export const SetAdExpirationDialog = ({ adId, userId, expiresAt, className }: Se
 
       <DialogContent className='max-w-100'>
         <DialogHeader>
-          <DialogTitle>Срок жизни объявления</DialogTitle>
+          <Heading level={3}>Срок жизни объявления</Heading>
           <DialogDescription>
             Если объявление сейчас опубликовано и вы поставите дату в прошлом, оно сразу снимется с публикации.
             Продление даты у уже истёкшего объявления не вернёт его в эфир — оно должно заново пройти модерацию.
           </DialogDescription>
         </DialogHeader>
 
-        <DatePicker
-          value={date}
-          onChange={setDate}
-          className='rounded-sm border-none bg-neutral-700 hover:bg-neutral-600'
-        />
+        <div className='mb-4 flex flex-col gap-2'>
+          <DatePicker
+            value={date}
+            onChange={setDate}
+            className='rounded-sm border-none bg-gray-100 hover:bg-gray-200'
+          />
 
-        <div className='flex gap-2'>
-          {PRESET_DAYS.map(days => (
-            <Button
-              key={days}
-              type='button'
-              size='sm'
-              className={cn(ADMIN_BUTTON_CLASS, 'flex-1')}
-              onClick={() => applyPreset(days)}
-            >
-              +{days} дней
-            </Button>
-          ))}
+          <div className='flex gap-1'>
+            {PRESET_DAYS.map(days => (
+              <Button
+                key={days}
+                type='button'
+                variant='ghost'
+                size='sm'
+                className={cn('flex-1')}
+                onClick={() => applyPreset(days)}
+              >
+                +{days} дней
+              </Button>
+            ))}
+          </div>
         </div>
 
-        <DialogFooter className='sm:justify-between'>
-          <Button type='button' variant='destructive' disabled={isLoadingSetExpiration} onClick={handleClear}>
+        <div className='flex gap-1'>
+          <Button
+            type='button'
+            variant='destructive'
+            className='rounded-sm px-4'
+            disabled={isLoadingSetExpiration}
+            onClick={handleClear}
+          >
             Снять срок
           </Button>
           <Button
             type='button'
-            className={ADMIN_BUTTON_CLASS}
+            className='rounded-sm bg-neutral-800 px-4 hover:bg-neutral-700'
             disabled={!date || isLoadingSetExpiration}
             onClick={handleSave}
           >
             {isLoadingSetExpiration ? 'Сохраняем...' : 'Сохранить'}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   )

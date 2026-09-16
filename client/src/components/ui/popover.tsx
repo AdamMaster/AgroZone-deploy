@@ -36,11 +36,22 @@ function PopoverContent({
   Pick<PopoverPrimitive.Positioner.Props, 'side' | 'align' | 'sideOffset' | 'alignOffset'>) {
   return (
     <PopoverPortal>
-      <PopoverPrimitive.Positioner side={side} align={align} sideOffset={sideOffset} alignOffset={alignOffset}>
+      {/* z-index — именно на Positioner, а не на Popup ниже: floating-ui
+          позиционирует (position: absolute/fixed) сам Positioner, а Popup —
+          обычный статично спозиционированный div, на котором z-index браузер
+          просто игнорирует. Раньше z-110 висел на Popup и визуально ничего
+          не менял — попап календаря всё равно оставался под модалкой. */}
+      <PopoverPrimitive.Positioner
+        side={side}
+        align={align}
+        sideOffset={sideOffset}
+        alignOffset={alignOffset}
+        className='z-110'
+      >
         <PopoverPrimitive.Popup
           data-slot='popover-content'
           className={cn(
-            'bg-popover text-popover-foreground data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-110 w-auto rounded-xl p-4 text-sm outline-none dark:bg-neutral-800',
+            'bg-popover text-popover-foreground data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 w-auto rounded-xl p-4 text-sm outline-none dark:bg-neutral-800',
             className
           )}
           {...props}

@@ -23,12 +23,6 @@ interface DatePickerProps {
   disabled?: boolean
 }
 
-// Дата-пикер на своём Calendar (react-day-picker, см. ui/calendar.tsx) +
-// Popover (@base-ui/react, см. ui/popover.tsx) — замена нативному
-// <input type='date'>, у которого календарь рисует сам браузер и не
-// стилизуется под тёмную тему админки. Без своего состояния "выбранная
-// дата" — value/onChange полностью контролируются снаружи, как у обычного
-// инпута.
 export const DatePicker = ({
   value,
   onChange,
@@ -38,8 +32,6 @@ export const DatePicker = ({
 }: DatePickerProps) => {
   const [open, setOpen] = useState(false)
 
-  // Полночь по местному времени, а не UTC — та же причина, что и в
-  // toDateInputValue: иначе вечером по МСК дата "съезжает" на день назад.
   const selected = value ? new Date(`${value}T00:00:00`) : undefined
 
   return (
@@ -61,7 +53,7 @@ export const DatePicker = ({
         {selected ? formatFullDate(selected) : placeholder}
       </PopoverTrigger>
 
-      <PopoverContent align='start' className='w-auto p-0'>
+      <PopoverContent align='start' className='custom-shadow w-auto p-0'>
         <Calendar
           mode='single'
           locale={ru}

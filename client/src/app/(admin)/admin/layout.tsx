@@ -1,6 +1,4 @@
 import { AdminNav } from '@/components/features/admin/components'
-import { Container } from '@/components/layout'
-import { Logo } from '@/components/ui'
 
 export default function AdminLayout({
   children
@@ -10,7 +8,7 @@ export default function AdminLayout({
   return (
     <div className='bg-neutral-900'>
       <div className='grid min-h-screen grid-cols-[280px_1fr] gap-6'>
-        <div className='bg-neutral-800/30'>
+        <div className='bg-neutral-800/30 pt-6'>
           <AdminNav />
         </div>
         <div className='relative w-full'>{children}</div>
