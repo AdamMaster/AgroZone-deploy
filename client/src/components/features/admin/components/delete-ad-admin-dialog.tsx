@@ -44,16 +44,7 @@ export const DeleteAdAdminDialog = ({ adId, adTitle, userId, className }: Delete
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
-          <Button
-            type='button'
-            variant='destructive'
-            size='sm'
-            className={cn(className, 'bg-red-500/20 text-red-500 hover:bg-red-400 hover:bg-red-500/40')}
-          />
-        }
-      >
+      <DialogTrigger render={<Button type='button' variant='destructive' size='sm' className={cn(className)} />}>
         Удалить
       </DialogTrigger>
 

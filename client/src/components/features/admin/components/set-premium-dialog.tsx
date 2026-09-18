@@ -17,7 +17,6 @@ import { toDateInputValue } from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
 
-import { ADMIN_BUTTON_CLASS } from '../constants/admin-ui.constants'
 import { useSetPremiumByAdmin } from '../hooks'
 
 const PRESET_DAYS = [7, 30, 90]
@@ -74,7 +73,7 @@ export const SetPremiumDialog = ({ userId, premiumUntil, className }: SetPremium
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button type='button' size='sm' className={cn(ADMIN_BUTTON_CLASS, className)} />}>
+      <DialogTrigger render={<Button type='button' variant='dark' size='sm' className={cn(className)} />}>
         Изменить
       </DialogTrigger>
 
@@ -111,21 +110,10 @@ export const SetPremiumDialog = ({ userId, premiumUntil, className }: SetPremium
         </div>
 
         <div className='flex gap-1'>
-          <Button
-            type='button'
-            variant='destructive'
-            disabled={isLoadingSetPremium}
-            onClick={handleRevoke}
-            className='rounded-sm px-4'
-          >
+          <Button type='button' size='sm' variant='destructive' disabled={isLoadingSetPremium} onClick={handleRevoke}>
             Снять premium
           </Button>
-          <Button
-            type='button'
-            className='rounded-sm bg-neutral-800 px-4 hover:bg-neutral-700'
-            disabled={!date || isLoadingSetPremium}
-            onClick={handleSave}
-          >
+          <Button type='button' size='sm' variant='dark' disabled={!date || isLoadingSetPremium} onClick={handleSave}>
             {isLoadingSetPremium ? 'Сохраняем...' : 'Сохранить'}
           </Button>
         </div>

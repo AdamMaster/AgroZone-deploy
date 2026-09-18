@@ -18,7 +18,6 @@ import { toDateInputValue } from '@/shared/utils'
 import { cn } from '@/lib/utils'
 
 import { useSetAdExpirationByAdmin } from '../../ads/hooks'
-import { ADMIN_BUTTON_CLASS } from '../constants/admin-ui.constants'
 
 const PRESET_DAYS = [7, 30, 90]
 
@@ -70,7 +69,7 @@ export const SetAdExpirationDialog = ({ adId, userId, expiresAt, className }: Se
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button type='button' size='sm' className={cn(ADMIN_BUTTON_CLASS, className)} />}>
+      <DialogTrigger render={<Button type='button' variant='dark' size='sm' className={cn(className)} />}>
         Срок
       </DialogTrigger>
 
@@ -109,8 +108,8 @@ export const SetAdExpirationDialog = ({ adId, userId, expiresAt, className }: Se
         <div className='flex gap-1'>
           <Button
             type='button'
+            size='default'
             variant='destructive'
-            className='rounded-sm px-4'
             disabled={isLoadingSetExpiration}
             onClick={handleClear}
           >
@@ -118,7 +117,8 @@ export const SetAdExpirationDialog = ({ adId, userId, expiresAt, className }: Se
           </Button>
           <Button
             type='button'
-            className='rounded-sm bg-neutral-800 px-4 hover:bg-neutral-700'
+            size='default'
+            variant='dark'
             disabled={!date || isLoadingSetExpiration}
             onClick={handleSave}
           >

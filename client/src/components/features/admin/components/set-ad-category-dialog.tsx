@@ -10,7 +10,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTrigger,
   Heading,
@@ -26,7 +25,6 @@ import { useSetAdCategoryByAdmin } from '../../ads/hooks'
 import { TypeCreateAdSchema } from '../../ads/schemes'
 import { ICategoryFeature } from '../../ads/types/ad.types'
 import { reconcileCategoryFeatures } from '../../ads/utils/reconcile-category-features'
-import { ADMIN_BUTTON_CLASS } from '../constants/admin-ui.constants'
 import { AdminCategorySearchField } from './admin-category-search-field'
 
 interface SetAdCategoryDialogProps {
@@ -152,7 +150,7 @@ export const SetAdCategoryDialog = ({ adId, userId, categoryId, features, classN
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button type='button' size='sm' className={cn(ADMIN_BUTTON_CLASS, className)} />}>
+      <DialogTrigger render={<Button type='button' variant='dark' size='sm' className={cn(className)} />}>
         Категория
       </DialogTrigger>
 
