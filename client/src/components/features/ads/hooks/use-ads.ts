@@ -18,7 +18,12 @@ export function useAds(
   const { data, isLoading } = useQuery({
     queryKey: ['ads', params ?? {}],
     queryFn: () => adsService.findAll(params),
-    initialData
+    initialData,
+    // SSR-фетч на сервере всегда анонимный (нет доступа к куки браузера),
+    // поэтому isFavorite в initialData может быть некорректным для
+    // авторизованного пользователя — форсируем рефетч на клиенте сразу
+    // после маунта (см. этот же паттерн в useAd).
+    staleTime: 0
   })
 
   return { ads: data?.items ?? [], total: data?.total ?? 0, isLoadingAds: isLoading }
