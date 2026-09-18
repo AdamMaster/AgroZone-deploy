@@ -41,16 +41,13 @@ export const ModerationQueue = () => {
             <div className='flex shrink-0 gap-1'>
               <Button
                 className={ADMIN_BUTTON_CLASS}
-                size='sm'
+                size='default'
                 disabled={isLoadingPublish}
                 onClick={() => publishAd(ad.id)}
               >
                 Опубликовать
               </Button>
-              <RejectAdDialog
-                adId={ad.id}
-                className={ADMIN_BUTTON_CLASS}
-              />
+              <RejectAdDialog adId={ad.id} />
             </div>
           </div>
         ))}
