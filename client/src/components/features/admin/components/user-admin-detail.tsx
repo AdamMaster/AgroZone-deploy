@@ -17,6 +17,7 @@ import { useAdminUserAds } from '../../ads/hooks'
 import { ADMIN_BUTTON_CLASS } from '../constants/admin-ui.constants'
 import { useAdminUserDetail } from '../hooks'
 import { DeleteAdAdminDialog } from './delete-ad-admin-dialog'
+import { SetAdCategoryDialog } from './set-ad-category-dialog'
 import { SetAdExpirationDialog } from './set-ad-expiration-dialog'
 import { SetPremiumDialog } from './set-premium-dialog'
 import { UserBadges } from './user-badges'
@@ -152,6 +153,7 @@ export const UserAdminDetail = ({ id }: UserAdminDetailProps) => {
             </Link>
 
             <div className='flex shrink-0 gap-1'>
+              <SetAdCategoryDialog adId={ad.id} userId={id} categoryId={ad.categoryId} features={ad.features} />
               <SetAdExpirationDialog adId={ad.id} userId={id} expiresAt={ad.expiresAt} />
               <DeleteAdAdminDialog adId={ad.id} adTitle={ad.title} userId={id} />
             </div>

@@ -40,7 +40,7 @@ export const DynamicField = ({ feature, control }: DynamicFieldProps) => {
                 }}
                 value={field.value ? String(field.value) : null}
               >
-                <SelectTrigger className='h-11! px-4 sm:h-12! md:h-13!'>
+                <SelectTrigger className='h-11! px-4 sm:h-12!'>
                   <SelectValue placeholder='Не выбрано' />
                 </SelectTrigger>
                 <SelectContent alignItemWithTrigger={false} align='start'>
@@ -104,7 +104,7 @@ export const DynamicField = ({ feature, control }: DynamicFieldProps) => {
               ) : (
                 <div className='flex items-center gap-2'>
                   <Input
-                    className='h-11! px-4 sm:h-12! md:h-13!'
+                    className='h-11! px-4 sm:h-12!'
                     {...field}
                     type='number'
                     value={field.value === null || field.value === undefined ? '' : String(field.value)}
@@ -149,7 +149,7 @@ export const DynamicField = ({ feature, control }: DynamicFieldProps) => {
               )
             ) : (
               <Input
-                className='h-11! px-4 sm:h-12! md:h-13!'
+                className='h-11! px-4 sm:h-12!'
                 {...field}
                 type='text'
                 value={field.value === null || field.value === undefined ? '' : String(field.value)}
@@ -228,7 +228,7 @@ const CaliberInput = ({ field, unit }: CaliberInputProps) => {
   return (
     <div className='flex items-center gap-2'>
       <Input
-        className='h-11! px-4 sm:h-12! md:h-13!'
+        className='h-11! px-4 sm:h-12!'
         value={text}
         onChange={e => setText(e.target.value.replace(/[^\d,+\s]/g, ''))}
         onBlur={() => field.onChange(parseCaliberInput(text))}

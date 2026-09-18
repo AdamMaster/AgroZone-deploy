@@ -53,7 +53,7 @@ export const SubcategoryList = ({
   return (
     <div className='flex flex-col gap-2'>
       <Label htmlFor={inputId}>{label}</Label>
-      <Command className={cn('overflow-initial relative h-[46px] rounded-lg border', open ? 'focus-input' : 'border')}>
+      <Command className={cn('overflow-initial relative h-12 rounded-lg border', open ? 'focus-input' : 'border')}>
         <CommandInput
           id={inputId}
           className='h-full p-0 placeholder:text-gray-500'

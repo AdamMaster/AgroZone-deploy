@@ -4,10 +4,10 @@ import { RequestOptions } from '@/shared/fetch'
 import {
   IAd,
   IAdCounters,
+  IAdViewStats,
   IAdminUserAd,
   IAdminUserAdsResponse,
   IAdsListResponse,
-  IAdViewStats,
   ICreateAdReportDto,
   ILocationOption,
   IModerationAd,
@@ -62,8 +62,11 @@ class AdsService {
   // первой страницы каталога (см. page.tsx и S1 в ROADMAP.md). Обычные
   // клиентские вызовы (useAds/useAdsInfinite) его не передают — тогда
   // применяется дефолтное поведение fetch в Next 16 (без кэша).
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async findAll(params?: Record<string, any>, requestOptions?: Omit<RequestOptions, 'params'>): Promise<IAdsListResponse> {
+  async findAll(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    params?: Record<string, any>,
+    requestOptions?: Omit<RequestOptions, 'params'>
+  ): Promise<IAdsListResponse> {
     const response = await api.get<IAdsListResponse>(this.URL, { params, ...requestOptions })
     return response
   }
@@ -166,10 +169,7 @@ class AdsService {
   // Объявления конкретного пользователя для его карточки в админке
   // (/admin/users/:id) — только для админа, см.
   // AdsController.findByUserForAdmin/AdsService.findByUserForAdmin.
-  async findByUserForAdmin(
-    userId: string,
-    params?: { page?: number; limit?: number }
-  ): Promise<IAdminUserAdsResponse> {
+  async findByUserForAdmin(userId: string, params?: { page?: number; limit?: number }): Promise<IAdminUserAdsResponse> {
     return api.get<IAdminUserAdsResponse>(`${this.URL}/admin/by-user/${userId}`, { params })
   }
 
@@ -187,6 +187,18 @@ class AdsService {
   // expiresAt: null снимает срок — объявление не истечёт само.
   async setExpirationByAdmin(id: string, expiresAt: string | null): Promise<IAdminUserAd> {
     return api.patch<IAdminUserAd>(`${this.URL}/admin/${id}/expiration`, { expiresAt })
+  }
+
+  // Ручная смена категории (и характеристик) ЛЮБОГО объявления
+  // администратором — с той же карточки пользователя (/admin/users/:id),
+  // см. AdsController.setCategoryByAdmin/AdsService.setCategoryByAdmin.
+  async setCategoryByAdmin(
+    id: string,
+    categoryId: string,
+    features: Record<string, unknown>,
+    unit: string
+  ): Promise<IAdminUserAd> {
+    return api.patch<IAdminUserAd>(`${this.URL}/admin/${id}/category`, { categoryId, features, unit })
   }
 
   // Полная карточка для предпросмотра модератором — только для админа (см.

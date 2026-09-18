@@ -1,14 +1,11 @@
 'use client'
 
 import { useAdStore } from '@/store'
-import { useQueryClient } from '@tanstack/react-query'
 import { CommandItem } from 'cmdk'
 import { ChevronRight } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { UseFormReturn } from 'react-hook-form'
-import { toast } from 'sonner'
 
-import { categoriesService } from '@/components/features/categories/services'
 import { useCategorySearchSuggest } from '@/components/features/categories/hooks/use-category-search-suggest'
 import {
   Command,
@@ -26,6 +23,7 @@ import { findCategoryById, flattenCategories, getPathToCategory } from '@/shared
 
 import { cn } from '@/lib/utils'
 
+import { useCategoryFeaturesLoader } from '../hooks/use-category-features-loader'
 import { TypeCreateAdSchema } from '../schemes'
 import { ICategory, ICategoryFeature } from '../types/ad.types'
 import { CategoryBreadcrumbs } from './category-breadcrumbs'
@@ -44,11 +42,11 @@ export const CategoryCascader = ({ categories, form, onCategorySelect }: Categor
   const listRef = useRef<HTMLDivElement>(null)
   const setCategoryPath = useAdStore(state => state.setCategoryPath)
   const categoryPath = useAdStore(state => state.categoryPath)
-  const queryClient = useQueryClient()
   const categoryId = form.watch('categoryId')
   const otherCategory = useMemo(() => categories.find(c => c.name === 'Прочее'), [categories])
   const { suggestions: semanticSuggestions, isLoading: isSemanticLoading } = useCategorySearchSuggest(searchTerm)
   const isMobile = useMediaQuery('(max-width: 767px)')
+  const loadCategoryFeatures = useCategoryFeaturesLoader()
 
   const filteredCategories = useMemo(() => {
     const term = searchTerm.trim().toLowerCase()
@@ -83,25 +81,15 @@ export const CategoryCascader = ({ categories, form, onCategorySelect }: Categor
 
     if (fullCategory && (!fullCategory.children || fullCategory.children.length === 0)) {
       // Атрибуты категории больше не лежат в дереве (см. комментарий у
-      // ICategory.categoryFeatures) — их нужно догрузить отдельным запросом.
-      // Тот же queryKey, что у useCategoryFeatures, чтобы результат
-      // переиспользовался, если эта же категория уже была загружена где-то
-      // ещё (например, при повторном открытии формы редактирования).
+      // ICategory.categoryFeatures) — их нужно догрузить отдельным запросом,
+      // см. useCategoryFeaturesLoader (тот же хук использует и
+      // AdminCategorySearchField в админке — см. SetAdCategoryDialog).
       // categoryId намеренно НЕ проставляется в форму до того, как запрос
       // разрешится — пока categoryId пуст, кнопка "Продолжить" в AdForm
       // (следит за form.watch('categoryId')) остаётся недоступной сама
       // по себе, без отдельного пропа под состояние загрузки.
-      let features: ICategoryFeature[] = []
-
-      try {
-        features = await queryClient.fetchQuery({
-          queryKey: ['category-features', catId],
-          queryFn: () => categoriesService.findFeatures(catId)
-        })
-      } catch {
-        toast.error('Не удалось загрузить параметры категории. Попробуйте выбрать её ещё раз.')
-        return
-      }
+      const features = await loadCategoryFeatures(catId)
+      if (!features) return
 
       onCategorySelect(features, fullCategory.priceUnits?.length ? fullCategory.priceUnits : ['ITEM'])
       form.setValue('categoryId', catId, { shouldValidate: true })

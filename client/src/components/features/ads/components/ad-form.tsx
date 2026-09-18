@@ -36,6 +36,7 @@ import { findCategoryById, formatPhoneNumber, getPathToCategory } from '@/shared
 import { CreateAdSchema, TypeCreateAdSchema } from '../schemes'
 import { ICategory, ICategoryFeature } from '../types/ad.types'
 import { normalizeFeatureUnits } from '../utils/normalize-feature-units'
+import { reconcileCategoryFeatures } from '../utils/reconcile-category-features'
 import { CategoryBreadcrumbs } from './category-breadcrumbs'
 import { CategoryCascader } from './category-cascader'
 import { DynamicField } from './dynamic-field'
@@ -218,6 +219,15 @@ export const AdForm = ({
             categories={categories}
             form={form}
             onCategorySelect={(selectedFeatures, selectedPriceUnits) => {
+              // Реконсилируем ДО setFeatures — features (state) тут ещё
+              // старая категория, ровно то, что нужно для сравнения "что
+              // осталось в обеих категориях" (см. reconcileCategoryFeatures).
+              const reconciled = reconcileCategoryFeatures(
+                form.getValues('categoryFeatures'),
+                features,
+                selectedFeatures
+              )
+              form.setValue('categoryFeatures', reconciled)
               setFeatures(selectedFeatures)
               setPriceUnits(selectedPriceUnits)
               form.setValue('unit', selectedPriceUnits[0] ?? 'ITEM')
@@ -234,7 +244,7 @@ export const AdForm = ({
                   <Field data-invalid={fieldState.invalid} isInvalid={fieldState.invalid}>
                     <InputGroup>
                       <Label>Название объявления</Label>
-                      <Input className='h-11 sm:h-12 md:h-13' {...field} />
+                      <Input className='h-11 sm:h-12' {...field} />
                     </InputGroup>
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>
@@ -249,7 +259,7 @@ export const AdForm = ({
                       <InputGroup>
                         <Label>Цена</Label>
                         <Input
-                          className='h-11 sm:h-12 md:h-13'
+                          className='h-11 sm:h-12'
                           {...field}
                           value={field.value ?? ''}
                           type='number'
@@ -271,7 +281,7 @@ export const AdForm = ({
                           value={field.value ?? priceUnits[0] ?? 'ITEM'}
                           onValueChange={(val: string | null) => field.onChange(val ?? 'ITEM')}
                         >
-                          <SelectTrigger className='h-11! px-4 sm:h-12! md:h-13!'>
+                          <SelectTrigger className='! h-11! px-4 sm:h-12!'>
                             <SelectValue placeholder='Единица цены'>
                               {(value: string | null) => (value ? (PRICE_UNITS[value] ?? value) : 'Единица цены')}
                             </SelectValue>
@@ -350,7 +360,7 @@ export const AdForm = ({
 
                       <div className='relative w-full'>
                         <Input
-                          className='h-11 sm:h-12 md:h-13'
+                          className='h-11 sm:h-12'
                           {...field}
                           value={field.value ?? ''}
                           type='tel'
@@ -386,7 +396,7 @@ export const AdForm = ({
         <div className='flex gap-1'>
           {step > 1 && !isEdit && (
             <Button
-              className='hidden h-11 px-5 sm:flex sm:h-12 md:h-13'
+              className='hidden h-11 px-5 sm:flex sm:h-12'
               variant='outline'
               size='lg'
               type='button'
@@ -397,7 +407,7 @@ export const AdForm = ({
           )}
           {step === 1 && (
             <Button
-              className='h-11 px-5 sm:h-12 md:h-13'
+              className='h-11 px-5 sm:h-12'
               variant='secondary'
               size='lg'
               type='button'
@@ -410,14 +420,14 @@ export const AdForm = ({
           {step === 2 && (
             <div className='flex gap-1'>
               {isEdit && (
-                <Button className='h-11 px-5 sm:h-12 md:h-13' variant='outline'>
+                <Button className='h-11 px-5 sm:h-12' variant='outline'>
                   <Link className='flex h-full items-center justify-center' href='/profile/settings/ads'>
                     Отмена
                   </Link>
                 </Button>
               )}
               <Button
-                className='h-11 px-5 sm:h-12 md:h-13'
+                className='h-11 px-5 sm:h-12'
                 variant='secondary'
                 size='lg'
                 type='button'
@@ -428,7 +438,7 @@ export const AdForm = ({
               </Button>
               {canSaveDraft && (
                 <Button
-                  className='h-11 px-5 sm:h-12 md:h-13'
+                  className='h-11 px-5 sm:h-12'
                   variant='outline'
                   size='lg'
                   type='button'

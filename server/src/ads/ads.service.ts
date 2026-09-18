@@ -13,6 +13,8 @@ import { AdsSortBy, FindAdsQueryDto } from './dto/find-ads-query.dto'
 import { FindMyAdsQueryDto } from './dto/find-my-ads-query.dto'
 import { FindUserAdsAdminQueryDto } from './dto/find-user-ads-admin-query.dto'
 import { AdminSetAdExpirationDto } from './dto/admin-set-ad-expiration.dto'
+import { AdminSetAdCategoryDto } from './dto/admin-set-ad-category.dto'
+import { reconcileCategoryFeatures } from './utils/reconcile-category-features.util'
 import { CategoriesService } from '@/categories/categories.service'
 import { randomBytes } from 'crypto'
 import slugify from 'slugify'
@@ -703,7 +705,11 @@ export class AdsService {
           createdAt: true,
           publishedAt: true,
           expiresAt: true,
-          rejectionReason: true
+          rejectionReason: true,
+          // Нужны для ручной смены категории объявления с этой же карточки —
+          // см. AdminSetAdCategoryDialog/AdsService.setCategoryByAdmin.
+          categoryId: true,
+          features: true
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -1729,6 +1735,92 @@ export class AdsService {
       data: {
         expiresAt,
         ...(shouldExpireNow && { status: AdStatus.EXPIRED })
+      }
+    })
+  }
+
+  // Ручная смена категории (и, при необходимости, характеристик) ЛЮБОГО
+  // объявления администратором — с той же карточки пользователя
+  // (/admin/users/:id), см. AdminSetAdCategoryDialog на клиенте. Основной
+  // сценарий: продавец опубликовал объявление не в той категории, админ
+  // переносит его в правильную.
+  //
+  // В отличие от setExpirationByAdmin/setPremiumByAdmin выше, тут нельзя
+  // просто проставить одно поле — категория тянет за собой ещё три вещи,
+  // которые должны остаться согласованными:
+  //  1. categoryPath/seoPath (хлебные крошки и SEO-урл) — кэш, который
+  //     нужно пересчитать от новой категории, иначе объявление продолжит
+  //     жить по старому урлу. Обычный AdsService.update() этого не делает
+  //     вовсе (он не трогает categoryId на практике — форма продавца не
+  //     даёт сменить категорию при редактировании, см. AdForm), так что
+  //     копировать его поведение сюда было бы неправильно — пришлось
+  //     считать заново явно, как в create()/saveDraft().
+  //  2. features (Ad.features, JSON) — у каждой категории свой набор
+  //     CategoryFeature, и значения от старой категории не должны молча
+  //     оставаться в объявлении новой (см. reconcileCategoryFeatures).
+  //     Если админ прислал features явно (обычный путь — клиент их и так
+  //     реконсилит сам, см. AdminSetAdCategoryDialog) — фильтруем их по
+  //     новой категории на сервере (defense-in-depth, тот же принцип, что
+  //     explicit `select` против утечки password в setPremiumByAdmin). Если
+  //     features не пришли вовсе (прямой вызов API в обход клиента) —
+  //     реконсилим то, что уже было в объявлении, относительно старой и
+  //     новой категории.
+  //  3. unit (единица цены) — Category.priceUnits может отличаться между
+  //     категориями (см. ту же проверку в create()); не переданный явно
+  //     unit по умолчанию берём как первую разрешённую единицу новой
+  //     категории, а не молча оставляем старую — та может быть недоступна
+  //     в новой категории вовсе.
+  //
+  // Статус объявления НЕ трогаем и на повторную модерацию не отправляем —
+  // категорию меняет сам администратор, это и есть решение модератора,
+  // обсуждали с пользователем отдельно.
+  async setCategoryByAdmin(id: string, dto: AdminSetAdCategoryDto) {
+    const ad = await this.prisma.ad.findUnique({ where: { id } })
+
+    if (!ad) {
+      throw new NotFoundException('Объявление не найдено')
+    }
+
+    const category = await this.prisma.category.findUnique({
+      where: { id: dto.categoryId },
+      select: { id: true, priceUnits: true, _count: { select: { children: true } } }
+    })
+
+    if (!category) {
+      throw new NotFoundException('Категория не найдена')
+    }
+
+    if (category._count.children > 0) {
+      throw new BadRequestException('Нельзя выбрать промежуточную категорию — нужна конечная (листовая)')
+    }
+
+    const unit = dto.unit ?? category.priceUnits[0] ?? PriceUnit.ITEM
+
+    if (category.priceUnits.length && !category.priceUnits.includes(unit)) {
+      throw new BadRequestException('Выбранная единица измерения цены недоступна для этой категории')
+    }
+
+    const [oldCategoryFeatures, newCategoryFeatures] = await Promise.all([
+      this.categoriesService.getFeatures(ad.categoryId),
+      this.categoriesService.getFeatures(dto.categoryId)
+    ])
+
+    const features =
+      dto.features !== undefined
+        ? reconcileCategoryFeatures(dto.features, newCategoryFeatures, newCategoryFeatures)
+        : reconcileCategoryFeatures(ad.features as Record<string, unknown>, oldCategoryFeatures, newCategoryFeatures)
+
+    const categoryPath = await this.categoriesService.getCategoryPath(dto.categoryId)
+    const seoPath = this.categoriesService.buildSeoPath(categoryPath, ad.slug)
+
+    return this.prisma.ad.update({
+      where: { id },
+      data: {
+        categoryId: dto.categoryId,
+        categoryPath,
+        seoPath,
+        unit,
+        features: features as Prisma.InputJsonValue
       }
     })
   }

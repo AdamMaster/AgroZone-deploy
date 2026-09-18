@@ -89,7 +89,7 @@ export const LocationFilter = ({ value, onChange }: LocationFilterProps) => {
           </button>
         )}
       </div>
-      <Command className={cn('overflow-initial relative h-[46px] rounded-lg border', open ? 'focus-input' : 'border')}>
+      <Command className={cn('overflow-initial relative h-12 rounded-lg border', open ? 'focus-input' : 'border')}>
         <CommandInput
           id={inputId}
           className='h-full p-0 placeholder:text-gray-500'

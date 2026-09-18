@@ -181,6 +181,10 @@ export interface IAdminUserAd {
   publishedAt: string | null
   expiresAt: string | null
   rejectionReason: string | null
+  // Нужны для ручной смены категории объявления с этой же карточки — см.
+  // AdminSetAdCategoryDialog/AdsService.setCategoryByAdmin.
+  categoryId: string
+  features: Record<string, unknown>
 }
 
 export interface IAdminUserAdsResponse {

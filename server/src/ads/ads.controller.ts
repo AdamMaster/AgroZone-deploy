@@ -36,6 +36,7 @@ import { FindAdsQueryDto } from './dto/find-ads-query.dto'
 import { FindMyAdsQueryDto } from './dto/find-my-ads-query.dto'
 import { FindUserAdsAdminQueryDto } from './dto/find-user-ads-admin-query.dto'
 import { AdminSetAdExpirationDto } from './dto/admin-set-ad-expiration.dto'
+import { AdminSetAdCategoryDto } from './dto/admin-set-ad-category.dto'
 import { User } from '@/generated/prisma/client'
 
 // B2 в ROADMAP.md: 20 запросов в минуту на аккаунт — с запасом хватает
@@ -350,5 +351,15 @@ export class AdsController {
   @UseGuards(AuthGuard, RolesGuard)
   setExpirationByAdmin(@Param('id') id: string, @Body() dto: AdminSetAdExpirationDto) {
     return this.adsService.setExpirationByAdmin(id, dto)
+  }
+
+  // Ручная смена категории ЛЮБОГО объявления администратором — с той же
+  // карточки пользователя (/admin/users/:id), см.
+  // AdsService.setCategoryByAdmin.
+  @Patch('admin/:id/category')
+  @Roles(UserRole.ADMIN)
+  @UseGuards(AuthGuard, RolesGuard)
+  setCategoryByAdmin(@Param('id') id: string, @Body() dto: AdminSetAdCategoryDto) {
+    return this.adsService.setCategoryByAdmin(id, dto)
   }
 }
