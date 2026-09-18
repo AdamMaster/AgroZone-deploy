@@ -85,6 +85,7 @@ export const AdCardList = ({ ad }: AdCardListProps) => {
             onClick={() => onClickFavorite(ad.id, !!ad.isFavorite)}
             isFavorite={ad.isFavorite}
             isLoading={isAddingFavorite || isRemovingFavorite}
+            className='-top-1'
           />
         </div>
         <div className='relative ml-2 hidden text-gray-950 xl:block'>

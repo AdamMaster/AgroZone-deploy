@@ -167,15 +167,25 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
 
           <div className='flex w-full max-w-90 flex-grow flex-col sm:flex'>
             <div className='mb-0 flex flex-col gap-0 sm:mb-1'>
-              <Heading level={4} className='leading-tight font-normal sm:text-lg sm:font-bold'>
-                <Link href={detailHref} className='hover:text-primary'>
-                  {ad.title}
-                </Link>
-              </Heading>
+              <div className='flex items-center gap-2'>
+                <Heading level={4} className='leading-tight font-normal sm:text-lg sm:font-bold'>
+                  <Link href={detailHref} className='hover:text-primary'>
+                    {ad.title}
+                  </Link>
+                </Heading>
+                {ad.status === 'REJECTED' && (
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <CircleAlert className='size-4 cursor-pointer text-amber-500' />
+                    </TooltipTrigger>
+                    <TooltipContent className='line-clamp-2'>{ad.rejectionReason}</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
               {ad.status === 'PENDING' && (
                 <Tooltip>
                   <TooltipTrigger className='-order-1'>
-                    <span className='flex w-fit items-center rounded-2xl bg-orange-200 px-2 py-0.5 text-xs'>
+                    <span className='mb-1 flex w-fit items-center rounded-2xl bg-orange-200 px-2 py-0.5 text-xs dark:text-neutral-900'>
                       На модерации
                     </span>
                   </TooltipTrigger>
@@ -190,16 +200,8 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
                   Срок действия истек
                 </span>
               )}
-              {ad.status === 'REJECTED' && (
-                <Tooltip>
-                  <TooltipTrigger>
-                    <CircleAlert className='size-4 cursor-pointer text-amber-500' />
-                  </TooltipTrigger>
-                  <TooltipContent className='line-clamp-2'>{ad.rejectionReason}</TooltipContent>
-                </Tooltip>
-              )}
             </div>
-            <p className='mb-0 text-[16px] font-bold sm:mb-3 sm:text-lg'>{formatPriceWithUnit(ad.price, ad.unit)}</p>
+            <p className='mb-0 text-base font-bold sm:mb-3 sm:text-lg'>{formatPriceWithUnit(ad.price, ad.unit)}</p>
             <p className='text-[13px] text-gray-500'>{ad.address}</p>
           </div>
 

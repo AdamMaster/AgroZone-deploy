@@ -50,7 +50,7 @@ export const DeleteAdAdminDialog = ({ adId, adTitle, userId, className }: Delete
             type='button'
             variant='destructive'
             size='sm'
-            className={cn(className, 'rounded-sm bg-red-400 text-neutral-950 hover:bg-red-400')}
+            className={cn(className, 'bg-red-500/20 text-red-500 hover:bg-red-400 hover:bg-red-500/40')}
           />
         }
       >

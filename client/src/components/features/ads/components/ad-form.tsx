@@ -83,7 +83,6 @@ export const AdForm = ({
   const submitButtonText = isRejected ? 'Сохранить и отправить на проверку' : isEdit ? 'Сохранить' : 'Опубликовать'
   const isPremium = user?.role === 'PREMIUM'
   const { onOpen } = useAppModal()
-  const [selectedPhone, setSelectedPhone] = useState<string | null>(null)
 
   const form = useForm<TypeCreateAdSchema>({
     resolver: zodResolver(CreateAdSchema),
@@ -129,12 +128,6 @@ export const AdForm = ({
     return router.back()
   }
 
-  // Атрибуты категории (categoryFeatures) больше не приходят в дереве
-  // categories (см. комментарий у ICategory в categories.types.ts) — при
-  // редактировании существующего объявления их нужно догрузить отдельным
-  // запросом по initialData.categoryId. priceUnits и путь по хлебным
-  // крошкам остаются в дереве, так что для них прежний обход категорий
-  // сохранён без изменений.
   const { features: editCategoryFeatures } = useCategoryFeatures(isEdit ? initialData?.categoryId : undefined)
 
   useEffect(() => {
@@ -173,7 +166,7 @@ export const AdForm = ({
 
   return (
     <div className='relative'>
-      <div className='sticky z-10 -mx-4 mb-4 flex items-center justify-between bg-white px-4 md:hidden'>
+      <div className='sticky z-10 -mx-4 mb-4 flex items-center justify-between bg-white px-4 md:hidden dark:bg-neutral-800'>
         <ButtonBack onClick={handleTopBarBack} className='-translate-x-4 rounded-none shadow-none!' />
         {step === 2 &&
           (canSaveDraft ? (

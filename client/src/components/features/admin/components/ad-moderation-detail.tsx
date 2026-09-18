@@ -105,13 +105,22 @@ export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
 
   return (
     <div className='max-w-[950px]'>
-      <ButtonBack className='absolute top-0 -left-18' onClick={() => router.back()} />
-
-      <CategoryBreadcrumbs items={[{ name: 'Объявления', href: '/catalog' }, ...categoryPath]} />
+      <CategoryBreadcrumbs
+        items={[{ name: 'Объявления', href: '/catalog' }, ...categoryPath]}
+        className='text-neutral-400'
+      />
 
       <div className='mb-6 flex items-center gap-2'>
-        <Heading level={1}>{ad.title}</Heading>
-        <span className='rounded-2xl bg-orange-200 px-2 py-0.5 text-xs'>{AD_STATUS_LABELS[ad.status] ?? ad.status}</span>
+        <ButtonBack
+          className='mr-3 bg-neutral-700 text-neutral-50 hover:bg-neutral-600'
+          onClick={() => router.back()}
+        />
+        <Heading level={1} className='text-white'>
+          {ad.title}
+        </Heading>
+        <span className='rounded-2xl bg-orange-200 px-2 py-0.5 text-xs'>
+          {AD_STATUS_LABELS[ad.status] ?? ad.status}
+        </span>
       </div>
 
       <div className='mb-8 grid grid-cols-1 gap-10 lg:grid-cols-[1fr_360px]'>
@@ -170,11 +179,9 @@ export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
           )}
         </div>
 
-        <div>
+        <div className='text-white'>
           <p className='mb-4 text-2xl font-bold'>
             {ad.price ? `${ad.price.toLocaleString('ru-RU')} ₽` : 'Цена договорная'}
-            {/* ITEM ("Целиком") — цена без разбивки на единицы измерения,
-                суффикс "за X" для него не нужен (см. shared/constants/units.ts) */}
             {ad.price && ad.unit && ad.unit !== 'ITEM' && PRICE_UNITS[ad.unit] && (
               <span className='block text-sm font-normal text-gray-500'>за {PRICE_UNITS[ad.unit].toLowerCase()}</span>
             )}
@@ -182,16 +189,21 @@ export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
           <div className='mb-8 flex gap-1.5'>
             {ad.status !== 'PUBLISHED' && (
               <Button
-                variant='secondary'
+                variant='ghost'
                 size='lg'
-                className='grow px-8'
+                className='grow px-8 text-neutral-900'
                 disabled={isLoadingPublish}
                 onClick={handlePublish}
               >
                 Опубликовать
               </Button>
             )}
-            {ad.status !== 'REJECTED' && <RejectAdDialog adId={ad.id} />}
+            {ad.status !== 'REJECTED' && (
+              <RejectAdDialog
+                adId={ad.id}
+                className='h-12 rounded-lg bg-red-500/20 px-8 text-red-500 hover:bg-red-500/40 hover:text-red-500'
+              />
+            )}
           </div>
 
           <div className='mb-6 flex items-center gap-3'>
@@ -200,9 +212,9 @@ export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
             </Avatar>
             <div>
               <p className='text-sm font-medium'>{ad.user?.displayName ?? 'Пользователь'}</p>
-              {ad.user?.email && <p className='text-xs text-gray-500'>{ad.user.email}</p>}
+              {ad.user?.email && <p className='text-xs text-neutral-400'>{ad.user.email}</p>}
               {ad.user?.phones?.[0]?.phone && (
-                <p className='flex items-center gap-1 text-xs text-gray-500'>
+                <p className='flex items-center gap-1 text-xs text-neutral-400'>
                   {formatPhoneNumber(ad.user.phones[0].phone)}
                 </p>
               )}
@@ -216,29 +228,31 @@ export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
         </div>
       </div>
 
-      {ad.description && (
-        <div className='mb-8'>
-          <Heading level={4} className='mb-2'>
-            Описание
-          </Heading>
-          <MultilineText text={ad.description} />
-        </div>
-      )}
+      <div className='text-white'>
+        {ad.description && (
+          <div className='mb-8'>
+            <Heading level={4} className='mb-2 text-white'>
+              Описание
+            </Heading>
+            <MultilineText text={ad.description} />
+          </div>
+        )}
 
-      {filledFeatures.length > 0 && (
-        <div>
-          <Heading level={4} className='mb-3'>
-            Характеристики
-          </Heading>
-          <dl className='grid grid-cols-1 gap-x-6 gap-y-2'>
-            {filledFeatures.map(({ feature, value }) => (
-              <div key={feature.id} className='flex gap-2'>
-                <dt className='text-gray-600'>{feature.label}</dt>:<dd className='text-right font-medium'>{value}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      )}
+        {filledFeatures.length > 0 && (
+          <div>
+            <Heading level={4} className='mb-3'>
+              Характеристики
+            </Heading>
+            <dl className='grid grid-cols-1 gap-x-6 gap-y-2'>
+              {filledFeatures.map(({ feature, value }) => (
+                <div key={feature.id} className='flex gap-2'>
+                  <dt className='text-gray-600'>{feature.label}</dt>:<dd className='text-right font-medium'>{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
+      </div>
 
       {ad.images.length > 0 && (
         <Lightbox

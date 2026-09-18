@@ -31,11 +31,6 @@ interface UserAdminDetailProps {
   id: string
 }
 
-// Полная карточка пользователя в админке (/admin/users/:id) — первый шаг
-// из плана (см. обсуждение): пока read-only просмотр профиля/телефонов/
-// связанных аккаунтов, плюс удаление конкретного объявления (см.
-// DeleteAdAdminDialog); ручная выдача premium и бан добавятся следующими
-// итерациями поверх этой же карточки.
 export const UserAdminDetail = ({ id }: UserAdminDetailProps) => {
   const router = useRouter()
   const { user, isLoading, isError } = useAdminUserDetail(id)
