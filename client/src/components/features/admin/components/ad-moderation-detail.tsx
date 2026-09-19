@@ -249,7 +249,7 @@ export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
 
         {filledFeatures.length > 0 && (
           <div>
-            <Heading level={4} className='mb-3'>
+            <Heading level={4} className='mb-3 text-neutral-50'>
               Характеристики
             </Heading>
             <dl className='grid grid-cols-1 gap-x-6 gap-y-2'>
