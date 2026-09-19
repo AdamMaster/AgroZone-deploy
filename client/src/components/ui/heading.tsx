@@ -20,12 +20,12 @@ export const Heading = ({ level = 1, children, className, as }: HeadingProps) =>
   const Tag: ElementType = as ?? `h${level}`
 
   const variants = {
-    1: 'md:text-3xl sm:text-2xl text-xl font-bold tracking-tight text-gray-900 leading-tight',
-    2: 'sm:text-2xl text-xl font-bold tracking-tight text-gray-900 leading-tight',
-    3: 'text-xl font-bold text-gray-800 leading-tight',
-    4: 'font-bold text-gray-900 leading-tight sm:text-lg text-base',
-    5: 'text-base font-medium leading-tight',
-    6: 'text-sm font-medium leading-tight'
+    1: 'md:text-3xl sm:text-2xl text-xl font-bold tracking-tight text-gray-900 leading-tight dark:text-neutral-50',
+    2: 'sm:text-2xl text-xl font-bold tracking-tight text-gray-900 leading-tight dark:text-neutral-50',
+    3: 'text-xl font-bold text-gray-800 leading-tight dark:text-neutral-50',
+    4: 'font-bold text-gray-900 leading-tight sm:text-lg text-base dark:text-neutral-50',
+    5: 'text-base font-medium leading-tight dark:text-neutral-50',
+    6: 'text-sm font-medium leading-tight dark:text-neutral-50'
   }
 
   return <Tag className={cn(variants[level], className)}>{children}</Tag>

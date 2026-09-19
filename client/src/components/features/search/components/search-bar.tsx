@@ -92,7 +92,7 @@ export const SearchBar = ({ className }: SearchBarProps) => {
       <form
         className={cn(
           'md:bg-primary relative z-100 flex w-full items-center rounded-lg bg-gray-100 p-[2px]',
-          isFocus && 'bg-white'
+          isFocus && 'bg-white dark:bg-neutral-700'
         )}
         onSubmit={handleSearch}
       >
@@ -139,7 +139,7 @@ export const SearchBar = ({ className }: SearchBarProps) => {
         </Button>
 
         {isFocus && suggestions.length > 0 && (
-          <div className='custom-shadow absolute top-[calc(100%+4px)] left-0 z-100 max-h-64 w-full overflow-hidden overflow-y-auto rounded-lg bg-white'>
+          <div className='custom-shadow absolute top-[calc(100%+4px)] left-0 z-100 max-h-64 w-full overflow-hidden overflow-y-auto rounded-lg bg-white dark:bg-neutral-700'>
             <ul className='py-2'>
               {suggestions.map(item => (
                 <li
