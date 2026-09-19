@@ -35,14 +35,45 @@ export function levenshtein(a: string, b: string): number {
   return dp[a.length][b.length]
 }
 
+const MIN_WORD_LENGTH_TO_COMPARE_STEMS = 4
+
+function stemPrefixLength(wordLength: number): number {
+  return wordLength >= 6 ? wordLength - 2 : wordLength - 1
+}
+
+/**
+ * Грубая (не лингвистическая) эвристика общей русской словоформы: считаем,
+ * что два слова — формы одного и того же слова, если у них совпадает
+ * достаточно длинный префикс. Не отличает падеж/число морфологически
+ * корректно и не ловит супплетивные формы (семя/семян), но для
+ * буст-эвристики в поиске это осознанный компромисс в пользу recall.
+ *
+ * ВНИМАНИЕ: это намеренный дубликат client/src/shared/utils/text-similarity.ts
+ * (sharesRussianStem) — общего пакета между client/ и server/ в монорепе
+ * нет, так что при правке одной копии нужно поправить и вторую.
+ */
+function sharesRussianStem(a: string, b: string): boolean {
+  if (a === b) return true
+
+  const minLength = Math.min(a.length, b.length)
+
+  if (minLength < MIN_WORD_LENGTH_TO_COMPARE_STEMS) return false
+
+  const prefixLength = stemPrefixLength(minLength)
+
+  return a.slice(0, prefixLength) === b.slice(0, prefixLength)
+}
+
 /**
  * Лексическая близость запроса к термину, от 0 до 1 — буквальное вхождение
- * (в любую сторону) даёт максимум, иначе берём лучшую (наименьшее
- * расстояние Левенштейна, нормированное на длину) близость запроса к
- * ОТДЕЛЬНОМУ слову термина, а не ко всему термину целиком — термины часто
- * составные ("туя шаровидная", "саженцы плодовых деревьев"), и сравнивать
- * короткий запрос со всей строкой сразу бессмысленно ослабляло бы бонус
- * ровно для тех терминов, где он нужнее всего.
+ * (в любую сторону) даёт максимум, иначе — общая русская словоформа
+ * (sharesRussianStem, см. выше) с отдельным словом термина тоже даёт
+ * максимум, а иначе берём лучшую (наименьшее расстояние Левенштейна,
+ * нормированное на длину) близость запроса к ОТДЕЛЬНОМУ слову термина, а
+ * не ко всему термину целиком — термины часто составные ("туя шаровидная",
+ * "саженцы плодовых деревьев"), и сравнивать короткий запрос со всей
+ * строкой сразу бессмысленно ослабляло бы бонус ровно для тех терминов,
+ * где он нужнее всего.
  */
 export function lexicalSimilarity(query: string, term: string): number {
   const q = query.toLowerCase()
@@ -53,6 +84,8 @@ export function lexicalSimilarity(query: string, term: string): number {
   let best = 0
 
   for (const word of t.split(/\s+/)) {
+    if (sharesRussianStem(q, word)) return 1
+
     const maxLen = Math.max(q.length, word.length)
 
     if (maxLen === 0) continue

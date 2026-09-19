@@ -19,7 +19,7 @@ import {
 } from '@/components/ui'
 
 import { useMediaQuery } from '@/shared/hooks'
-import { findCategoryById, flattenCategories, getPathToCategory } from '@/shared/utils'
+import { findCategoryById, flattenCategories, getPathToCategory, sharesRussianStem } from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
 
@@ -27,6 +27,12 @@ import { useCategoryFeaturesLoader } from '../hooks/use-category-features-loader
 import { TypeCreateAdSchema } from '../schemes'
 import { ICategory, ICategoryFeature } from '../types/ad.types'
 import { CategoryBreadcrumbs } from './category-breadcrumbs'
+
+interface CascaderSuggestion {
+  id: string
+  displayParts: string[]
+  hasChildren: boolean
+}
 
 interface CategoryCascaderProps {
   categories: ICategory[]
@@ -48,16 +54,64 @@ export const CategoryCascader = ({ categories, form, onCategorySelect }: Categor
   const isMobile = useMediaQuery('(max-width: 767px)')
   const loadCategoryFeatures = useCategoryFeaturesLoader()
 
+  // Помимо точного вхождения подстроки (дёшево и предсказуемо — работает
+  // как раньше для фраз и полных совпадений), добавлена проверка по
+  // словоформам (sharesRussianStem, см. shared/utils/text-similarity.ts):
+  // раньше "груша" вообще не находил категорию "Груши" (буквально не
+  // подстрока друг друга — падеж/число отличаются последней буквой),
+  // filteredCategories оставался пустым, и включался фолбэк на
+  // семантические подсказки, у которых для такого короткого запроса свои
+  // проблемы с ранжированием (см. обсуждение с пользователем). Проверяем
+  // "каждое слово запроса совпадает (буквально или по основе) хотя бы с
+  // одним словом пути" — а не только "весь запрос — подстрока всего пути"
+  // — чтобы порядок/число слов в запросе не имели значения.
   const filteredCategories = useMemo(() => {
     const term = searchTerm.trim().toLowerCase()
     const source = isMobile ? flatCategories.filter(cat => !cat.hasChildren) : flatCategories
 
     if (!term) return source
 
-    return source.filter(cat => cat.path.join(' ').toLowerCase().includes(term))
+    const queryWords = term.split(/\s+/)
+
+    return source.filter(cat => {
+      const pathText = cat.path.join(' ').toLowerCase()
+
+      if (pathText.includes(term)) return true
+
+      const pathWords = pathText.split(/\s+/)
+
+      return queryWords.every(queryWord => pathWords.some(pathWord => sharesRussianStem(queryWord, pathWord)))
+    })
   }, [flatCategories, searchTerm, isMobile])
 
-  const isShowingSemanticSuggestions = filteredCategories.length === 0 && semanticSuggestions.length > 0
+  // Раньше это был переключатель "или-или" (isShowingSemanticSuggestions):
+  // семантика показывалась ТОЛЬКО когда литеральный фильтр не находил
+  // вообще ничего, а как только он находил хоть одно (пусть даже случайное)
+  // совпадение — семантика пряталась целиком, даже если у неё был более
+  // точный результат. Теперь оба источника объединяются в один список:
+  // сначала локальные (точные/по словоформе — они увереннее), затем
+  // семантические, которых ещё нет среди локальных (см. searchBySemantic
+  // на сервере — там только листовые категории, поэтому hasChildren у них
+  // всегда false и кнопки "Уточнить" не бывает).
+  const mergedSuggestions = useMemo<CascaderSuggestion[]>(() => {
+    const local: CascaderSuggestion[] = filteredCategories.map(cat => ({
+      id: cat.id,
+      displayParts: isMobile ? cat.path.slice(-1) : cat.path,
+      hasChildren: cat.hasChildren
+    }))
+
+    const localIds = new Set(local.map(item => item.id))
+
+    const semantic: CascaderSuggestion[] = semanticSuggestions
+      .filter(suggestion => !localIds.has(suggestion.id))
+      .map(suggestion => ({
+        id: suggestion.id,
+        displayParts: suggestion.parentName && !isMobile ? [suggestion.parentName, suggestion.name] : [suggestion.name],
+        hasChildren: false
+      }))
+
+    return [...local, ...semantic]
+  }, [filteredCategories, semanticSuggestions, isMobile])
 
   const categoryButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
 
@@ -162,49 +216,29 @@ export const CategoryCascader = ({ categories, form, onCategorySelect }: Categor
                 </button>
               )}
             </CommandEmpty>
-            <CommandGroup heading={isShowingSemanticSuggestions ? '' : undefined}>
-              {isShowingSemanticSuggestions
-                ? semanticSuggestions.map(suggestion => (
-                    <CommandItem
-                      className='flex w-full cursor-pointer items-center justify-between gap-2 px-3.5 py-1 hover:bg-gray-50 dark:hover:bg-gray-100'
-                      key={suggestion.id}
-                      onSelect={() => handleCategorySelect(suggestion.id)}
-                    >
-                      <div className='flex flex-wrap items-center gap-2.5'>
-                        {suggestion.parentName && !isMobile && (
-                          <div className='flex items-center gap-2.5'>
-                            {suggestion.parentName}
-                            <ChevronRight className='text-muted-foreground size-4 shrink-0' />
-                          </div>
-                        )}
-                        {suggestion.name}
+            <CommandGroup>
+              {mergedSuggestions.map(item => (
+                <CommandItem
+                  className='flex w-full cursor-pointer items-center justify-between gap-2 px-3.5 py-1 hover:bg-gray-50 dark:hover:bg-neutral-700'
+                  key={item.id}
+                  onSelect={() => handleCategorySelect(item.id)}
+                >
+                  <div className='flex flex-wrap items-center gap-2.5'>
+                    {item.displayParts.map((name, index, arr) => (
+                      <div key={index} className='flex items-center gap-2.5'>
+                        {name}
+                        {index < arr.length - 1 && <ChevronRight className='text-muted-foreground size-4 shrink-0' />}
                       </div>
-                    </CommandItem>
-                  ))
-                : filteredCategories.map(cat => (
-                    <CommandItem
-                      className='flex w-full cursor-pointer items-center justify-between gap-2 px-3.5 py-1 hover:bg-gray-50 dark:hover:bg-neutral-700'
-                      key={cat.id}
-                      onSelect={() => handleCategorySelect(cat.id)}
-                    >
-                      <div className='flex flex-wrap items-center gap-2.5'>
-                        {(isMobile ? cat.path.slice(-1) : cat.path).map((name, index, arr) => (
-                          <div key={index} className='flex items-center gap-2.5'>
-                            {name}
-                            {index < arr.length - 1 && (
-                              <ChevronRight className='text-muted-foreground size-4 shrink-0' />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      {cat.hasChildren && (
-                        <span className='flex shrink-0 items-center gap-1 text-xs text-gray-400'>
-                          Уточнить
-                          <ChevronRight className='size-3.5' />
-                        </span>
-                      )}
-                    </CommandItem>
-                  ))}
+                    ))}
+                  </div>
+                  {item.hasChildren && (
+                    <span className='flex shrink-0 items-center gap-1 text-xs text-gray-400'>
+                      Уточнить
+                      <ChevronRight className='size-3.5' />
+                    </span>
+                  )}
+                </CommandItem>
+              ))}
             </CommandGroup>
           </CommandList>
         </div>
