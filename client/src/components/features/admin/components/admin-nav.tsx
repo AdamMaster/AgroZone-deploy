@@ -31,7 +31,7 @@ export const AdminNav = () => {
               <Link
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-2 rounded-md px-2.5 py-1.5 text-neutral-50 hover:bg-neutral-600/30',
+                  'flex items-center gap-2 rounded-sm px-2.5 py-1.5 text-neutral-50 hover:bg-neutral-600/30',
                   isActive && 'bg-neutral-600/30'
                 )}
               >
