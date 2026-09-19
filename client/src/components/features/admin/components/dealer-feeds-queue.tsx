@@ -13,7 +13,7 @@ export const DealerFeedsQueue = () => {
 
   return (
     <div className='py-6 text-neutral-50'>
-      <Heading level={3} className='mb-4 font-medium'>
+      <Heading level={3} className='mb-4 font-medium text-white'>
         Фиды дилеров на проверке
       </Heading>
 
@@ -29,23 +29,18 @@ export const DealerFeedsQueue = () => {
                 href={feed.url}
                 target='_blank'
                 rel='noreferrer'
-                className='hover:text-primary break-all font-semibold'
+                className='hover:text-primary font-semibold break-all'
               >
                 {feed.url}
               </a>
               <p className='text-sm'>
                 {feed.user.businessName ?? feed.user.displayName ?? 'Пользователь'} · {feed.user.email ?? '—'}
               </p>
-              <p className='text-xs text-neutral-300'>
-                Отправлен: {new Date(feed.createdAt).toLocaleString('ru-RU')}
-              </p>
+              <p className='text-xs text-neutral-300'>Отправлен: {new Date(feed.createdAt).toLocaleString('ru-RU')}</p>
             </div>
 
             <div className='flex shrink-0 items-start gap-1'>
-              <DealerFeedPreviewDialog
-                feedId={feed.id}
-                className={ADMIN_BUTTON_CLASS}
-              />
+              <DealerFeedPreviewDialog feedId={feed.id} className={ADMIN_BUTTON_CLASS} />
               <Button
                 className={ADMIN_BUTTON_CLASS}
                 size='sm'
@@ -54,10 +49,7 @@ export const DealerFeedsQueue = () => {
               >
                 Одобрить
               </Button>
-              <RejectDealerFeedDialog
-                feedId={feed.id}
-                className={ADMIN_BUTTON_CLASS}
-              />
+              <RejectDealerFeedDialog feedId={feed.id} className={ADMIN_BUTTON_CLASS} />
             </div>
           </div>
         ))}

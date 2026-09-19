@@ -23,7 +23,7 @@ export const ModerationQueue = () => {
 
       <div className='flex flex-col gap-3'>
         {pendingAds.map(ad => (
-          <div key={ad.id} className='flex gap-4 bg-neutral-600/50 p-3'>
+          <div key={ad.id} className='flex gap-4 rounded-md bg-neutral-600/50 p-3'>
             <div className='relative size-20 shrink-0 overflow-hidden rounded-md'>
               {ad.images[0] && <Image src={ad.images[0]} alt={ad.title} fill className='object-cover' sizes='200px' />}
             </div>

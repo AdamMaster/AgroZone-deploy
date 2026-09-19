@@ -22,7 +22,7 @@ export const AdminNav = () => {
 
   return (
     <nav>
-      <ul className='flex flex-col'>
+      <ul className='flex flex-col gap-1 px-2'>
         {items.map(item => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
 
@@ -31,7 +31,7 @@ export const AdminNav = () => {
               <Link
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-2 px-4 py-3 text-neutral-50 hover:bg-neutral-600/10',
+                  'flex items-center gap-2 rounded-md px-2.5 py-1.5 text-neutral-50 hover:bg-neutral-600/30',
                   isActive && 'bg-neutral-600/30'
                 )}
               >
