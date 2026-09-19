@@ -48,6 +48,7 @@ export const CategoryItem = ({ category, href, className, onClick, priority }: C
     'zhivotnoe-syryo': '/images/categories/zhivotnoe-syryo.png',
     'posadochnyj-material': '/images/categories/posadochnyj-material.png',
     'zemli-i-obuekty-sh-nedvizhimosti': '/images/categories/zemli-i-obuekty-sh-nedvizhimosti.png',
+    uslugi: '/images/categories/uslugi.png',
     prochee: '/images/categories/prochee.png'
   }
 
