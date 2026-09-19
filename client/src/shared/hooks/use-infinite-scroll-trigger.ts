@@ -41,12 +41,19 @@ export function useInfiniteScrollTrigger({
   // hasMore/isLoading/onLoadMore меняются на каждый чих (isFetchingNextPage
   // тикает туда-сюда, onLoadMore из react-query формально стабилен по
   // ссылке, но полагаться на это не стоит) — если положить их в deps
-  // эффекта, IntersectionObserver будет пересоздаваться при каждом таком
-  // изменении, а не только когда реально нужно (см. watchKey выше). Вместо
-  // этого читаем актуальные значения через ref в момент срабатывания
-  // колбэка, а сам эффект зависит только от rootMargin и watchKey.
+  // эффекта ниже, IntersectionObserver будет пересоздаваться при каждом
+  // таком изменении, а не только когда реально нужно (см. watchKey выше).
+  // Вместо этого читаем актуальные значения через ref в момент
+  // срабатывания колбэка. Записываем в ref через отдельный эффект (а не
+  // прямо в теле рендера) — с включённым React Compiler (см.
+  // next.config.ts) мутация ref во время рендера запрещена: сам рендер
+  // может быть мемоизирован/пропущен компилятором, и тогда запись в ref
+  // просто не произойдёт, а колбэк словит устаревшие значения.
   const stateRef = useRef({ hasMore, isLoading, onLoadMore })
-  stateRef.current = { hasMore, isLoading, onLoadMore }
+
+  useEffect(() => {
+    stateRef.current = { hasMore, isLoading, onLoadMore }
+  })
 
   useEffect(() => {
     const node = sentinelRef.current
@@ -69,7 +76,6 @@ export function useInfiniteScrollTrigger({
     observer.observe(node)
 
     return () => observer.disconnect()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rootMargin, watchKey])
 
   return sentinelRef

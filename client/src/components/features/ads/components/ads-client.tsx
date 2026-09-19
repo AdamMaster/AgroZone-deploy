@@ -1,12 +1,12 @@
 'use client'
 
-import { useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 import { useMemo } from 'react'
 
-import { useInfiniteScrollTrigger } from '@/shared/hooks'
-
 import { findCategoryIdBySlug } from '@/components/features/categories/utils/category-utils'
+
+import { useInfiniteScrollTrigger } from '@/shared/hooks'
 
 import { useCategories } from '../../categories/hooks/use-categories'
 import { useCatalogFilters } from '../../filter/hooks/use-catalog-filters'

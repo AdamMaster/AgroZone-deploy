@@ -20,12 +20,15 @@ import { CATALOG_PAGE_SIZE } from '../utils/build-ads-query-params'
 // initialData вообще.
 //
 // Глобальный staleTime (60с, см. TanstackQueryProvider) намеренно не
-// трогаем общим `staleTime: 0` (как у useAds/useAd) — при обычном рефетче
-// react-query по умолчанию переспрашивает ВСЕ уже подгруженные страницы
-// целиком, а не только первую, что и накладно на длинных списках, и
-// рискует "разъехаться" (сдвиг пагинации, если за это время кто-то
-// опубликовал новое объявление). Вместо этого ниже — точечный refetch
-// ТОЛЬКО первой страницы сразу после маунта.
+// трогаем общим `staleTime: 0` (как у useAds/useAd) — react-query v5 убрал
+// точечный `refetch({ refetchPage })` (был в v4), и обычный refetch()
+// переспрашивает ВСЕ уже подгруженные страницы целиком. На длинном списке
+// это было бы накладно — но не в этот момент: эффект ниже стреляет сразу
+// при маунте, а единственный способ попасть в hasNextPage/fetchNextPage —
+// явное действие пользователя (скролл до сентинела/клик «Показать ещё»)
+// уже ПОСЛЕ первого рендера. То есть на момент срабатывания эффекта
+// вторых страниц просто физически ещё нет — refetch() затрагивает ровно
+// одну, первую, страницу, никакого специального сужения не требуется.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function useAdsInfinite(params: Record<string, any>, initialFirstPage?: IAdsListResponse) {
   const query = useInfiniteQuery({
@@ -46,10 +49,8 @@ export function useAdsInfinite(params: Record<string, any>, initialFirstPage?: I
     // SSR-фетч первой страницы всегда анонимный (нет доступа к куки
     // браузера) — isFavorite в initialFirstPage может быть некорректным
     // для авторизованного пользователя сразу после гидратации (тот же
-    // фикс, что и в useAd/useAds). refetchPage сужает рефетч строго до
-    // первой страницы (index === 0) — остальные уже подгруженные страницы
-    // не трогаем.
-    refetch({ refetchPage: (_page, index) => index === 0 })
+    // фикс, что и в useAd/useAds).
+    refetch()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
