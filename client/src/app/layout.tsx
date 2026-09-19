@@ -3,7 +3,7 @@ import { Google_Sans, Inter } from 'next/font/google'
 import { Suspense } from 'react'
 
 import { LEGAL_DETAILS, SITE_URL } from '@/components/features/legal/legal-details'
-import { SupportChatWidget } from '@/components/features/support/components'
+import { SupportChatWidget } from '@/components/features/support/components/support-chat-widget-lazy'
 import { CookieConsentBanner, YandexMetrika } from '@/components/layout'
 import { AppModal } from '@/components/modals/app'
 import { CategoriesModal } from '@/components/modals/categories'
