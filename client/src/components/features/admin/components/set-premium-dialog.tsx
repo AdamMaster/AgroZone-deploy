@@ -73,7 +73,7 @@ export const SetPremiumDialog = ({ userId, premiumUntil, className }: SetPremium
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button type='button' variant='dark' size='sm' className={cn(className)} />}>
+      <DialogTrigger render={<Button type='button' variant='mist' size='sm' className={cn(className)} />}>
         Изменить
       </DialogTrigger>
 

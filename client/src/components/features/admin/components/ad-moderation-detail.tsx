@@ -197,7 +197,7 @@ export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
           </p>
           <div className='mb-8 flex gap-1.5'>
             {ad.status !== 'PUBLISHED' && (
-              <Button variant='dark' size='lg' disabled={isLoadingPublish} onClick={handlePublish}>
+              <Button variant='mist' size='lg' disabled={isLoadingPublish} onClick={handlePublish}>
                 Опубликовать
               </Button>
             )}

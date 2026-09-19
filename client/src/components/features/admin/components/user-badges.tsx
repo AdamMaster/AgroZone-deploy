@@ -22,7 +22,7 @@ export const UserBadges = ({ role, premiumUntil, deletedAt }: UserBadgesProps) =
         <span className='rounded-full bg-amber-500/20 px-2 py-0.5 text-[11px] text-amber-300'>Premium</span>
       )}
       {deletedAt && (
-        <span className='rounded-full bg-neutral-500/30 px-2 py-0.5 text-[11px] text-neutral-300'>
+        <span className='rounded-full bg-mist-500/30 px-2 py-0.5 text-[11px] text-mist-300'>
           Удалён {formatFullDate(deletedAt)}
         </span>
       )}

@@ -21,13 +21,13 @@ export const UsersAdminPanel = () => {
   const [view, setView] = useState<View>('search')
 
   return (
-    <div className='text-neutral-50'>
+    <div className='text-mist-50'>
       <div className='mt-6 flex gap-1'>
         <button
           type='button'
           className={cn(
             'rounded-sm px-3 py-1.5 text-sm font-medium',
-            view === 'search' ? 'bg-neutral-100 text-neutral-950' : 'bg-neutral-600/50 hover:bg-neutral-600/70'
+            view === 'search' ? 'bg-mist-100 text-mist-950' : 'bg-mist-600/50 hover:bg-mist-600/70'
           )}
           onClick={() => setView('search')}
         >
@@ -37,7 +37,7 @@ export const UsersAdminPanel = () => {
           type='button'
           className={cn(
             'rounded-sm px-3 py-1.5 text-sm font-medium',
-            view === 'create' ? 'bg-neutral-100 text-neutral-950' : 'bg-neutral-600/50 hover:bg-neutral-600/70'
+            view === 'create' ? 'bg-mist-100 text-mist-950' : 'bg-mist-600/50 hover:bg-mist-600/70'
           )}
           onClick={() => setView('create')}
         >

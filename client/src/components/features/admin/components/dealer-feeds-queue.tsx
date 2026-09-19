@@ -12,7 +12,7 @@ export const DealerFeedsQueue = () => {
   const { approveDealerFeed, isApprovingDealerFeed } = useApproveDealerFeed()
 
   return (
-    <div className='py-6 text-neutral-50'>
+    <div className='py-6 text-mist-50'>
       <Heading level={3} className='mb-4 font-medium text-white'>
         Фиды дилеров на проверке
       </Heading>
@@ -23,7 +23,7 @@ export const DealerFeedsQueue = () => {
 
       <div className='flex flex-col gap-3'>
         {pendingDealerFeeds.map(feed => (
-          <div key={feed.id} className='flex gap-4 bg-neutral-600/50 p-3'>
+          <div key={feed.id} className='flex gap-4 bg-mist-600/50 p-3'>
             <div className='min-w-0 flex-1'>
               <a
                 href={feed.url}
@@ -36,7 +36,7 @@ export const DealerFeedsQueue = () => {
               <p className='text-sm'>
                 {feed.user.businessName ?? feed.user.displayName ?? 'Пользователь'} · {feed.user.email ?? '—'}
               </p>
-              <p className='text-xs text-neutral-300'>Отправлен: {new Date(feed.createdAt).toLocaleString('ru-RU')}</p>
+              <p className='text-xs text-mist-300'>Отправлен: {new Date(feed.createdAt).toLocaleString('ru-RU')}</p>
             </div>
 
             <div className='flex shrink-0 items-start gap-1'>

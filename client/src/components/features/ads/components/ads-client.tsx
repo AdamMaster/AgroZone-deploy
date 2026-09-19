@@ -1,13 +1,16 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
 import { useMemo } from 'react'
+
+import { useInfiniteScrollTrigger } from '@/shared/hooks'
 
 import { findCategoryIdBySlug } from '@/components/features/categories/utils/category-utils'
 
 import { useCategories } from '../../categories/hooks/use-categories'
 import { useCatalogFilters } from '../../filter/hooks/use-catalog-filters'
-import { useAds } from '../hooks'
+import { useAdsInfinite } from '../hooks'
 import { IAdsListResponse } from '../types/ad.types'
 import { buildAdsQueryParams } from '../utils/build-ads-query-params'
 import { AdsGrid } from './ads-grid'
@@ -28,9 +31,9 @@ interface AdsClientProps {
   // используются только filters.* как раньше.
   locationOverride?: AdsLocationOverride
   // Первая страница, отрисованная сервером для пустого запроса (см.
-  // page.tsx главной). Используем её как initialData для useAds ТОЛЬКО
-  // когда реальный запрос клиента гарантированно совпадает с тем, что
-  // получил сервер (см. canUseInitialAds ниже) — иначе, например,
+  // page.tsx главной). Используем её как initialFirstPage для
+  // useAdsInfinite ТОЛЬКО когда реальный запрос клиента гарантированно
+  // совпадает с тем, что получил сервер (см. canUseInitialAds ниже) — иначе, например,
   // подставленный из localStorage домашний регион пользователя (которого
   // сервер на первом запросе не знает) на миг покажет неотфильтрованную
   // ленту вместо региональной.
@@ -59,15 +62,29 @@ export function AdsClient({ serverSlug, layout, className, locationOverride, ini
   // появляется categoryId (страница категории через AdsClient),
   // поисковый запрос, домашний регион пользователя из localStorage или
   // активные фильтры каталога — initialAds сервера этому запросу уже не
-  // соответствует, и useAds должен уйти в обычный клиентский фетч.
+  // соответствует, и useAdsInfinite должен уйти в обычный клиентский
+  // фетч первой страницы.
   const canUseInitialAds = Boolean(
     initialAds && !categoryId && !searchQuery && !hasLocationOverride && !filters.hasActiveFilters
   )
 
-  const { ads, isLoadingAds } = useAds(
+  const { ads, isLoadingAds, hasNextPage, isFetchingNextPage, fetchNextPage } = useAdsInfinite(
     buildAdsQueryParams({ categoryId, search: searchQuery, filters, locationOverride }),
     canUseInitialAds ? initialAds : undefined
   )
+
+  // Бесконечный скролл вместо кнопки «Показать ещё» (см. CatalogAdsGrid) —
+  // на главной это единственная лента без явной пагинации в UI, кнопка
+  // тут неуместна. watchKey: ads.length — форсирует переоценку видимости
+  // сентинела сразу после того, как подгрузилась новая партия карточек (см.
+  // сам хук — иначе на коротких списках вторая страница могла бы не
+  // подгрузиться, пока пользователь не пошевелит скролл руками).
+  const sentinelRef = useInfiniteScrollTrigger({
+    hasMore: hasNextPage,
+    isLoading: isFetchingNextPage,
+    onLoadMore: fetchNextPage,
+    watchKey: ads.length
+  })
 
   const trimmedSearchQuery = searchQuery?.trim()
   const emptyMessage = hasLocationOverride
@@ -94,12 +111,26 @@ export function AdsClient({ serverSlug, layout, className, locationOverride, ini
   const isWaitingForCategories = Boolean(slug) && isLoadingCategories
 
   return (
-    <AdsGrid
-      ads={ads}
-      layout={layout}
-      className={className}
-      isLoading={isWaitingForCategories || isLoadingAds}
-      emptyMessage={emptyMessage}
-    />
+    <>
+      <AdsGrid
+        ads={ads}
+        layout={layout}
+        className={className}
+        isLoading={isWaitingForCategories || isLoadingAds}
+        emptyMessage={emptyMessage}
+      />
+
+      {/* Пустой сентинел, а не условно смонтированный/размонтированный —
+      IntersectionObserver внутри useInfiniteScrollTrigger сам не делает
+      ничего, пока hasNextPage не станет true, так что держать его в DOM
+      всегда дешевле и надёжнее, чем гонять ref через условный рендер. */}
+      <div ref={sentinelRef} aria-hidden className='h-px w-full' />
+
+      {isFetchingNextPage && (
+        <div className='flex justify-center py-6'>
+          <Loader2 className='text-muted-foreground size-6 animate-spin' />
+        </div>
+      )}
+    </>
   )
 }

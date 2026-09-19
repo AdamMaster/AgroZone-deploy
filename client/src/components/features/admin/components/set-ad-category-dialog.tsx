@@ -150,7 +150,7 @@ export const SetAdCategoryDialog = ({ adId, userId, categoryId, features, classN
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button type='button' variant='dark' size='sm' className={cn(className)} />}>
+      <DialogTrigger render={<Button type='button' variant='mist' size='sm' className={cn(className)} />}>
         Категория
       </DialogTrigger>
 
@@ -195,7 +195,7 @@ export const SetAdCategoryDialog = ({ adId, userId, categoryId, features, classN
                 type='button'
                 disabled={!selectedCategoryId || isLoadingSetCategory}
                 onClick={handleSave}
-                className='bg-neutral-900 hover:bg-neutral-800'
+                className='bg-mist-900 hover:bg-mist-800'
                 size='lg'
               >
                 {isLoadingSetCategory ? 'Сохраняем...' : 'Сохранить'}

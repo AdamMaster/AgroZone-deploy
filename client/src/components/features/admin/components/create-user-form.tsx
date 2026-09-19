@@ -70,23 +70,23 @@ export const CreateUserForm = () => {
   const submittedPassword = form.getValues('password')
 
   const fieldClassName =
-    'bg-neutral-700 border-none hover:bg-neutral-600 focus-visible:bg-neutral-600 placeholder:text-neutral-400 rounded-sm'
+    'bg-mist-700 border-none hover:bg-mist-600 focus-visible:bg-mist-600 placeholder:text-mist-400 rounded-sm'
 
   if (createdUser) {
     return (
-      <div className='max-w-md py-6 text-neutral-50'>
+      <div className='max-w-md py-6 text-mist-50'>
         <Heading level={3} className='mb-1 font-medium'>
           Аккаунт создан
         </Heading>
-        <p className='mb-6 text-sm text-neutral-300'>
+        <p className='mb-6 text-sm text-mist-300'>
           Передайте продавцу эти данные — он сможет войти по телефону и паролю сразу, звонок для подтверждения не
           понадобится.
         </p>
 
         <div className='flex flex-col gap-3'>
-          <div className='flex items-center justify-between gap-3 bg-neutral-600/50 p-3'>
+          <div className='flex items-center justify-between gap-3 bg-mist-600/50 p-3'>
             <div className='min-w-0'>
-              <p className='text-xs text-neutral-300'>Телефон</p>
+              <p className='text-xs text-mist-300'>Телефон</p>
               <p className='truncate text-lg font-semibold'>{formatPhoneNumber(createdUser.phone)}</p>
             </div>
             <Button
@@ -99,9 +99,9 @@ export const CreateUserForm = () => {
             </Button>
           </div>
 
-          <div className='flex items-center justify-between gap-3 bg-neutral-600/50 p-3'>
+          <div className='flex items-center justify-between gap-3 bg-mist-600/50 p-3'>
             <div className='min-w-0'>
-              <p className='text-xs text-neutral-300'>Пароль</p>
+              <p className='text-xs text-mist-300'>Пароль</p>
               <p className='truncate text-lg font-semibold'>{submittedPassword}</p>
             </div>
             <Button
@@ -123,11 +123,11 @@ export const CreateUserForm = () => {
   }
 
   return (
-    <div className='max-w-md py-6 text-neutral-50'>
-      <Heading level={3} className='mb-1 font-medium text-neutral-100'>
+    <div className='max-w-md py-6 text-mist-50'>
+      <Heading level={3} className='mb-1 font-medium text-mist-100'>
         Новый аккаунт продавца
       </Heading>
-      <p className='mb-6 text-sm text-neutral-300'>
+      <p className='mb-6 text-sm text-mist-300'>
         Аккаунт сразу считается подтверждённым — продавец сможет войти по телефону и паролю без звонка. Согласие на
         обработку персональных данных администратор должен получить у продавца отдельно, вне приложения.
       </p>

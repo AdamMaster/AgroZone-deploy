@@ -25,21 +25,21 @@ export const UsersSearch = () => {
     useAdminUsersSearch()
 
   return (
-    <div className='py-6 text-neutral-50'>
+    <div className='py-6 text-mist-50'>
       <div className='relative mb-4 max-w-md'>
-        <Search className='absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-400' />
+        <Search className='absolute top-1/2 left-3 size-4 -translate-y-1/2 text-mist-400' />
         <Input
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder='Имя, email или телефон'
-          className='rounded-md border-none bg-neutral-700 pl-9 placeholder:text-neutral-400 hover:bg-neutral-600/80 focus-visible:bg-neutral-600/80'
+          className='rounded-md border-none bg-mist-700 pl-9 placeholder:text-mist-400 hover:bg-mist-600/80 focus-visible:bg-mist-600/80'
         />
       </div>
 
       {isLoading && <p className='text-sm'>Загрузка...</p>}
 
       {!isLoading && (
-        <p className='mb-3 text-xs text-neutral-400'>
+        <p className='mb-3 text-xs text-mist-400'>
           {total > 0
             ? `Найдено: ${total}${isRefetching ? ' · обновляем…' : ''}`
             : query.trim()
@@ -56,7 +56,7 @@ export const UsersSearch = () => {
             <Link
               key={user.id}
               href={`/admin/users/${user.id}`}
-              className='flex items-center gap-3 rounded-md bg-neutral-600/30 p-3 hover:bg-neutral-600/50'
+              className='flex items-center gap-3 rounded-md bg-mist-700/20 p-3 hover:bg-mist-700/40'
             >
               <UserAvatar user={user} />
 
@@ -66,12 +66,12 @@ export const UsersSearch = () => {
                   <UserBadges role={user.role} premiumUntil={user.premiumUntil} deletedAt={user.deletedAt} />
                 </div>
 
-                <p className='truncate text-sm text-neutral-300'>
+                <p className='truncate text-sm text-mist-300'>
                   {[user.email, primaryPhone ? formatPhoneNumber(primaryPhone) : null].filter(Boolean).join(' · ') ||
                     '—'}
                 </p>
 
-                <p className='mt-0.5 text-xs text-neutral-400'>
+                <p className='mt-0.5 text-xs text-mist-400'>
                   {USER_TYPE_LABELS[user.type]} · с {formatFullDate(user.createdAt)} · {user._count.ads}{' '}
                   {pluralizeRu(user._count.ads, ['объявление', 'объявления', 'объявлений'])}
                 </p>

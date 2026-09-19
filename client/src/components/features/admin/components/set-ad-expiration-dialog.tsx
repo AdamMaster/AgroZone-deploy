@@ -69,7 +69,7 @@ export const SetAdExpirationDialog = ({ adId, userId, expiresAt, className }: Se
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button type='button' variant='dark' size='sm' className={cn(className)} />}>
+      <DialogTrigger render={<Button type='button' variant='mist' size='sm' className={cn(className)} />}>
         Срок
       </DialogTrigger>
 
@@ -118,7 +118,7 @@ export const SetAdExpirationDialog = ({ adId, userId, expiresAt, className }: Se
           <Button
             type='button'
             size='default'
-            variant='dark'
+            variant='mist'
             disabled={!date || isLoadingSetExpiration}
             onClick={handleSave}
           >

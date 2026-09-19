@@ -38,13 +38,13 @@ export const UserAdminDetail = ({ id }: UserAdminDetailProps) => {
   const { ads, total: totalAds, isFetchingNextPage, hasNextPage, fetchNextPage } = useAdminUserAds(id)
 
   if (isLoading) {
-    return <p className='py-6 text-sm text-neutral-50'>Загрузка...</p>
+    return <p className='py-6 text-sm text-mist-50'>Загрузка...</p>
   }
 
   if (isError || !user) {
     return (
-      <div className='py-6 text-neutral-50'>
-        <ButtonBack className='mb-4 bg-neutral-700 hover:bg-neutral-600' onClick={() => router.push('/admin/users')} />
+      <div className='py-6 text-mist-50'>
+        <ButtonBack className='mb-4 bg-mist-700 hover:bg-mist-600' onClick={() => router.push('/admin/users')} />
         <p className='text-sm'>Пользователь не найден.</p>
       </div>
     )
@@ -53,8 +53,8 @@ export const UserAdminDetail = ({ id }: UserAdminDetailProps) => {
   const primaryPhone = user.phones.find(phone => phone.isPrimary)?.phone ?? user.phones[0]?.phone
 
   return (
-    <div className='max-w-3xl py-6 text-neutral-50'>
-      <ButtonBack className='mb-4 bg-neutral-700 hover:bg-neutral-600' onClick={() => router.push('/admin/users')} />
+    <div className='max-w-3xl py-6 text-mist-50'>
+      <ButtonBack className='mb-4 bg-mist-700 hover:bg-mist-600' onClick={() => router.push('/admin/users')} />
 
       <div className='mb-6 flex items-start gap-4'>
         <UserAvatar user={user} size='lg' />
@@ -64,15 +64,15 @@ export const UserAdminDetail = ({ id }: UserAdminDetailProps) => {
             <h1 className='text-xl font-semibold'>{user.displayName || 'Без имени'}</h1>
             <UserBadges role={user.role} premiumUntil={user.premiumUntil} deletedAt={user.deletedAt} />
           </div>
-          <p className='mt-1 text-sm text-neutral-300'>
+          <p className='mt-1 text-sm text-mist-300'>
             {USER_TYPE_LABELS[user.type]} · с нами с {formatFullDate(user.createdAt)}
           </p>
         </div>
       </div>
 
       <div className='mb-6 grid grid-cols-1 gap-2 sm:grid-cols-2'>
-        <div className='rounded-md bg-neutral-700/30 p-3'>
-          <p className='text-xs text-neutral-400'>Телефоны</p>
+        <div className='rounded-md bg-mist-700/30 p-3'>
+          <p className='text-xs text-mist-400'>Телефоны</p>
           {user.phones.length === 0 ? (
             <p className='text-sm'>—</p>
           ) : (
@@ -80,26 +80,26 @@ export const UserAdminDetail = ({ id }: UserAdminDetailProps) => {
               {user.phones.map(phone => (
                 <p key={phone.id} className='text-sm'>
                   {formatPhoneNumber(phone.phone)}
-                  {phone.isPrimary && <span className='ml-1.5 text-xs text-neutral-400'>основной</span>}
+                  {phone.isPrimary && <span className='ml-1.5 text-xs text-mist-400'>основной</span>}
                   {!phone.isVerified && <span className='ml-1.5 text-xs text-amber-400'>не подтверждён</span>}
                 </p>
               ))}
             </div>
           )}
         </div>
-        <div className='rounded-md bg-neutral-700/30 p-3'>
-          <p className='text-xs text-neutral-400'>Email</p>
+        <div className='rounded-md bg-mist-700/30 p-3'>
+          <p className='text-xs text-mist-400'>Email</p>
           <p className='text-sm'>{user.email ?? '—'}</p>
         </div>
 
-        <div className='rounded-md bg-neutral-700/30 p-3'>
-          <p className='text-xs text-neutral-400'>Вход</p>
+        <div className='rounded-md bg-mist-700/30 p-3'>
+          <p className='text-xs text-mist-400'>Вход</p>
           <p className='text-sm'>
             {primaryPhone ? 'По телефону (звонок)' : 'Только через OAuth'}
             {user.hasPassword ? ', пароль установлен' : ''}
           </p>
           {user.accounts.length > 0 && (
-            <p className='mt-1 text-sm text-neutral-300'>
+            <p className='mt-1 text-sm text-mist-300'>
               Также:{' '}
               {user.accounts
                 .map(account => AUTH_METHOD_LABELS[account.provider.toUpperCase()] ?? account.provider)
@@ -108,8 +108,8 @@ export const UserAdminDetail = ({ id }: UserAdminDetailProps) => {
           )}
         </div>
 
-        <div className='rounded-md bg-neutral-700/30 p-3'>
-          <p className='text-xs text-neutral-400'>Premium до</p>
+        <div className='rounded-md bg-mist-700/30 p-3'>
+          <p className='text-xs text-mist-400'>Premium до</p>
           <div className='mt-0.5 flex items-center justify-between gap-2'>
             <p className='text-sm'>{user.premiumUntil ? formatFullDate(user.premiumUntil) : 'Не активен'}</p>
             <SetPremiumDialog userId={id} premiumUntil={user.premiumUntil} />
@@ -117,8 +117,8 @@ export const UserAdminDetail = ({ id }: UserAdminDetailProps) => {
         </div>
 
         {user.businessVerifiedAt && (
-          <div className='rounded-md bg-neutral-700/30 p-3 sm:col-span-2'>
-            <p className='text-xs text-neutral-400'>Бизнес подтверждён (ИНН {user.businessInn})</p>
+          <div className='rounded-md bg-mist-700/30 p-3 sm:col-span-2'>
+            <p className='text-xs text-mist-400'>Бизнес подтверждён (ИНН {user.businessInn})</p>
             <p className='text-sm'>{user.businessName}</p>
           </div>
         )}
@@ -126,24 +126,24 @@ export const UserAdminDetail = ({ id }: UserAdminDetailProps) => {
 
       <h2 className='mb-3 text-lg font-semibold'>Объявления {totalAds > 0 && `(${totalAds})`}</h2>
 
-      {ads.length === 0 && <p className='text-sm text-neutral-300'>Объявлений нет.</p>}
+      {ads.length === 0 && <p className='text-sm text-mist-300'>Объявлений нет.</p>}
 
       <div className='flex flex-col gap-2'>
         {ads.map(ad => (
-          <div key={ad.id} className='flex items-center gap-3 rounded-md bg-neutral-700/30 p-3 hover:bg-neutral-700/40'>
+          <div key={ad.id} className='flex items-center gap-3 rounded-md bg-mist-700/30 p-3 hover:bg-mist-700/40'>
             <Link href={`/ads/${ad.id}`} target='_blank' className='flex min-w-0 flex-1 items-center gap-3'>
-              <div className='relative size-14 shrink-0 overflow-hidden rounded-sm bg-neutral-700'>
+              <div className='relative size-14 shrink-0 overflow-hidden rounded-sm bg-mist-700'>
                 {ad.images[0] && <Image src={ad.images[0]} alt={ad.title} fill className='object-cover' sizes='56px' />}
               </div>
 
               <div className='min-w-0 flex-1'>
                 <div className='flex flex-wrap items-center gap-2'>
                   <span className='truncate font-medium'>{ad.title}</span>
-                  <span className='rounded-full bg-neutral-500/30 px-2 py-0.5 text-[11px] text-neutral-200'>
+                  <span className='rounded-full bg-mist-500/30 px-2 py-0.5 text-[11px] text-mist-200'>
                     {AD_STATUS_LABELS[ad.status] ?? ad.status}
                   </span>
                 </div>
-                <p className='text-sm text-neutral-300'>
+                <p className='text-sm text-mist-300'>
                   {formatPriceWithUnit(ad.price, ad.unit)} · {formatFullDate(ad.createdAt)}
                 </p>
                 {ad.status === 'REJECTED' && ad.rejectionReason && (
