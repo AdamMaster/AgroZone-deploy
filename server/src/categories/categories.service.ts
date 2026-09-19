@@ -1,7 +1,9 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { PrismaService } from '@/prisma/prisma.service'
 import { CategoryFeature } from '@/generated/prisma/client'
 import { EmbeddingsService } from '@/libs/embeddings/embeddings.service'
+import { computeTermScore } from './utils/semantic-search.util'
 
 export interface CategorySearchResult {
   id: string
@@ -72,10 +74,30 @@ export class CategoriesService implements OnModuleInit {
   // компромисс, что и с прогревом модели в EmbeddingsService.onModuleInit.
   private termCache: CachedCategoryTerm[] = []
 
+  // Вес лексического бонуса и минимальный итоговый score, ниже которого
+  // подсказку не показываем (см. searchBySemantic/computeTermScore ниже) —
+  // читаются из env с дефолтами, а НЕ захардкожены константами, специально
+  // ради смены модели эмбеддингов: у разных моделей разный "естественный"
+  // диапазон косинусных близостей (см. смену Xenova/multilingual-e5-base ->
+  // deepvk/USER2-base — обсуждение с пользователем), и текущие дефолты
+  // 0.85 / 0.06 калибровались ИМЕННО под e5-base. Если бы это были
+  // константы в коде, пересчитать под новую модель можно было бы только
+  // новым деплоем — а так это правится одной переменной окружения и
+  // рестартом процесса, без редеploя, пока идёт калибровка на реальных
+  // запросах (см. scripts/test-search-quality.ts — печатает score по
+  // контрольным запросам, чтобы подобрать правильные значения ПЕРЕД тем,
+  // как менять их в проде).
+  private readonly minScore: number
+  private readonly lexicalBoostWeight: number
+
   constructor(
     private readonly prisma: PrismaService,
-    private readonly embeddingsService: EmbeddingsService
-  ) {}
+    private readonly embeddingsService: EmbeddingsService,
+    private readonly configService: ConfigService
+  ) {
+    this.minScore = Number(this.configService.get<string>('CATEGORY_SEARCH_MIN_SCORE') ?? '0.85')
+    this.lexicalBoostWeight = Number(this.configService.get<string>('CATEGORY_SEARCH_LEXICAL_BOOST_WEIGHT') ?? '0.06')
+  }
 
   async onModuleInit() {
     await this.reloadTermCache()
@@ -285,22 +307,15 @@ export class CategoriesService implements OnModuleInit {
 
     for (const item of this.termCache) {
       // Чистая косинусная близость эмбеддингов на коротких запросах (2-4
-      // буквы) оказалась шумной — см. обсуждение с пользователем: запрос
-      // "туи" находил "Чечевицу" по термину "пюи" (0.855) выше, чем
-      // правильную "Саженцы хвойных пород" по термину "туя шаровидная"
-      // (0.841), просто потому что "пюи" и "туи" ОРФОГРАФИЧЕСКИ похожи
-      // (оба короткие, оба заканчиваются на "и"), а не потому что модель
-      // увидела смысловую связь. На длинных запросах такого разрыва почти
-      // не бывает — там эмбеддинг несёт достаточно сигнала сам по себе.
-      // Поэтому добавляем лексический бонус: буквальное вхождение или
-      // близость по Левенштейну между запросом и термином (или отдельным
-      // словом внутри термина, см. lexicalSimilarity) — он ощутимо топит
-      // случайные орфографические совпадения ("пюи", "сои", "чай"), не
-      // перекрывая при этом настоящий семантический сигнал на длинных
-      // запросах, где лексическая близость естественным образом мала.
-      const semanticScore = this.dotProduct(queryVector, item.embedding)
-      const lexicalScore = this.lexicalSimilarity(q, item.term)
-      const score = semanticScore + LEXICAL_BOOST_WEIGHT * lexicalScore
+      // буквы) может быть шумной (орфографически похожие, но не связанные
+      // по смыслу слова обгоняют правильное совпадение) — поэтому поверх
+      // неё добавлен лексический бонус (см. computeTermScore/
+      // lexicalSimilarity в ./utils/semantic-search.util) с настраиваемым
+      // весом lexicalBoostWeight, он ощутимо топит случайные
+      // орфографические совпадения, не перекрывая настоящий семантический
+      // сигнал на длинных запросах, где лексическая близость естественным
+      // образом мала.
+      const score = computeTermScore(queryVector, item.embedding, q, item.term, this.lexicalBoostWeight)
       const current = bestByCategory.get(item.categoryId)
 
       if (!current || score > current.score) {
@@ -316,92 +331,22 @@ export class CategoriesService implements OnModuleInit {
     }
 
     // На абсолютно бессмысленный запрос (клавиатурный набор без слов)
-    // косинусное сходство всё равно не проваливается в ноль — у e5-base
-    // (как и у большинства подобных моделей без спец. калибровки) score
-    // почти для ЛЮБОЙ пары текстов сжат в узкий высокий диапазон, "нуля
-    // непохожести" тут просто не существует (см. обсуждение с
-    // пользователем — реальный тест: крякозябра "йцкрпйукр..." дала топ-score
-    // 0.838, притом что уверенное совпадение "ель голубая" → "Саженцы
-    // хвойных пород" даёт 0.90+, а самое слабое из его топ-5 — 0.861).
-    // Между 0.838 и 0.861 есть зазор — MIN_SCORE отрезает по нему: ниже
-    // порога вообще не показываем подсказки (пусть будет пустое состояние),
-    // чем врать пользователю правдоподобным на вид, но случайным списком.
+    // косинусное сходство обычно всё равно не проваливается в ноль — у
+    // компактных моделей без спец. калибровки score часто сжат в узкий
+    // высокий диапазон, "нуля непохожести" может не существовать вовсе.
+    // minScore отрезает по этому диапазону: ниже порога вообще не
+    // показываем подсказки (пусть будет пустое состояние), чем врать
+    // пользователю правдоподобным на вид, но случайным списком.
+    //
+    // ВАЖНО: minScore/lexicalBoostWeight читаются из env (см. constructor)
+    // и подобраны под КОНКРЕТНУЮ модель эмбеддингов (см. EmbeddingsService)
+    // — у каждой модели свой "естественный" диапазон косинусных близостей.
+    // При смене модели старые значения не переносятся автоматически —
+    // сначала прогнать scripts/test-search-quality.ts на контрольных
+    // запросах и по его выводу подобрать новые.
     return [...bestByCategory.values()]
-      .filter(result => result.score >= MIN_SCORE)
+      .filter(result => result.score >= this.minScore)
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
   }
-
-  private dotProduct(a: number[], b: number[]): number {
-    let sum = 0
-
-    for (let i = 0; i < a.length && i < b.length; i++) {
-      sum += a[i] * b[i]
-    }
-
-    return sum
-  }
-
-  /**
-   * Лексическая близость запроса к термину, от 0 до 1 — буквальное
-   * вхождение (в любую сторону) даёт максимум, иначе берём лучшую
-   * (наименьшее расстояние Левенштейна, нормированное на длину) близость
-   * запроса к ОТДЕЛЬНОМУ слову термина, а не ко всему термину целиком —
-   * термины часто составные ("туя шаровидная", "саженцы плодовых
-   * деревьев"), и сравнивать короткий запрос со всей строкой сразу
-   * бессмысленно ослабляло бы бонус ровно для тех термина, где он нужнее
-   * всего. См. searchBySemantic — зачем это вообще понадобилось.
-   */
-  private lexicalSimilarity(query: string, term: string): number {
-    const q = query.toLowerCase()
-    const t = term.toLowerCase()
-
-    if (t.includes(q) || q.includes(t)) return 1
-
-    let best = 0
-
-    for (const word of t.split(/\s+/)) {
-      const maxLen = Math.max(q.length, word.length)
-
-      if (maxLen === 0) continue
-
-      const similarity = 1 - this.levenshtein(q, word) / maxLen
-
-      if (similarity > best) best = similarity
-    }
-
-    return best
-  }
-
-  private levenshtein(a: string, b: string): number {
-    const dp: number[][] = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0))
-
-    for (let i = 0; i <= a.length; i++) dp[i][0] = i
-    for (let j = 0; j <= b.length; j++) dp[0][j] = j
-
-    for (let i = 1; i <= a.length; i++) {
-      for (let j = 1; j <= b.length; j++) {
-        dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1])
-      }
-    }
-
-    return dp[a.length][b.length]
-  }
 }
-
-// Вес лексического бонуса в итоговом score (см. searchBySemantic /
-// lexicalSimilarity). Подобран так, чтобы перебивать шум на коротких
-// запросах (там разрыв между правильным и случайным совпадением обычно
-// 0.01-0.03), но не перекрывать настоящий семантический сигнал на длинных
-// запросах, где такого шума нет и лексическая близость сама по себе мала.
-const LEXICAL_BOOST_WEIGHT = 0.06
-
-// Минимальный итоговый score, ниже которого подсказку вообще не показываем
-// (см. searchBySemantic). Подобран по двум реальным замерам с пользователем:
-// клавиатурная крякозябра (гарантированно бессмысленный запрос) дала
-// максимум 0.838, а уверенное совпадение "ель голубая" → "Саженцы хвойных
-// пород" — от 0.861 до 0.90+. 0.85 — с запасом между этими двумя точками.
-// Если позже найдётся реальный короткий запрос, у которого верное
-// совпадение проваливается ниже 0.85 — порог придётся пересмотреть, тут
-// всего две калибровочные точки, не полноценная выборка.
-const MIN_SCORE = 0.85

@@ -101,7 +101,9 @@ async function run() {
     console.log(`${done} / ${categories.length} — "${category.name}": ${uniqueTerms.length} термин(ов)`)
   }
 
-  console.log('ГОТОВО')
+  console.log(
+    'ГОТОВО. Теперь запустите: npx dotenv -e .env -- ts-node scripts/test-search-quality.ts — проверить контрольные запросы ПЕРЕД тем, как считать поиск рабочим на новой модели.'
+  )
 }
 
 run()

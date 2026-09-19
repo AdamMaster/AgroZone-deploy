@@ -84,13 +84,20 @@ class EnvConfigService {
 const gigaChatService = new GigaChatService(new EnvConfigService() as unknown as ConfigService)
 const embeddingsService = new EmbeddingsService()
 
-// См. комментарий выше про MIN_SCORE=0.85 в CategoriesService — тот порог
-// не переиспользуем один в один (разные сценарии сравнения), но держимся
-// того же порядка величины: у модели multilingual-e5-base осмысленный
-// диапазон косинусных близостей и так сжат к верху, ниже 0.83 у РЕАЛЬНОГО
-// (не случайного) сгенерированного термина оказываются практически только
-// явные промахи GigaChat.
-const MIN_TERM_SIMILARITY = 0.83
+// См. комментарий у CategoriesService.minScore — тот порог не переиспользуем
+// один в один (разные сценарии сравнения), но держимся той же идеи: у
+// компактных моделей осмысленный диапазон косинусных близостей часто сжат
+// к верху, и ниже некоторого порога у РЕАЛЬНОГО (не случайного)
+// сгенерированного термина оказываются практически только явные промахи
+// GigaChat. 0.83 подобрано под старую модель (Xenova/multilingual-e5-base)
+// — после перехода на deepvk/USER2-base (см. EmbeddingsService) значение по
+// умолчанию скорее всего придётся пересмотреть, поэтому оно переопределимо
+// флагом --min-term-similarity=, без правки кода:
+//   npx dotenv -e .env -- ts-node scripts/enrich-category-descriptions.ts --min-term-similarity=0.8
+const minTermSimilarityArg = process.argv.find(arg => arg.startsWith('--min-term-similarity='))
+const MIN_TERM_SIMILARITY = minTermSimilarityArg
+  ? Number(minTermSimilarityArg.slice('--min-term-similarity='.length))
+  : 0.83
 
 // --force — перегенерировать описание даже у категорий, у которых оно уже
 // есть (например если хотим обновить формулировки или сменили промпт).
