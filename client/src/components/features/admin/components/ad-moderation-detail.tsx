@@ -1,10 +1,10 @@
 'use client'
 
 import { ImageIcon, MapPin } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Lightbox from 'yet-another-react-lightbox'
 import Zoom from 'yet-another-react-lightbox/plugins/zoom'
 
 import { CategoryBreadcrumbs } from '@/components/features/ads/components/category-breadcrumbs'
@@ -23,6 +23,10 @@ import { cn } from '@/lib/utils'
 import { RejectAdDialog } from './reject-ad-dialog'
 
 import 'yet-another-react-lightbox/styles.css'
+
+// Лайтбокс открывается только по клику на фото — незачем тянуть
+// yet-another-react-lightbox (+ его CSS) в бандл админки заранее.
+const Lightbox = dynamic(() => import('yet-another-react-lightbox'), { ssr: false })
 
 interface AdModerationDetailProps {
   id: string
@@ -45,6 +49,8 @@ export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
 
   const [activeImage, setActiveImage] = useState(0)
   const [isLightboxOpen, setIsLightboxOpen] = useState(false)
+  // Пока true — Lightbox ни разу не рендерился, чанк не запрашивался.
+  const [hasOpenedLightbox, setHasOpenedLightbox] = useState(false)
 
   const scrollToImage = (index: number) => {
     const slide = galleryRef.current?.children[index] as HTMLElement | undefined
@@ -134,7 +140,10 @@ export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
                 <button
                   key={image + index}
                   type='button'
-                  onClick={() => setIsLightboxOpen(true)}
+                  onClick={() => {
+                    setHasOpenedLightbox(true)
+                    setIsLightboxOpen(true)
+                  }}
                   className='relative w-full flex-shrink-0 snap-center pt-[66%]'
                 >
                   <Image
@@ -254,7 +263,7 @@ export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
         )}
       </div>
 
-      {ad.images.length > 0 && (
+      {ad.images.length > 0 && hasOpenedLightbox && (
         <Lightbox
           open={isLightboxOpen}
           close={closeLightbox}

@@ -1,7 +1,14 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useCallback, useRef, useState } from 'react'
-import { InvisibleSmartCaptcha } from '@yandex/smart-captcha'
+
+// Виджет нужен только на формах авторизации/регистрации — незачем
+// держать @yandex/smart-captcha в общем бандле, который грузится везде,
+// где вызывается этот хук.
+const InvisibleSmartCaptcha = dynamic(() => import('@yandex/smart-captcha').then(mod => mod.InvisibleSmartCaptcha), {
+  ssr: false
+})
 
 /**
  * Обёртка над InvisibleSmartCaptcha (Яндекс) с API, повторяющим

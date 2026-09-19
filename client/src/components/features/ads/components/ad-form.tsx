@@ -40,7 +40,6 @@ import { reconcileCategoryFeatures } from '../utils/reconcile-category-features'
 import { CategoryBreadcrumbs } from './category-breadcrumbs'
 import { CategoryCascader } from './category-cascader'
 import { DynamicField } from './dynamic-field'
-import { MapAd } from './map-ad'
 import { PhotoUploader } from './photo-uploader'
 import { RejectionReason } from './rejection-reason'
 

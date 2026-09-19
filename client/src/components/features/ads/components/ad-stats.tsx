@@ -1,11 +1,18 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 
-import { ButtonBack, Heading } from '@/components/ui'
+import { ButtonBack, Heading, Skeleton } from '@/components/ui'
 
 import { useAdCounters } from '../hooks'
-import { AdViewsStats } from './ad-views-stats'
+
+// Отдельный роут статистики — recharts незачем держать в основном чанке
+// страницы объявления, откуда сюда переходят по клику.
+const AdViewsStats = dynamic(() => import('./ad-views-stats').then(mod => mod.AdViewsStats), {
+  ssr: false,
+  loading: () => <Skeleton className='h-[280px] w-full rounded-xl' />
+})
 
 interface AdStatsProps {
   adId: string

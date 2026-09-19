@@ -1,11 +1,18 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import React from 'react'
-import { AddressSuggestions, DaDataAddress, DaDataSuggestion } from 'react-dadata'
+import type { DaDataAddress, DaDataSuggestion } from 'react-dadata'
 
 import { FieldError } from './field'
 
 import 'react-dadata/dist/react-dadata.css'
+
+// AddressInput используется только в формах (подача объявления и т.п.) —
+// react-dadata незачем грузить на страницах, где формы с адресом нет.
+const AddressSuggestions = dynamic(() => import('react-dadata').then(mod => mod.AddressSuggestions), {
+  ssr: false
+})
 
 interface AddressValue {
   address: string

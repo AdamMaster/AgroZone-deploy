@@ -2,16 +2,25 @@
 
 import { useAppModal } from '@/store'
 import { Crown, Edit, Ellipsis, Heart, ImageIcon, MapPin, Pencil, Phone, Share2 } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import Lightbox from 'yet-another-react-lightbox'
 import Zoom from 'yet-another-react-lightbox/plugins/zoom'
 
 import { UserType } from '@/components/features/auth/types'
-import { Avatar, AvatarFallback, AvatarImage, Button, ButtonBack, Heading, MultilineText } from '@/components/ui'
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+  Button,
+  ButtonBack,
+  Heading,
+  MultilineText,
+  Skeleton
+} from '@/components/ui'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 import { PRICE_UNITS } from '@/shared/constants/units'
@@ -36,7 +45,6 @@ import { IAd, ICategoryFeature } from '../types/ad.types'
 import { AdBadgeChip } from './ad-badge-chip'
 import { AdCountersPanel } from './ad-counters-panel'
 import { AdServicesStatusHandler } from './ad-services-status-handler'
-import { AdViewsStats } from './ad-views-stats'
 import { BumpStatusHandler } from './bump-status-handler'
 import { CategoryBreadcrumbItem, CategoryBreadcrumbs } from './category-breadcrumbs'
 import { FavoriteButton } from './favorite-button'
@@ -44,6 +52,18 @@ import { ReportAdDialog } from './report-ad-dialog'
 import { SimilarAdsSection } from './similar-ads-section'
 
 import 'yet-another-react-lightbox/styles.css'
+
+// Лайтбокс открывается только по клику на фото — незачем тянуть
+// yet-another-react-lightbox (+ его CSS) в основной бандл страницы
+// объявления, если посетитель ни разу не кликнул по галерее.
+const Lightbox = dynamic(() => import('yet-another-react-lightbox'), { ssr: false })
+
+// Виден только владельцу объявления (см. `isOwner &&` ниже) — recharts
+// незачем грузить всем остальным посетителям страницы.
+const AdViewsStats = dynamic(() => import('./ad-views-stats').then(mod => mod.AdViewsStats), {
+  ssr: false,
+  loading: () => <Skeleton className='h-[280px] w-full rounded-xl' />
+})
 
 interface AdDetailProps {
   // Объявление, полученное на сервере (SSR) — используется как initialData
@@ -90,6 +110,11 @@ export const AdDetail = ({
 
   const [activeImage, setActiveImage] = useState(0)
   const [isLightboxOpen, setIsLightboxOpen] = useState(false)
+  // Пока true — Lightbox ни разу не рендерился, а значит его чанк ни разу
+  // не запрашивался. true выставляется один раз, при первом клике по фото,
+  // и дальше компонент остаётся смонтированным (чтобы анимация закрытия и
+  // повторные открытия работали как обычно).
+  const [hasOpenedLightbox, setHasOpenedLightbox] = useState(false)
   const [revealedPhone, setRevealedPhone] = useState<string | null>(null)
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
 
@@ -344,7 +369,10 @@ export const AdDetail = ({
                     <button
                       key={image + index}
                       type='button'
-                      onClick={() => setIsLightboxOpen(true)}
+                      onClick={() => {
+                        setHasOpenedLightbox(true)
+                        setIsLightboxOpen(true)
+                      }}
                       className='relative w-full flex-shrink-0 snap-center pt-[76%] lg:pt-[80%]'
                     >
                       <Image
@@ -537,7 +565,7 @@ export const AdDetail = ({
           )}
         </div>
 
-        {ad.images.length > 0 && (
+        {ad.images.length > 0 && hasOpenedLightbox && (
           <Lightbox
             open={isLightboxOpen}
             close={closeLightbox}
