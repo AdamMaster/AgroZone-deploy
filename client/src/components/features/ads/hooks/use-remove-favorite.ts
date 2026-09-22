@@ -1,6 +1,6 @@
 'use client'
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { InfiniteData, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { toastMessageHandler } from '@/shared/utils'
@@ -17,26 +17,33 @@ export function useRemoveFavorite() {
     mutationFn: (id: string) => adsService.removeFavorite(id),
 
     onMutate: async (id: string) => {
-      await queryClient.cancelQueries({ queryKey: ['ads'] })
+      await queryClient.cancelQueries({ queryKey: ['ads-infinite'] })
       await queryClient.cancelQueries({ queryKey: ['ad-public', id] })
 
-      // Кэш под ['ads', params] — это IAdsListResponse, не голый массив
-      // (см. use-toggle-favorite.ts) — тут была та же причина, по которой
-      // не работало удаление из избранного.
-      const previousQueries = queryClient.getQueriesData<IAdsListResponse>({
-        queryKey: ['ads']
+      // См. комментарий в use-add-favorite.ts — карточки читают isFavorite
+      // из useAdsInfinite, чей кэш живёт под ['ads-infinite', params] как
+      // InfiniteData<IAdsListResponse>, а не под ['ads'] (несуществующий
+      // ключ от старой неинфинитной useAds).
+      const previousQueries = queryClient.getQueriesData<InfiniteData<IAdsListResponse>>({
+        queryKey: ['ads-infinite']
       })
 
       previousQueries.forEach(([queryKey]) => {
-        queryClient.setQueryData<IAdsListResponse>(queryKey, old => {
+        queryClient.setQueryData<InfiniteData<IAdsListResponse>>(queryKey, old => {
           if (!old) return old
 
-          return { ...old, items: old.items.map(ad => (ad.id === id ? { ...ad, isFavorite: false } : ad)) }
+          return {
+            ...old,
+            pages: old.pages.map(page => ({
+              ...page,
+              items: page.items.map(ad => (ad.id === id ? { ...ad, isFavorite: false } : ad))
+            }))
+          }
         })
       })
 
       // См. комментарий в use-add-favorite.ts — страница объявления читает
-      // isFavorite из ['ad-public', id], а не из ['ads'].
+      // isFavorite из ['ad-public', id], а не из ['ads-infinite'].
       const previousAd = queryClient.getQueryData<IAd>(['ad-public', id])
       if (previousAd) {
         queryClient.setQueryData<IAd>(['ad-public', id], { ...previousAd, isFavorite: false })
@@ -62,7 +69,7 @@ export function useRemoveFavorite() {
     onSuccess: () => {
       toast.success('Удалено из избранного')
 
-      queryClient.invalidateQueries({ queryKey: ['ads'] })
+      queryClient.invalidateQueries({ queryKey: ['ads-infinite'] })
       queryClient.invalidateQueries({ queryKey: ['favorite-ads'] })
     }
   })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { InfiniteData, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { toastMessageHandler } from '@/shared/utils'
@@ -17,30 +17,40 @@ export function useAddFavorite() {
     mutationFn: (id: string) => adsService.addFavorite(id),
 
     onMutate: async (id: string) => {
-      await queryClient.cancelQueries({ queryKey: ['ads'] })
+      await queryClient.cancelQueries({ queryKey: ['ads-infinite'] })
       await queryClient.cancelQueries({ queryKey: ['ad-public', id] })
 
-      // Кэш под ['ads', params] — это IAdsListResponse, не голый массив
-      // (см. use-toggle-favorite.ts) — тут была та же причина, по которой
-      // не работало добавление в избранное.
-      const previousQueries = queryClient.getQueriesData<IAdsListResponse>({
-        queryKey: ['ads']
+      // Карточки на главной/в каталоге читают isFavorite из useAdsInfinite,
+      // а её кэш живёт под ['ads-infinite', params] и хранит
+      // InfiniteData<IAdsListResponse> ({pages, pageParams}), а не один
+      // плоский IAdsListResponse — раньше здесь патчился несуществующий
+      // ключ ['ads'] (остаток от неинфинитной useAds), из-за чего
+      // оптимистичный апдейт вообще ничего не находил и сердечко на
+      // карточке не закрашивалось до перезагрузки страницы.
+      const previousQueries = queryClient.getQueriesData<InfiniteData<IAdsListResponse>>({
+        queryKey: ['ads-infinite']
       })
 
       previousQueries.forEach(([queryKey]) => {
-        queryClient.setQueryData<IAdsListResponse>(queryKey, old => {
+        queryClient.setQueryData<InfiniteData<IAdsListResponse>>(queryKey, old => {
           if (!old) return old
 
-          return { ...old, items: old.items.map(ad => (ad.id === id ? { ...ad, isFavorite: true } : ad)) }
+          return {
+            ...old,
+            pages: old.pages.map(page => ({
+              ...page,
+              items: page.items.map(ad => (ad.id === id ? { ...ad, isFavorite: true } : ad))
+            }))
+          }
         })
       })
 
       // Страница самого объявления (/ads/[id]) читает isFavorite из
-      // отдельного кэша ['ad-public', id] (см. use-ad.ts), а не из ['ads'] —
-      // без своего оптимистичного апдейта здесь сердечко на этой странице
-      // "залипало" закрашенным при ошибке (например, у неавторизованного
-      // пользователя): откатывать было нечего, потому что менялся только
-      // список.
+      // отдельного кэша ['ad-public', id] (см. use-ad.ts), а не из
+      // ['ads-infinite'] — без своего оптимистичного апдейта здесь
+      // сердечко на этой странице "залипало" закрашенным при ошибке
+      // (например, у неавторизованного пользователя): откатывать было
+      // нечего, потому что менялся только список.
       const previousAd = queryClient.getQueryData<IAd>(['ad-public', id])
       if (previousAd) {
         queryClient.setQueryData<IAd>(['ad-public', id], { ...previousAd, isFavorite: true })
@@ -71,7 +81,7 @@ export function useAddFavorite() {
     onSuccess: () => {
       toast.success('Добавлено в избранное')
 
-      queryClient.invalidateQueries({ queryKey: ['ads'] })
+      queryClient.invalidateQueries({ queryKey: ['ads-infinite'] })
       queryClient.invalidateQueries({ queryKey: ['favorite-ads'] })
     }
   })
