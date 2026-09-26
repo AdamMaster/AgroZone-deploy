@@ -39,7 +39,24 @@ class UserServices {
     return response
   }
 
-  async updatePassword(data: TypePasswordChangeSchema) {
+  // Документ-презентация компании (см. UserController.updatePresentation) —
+  // тот же паттерн FormData, что и у updateAvatar выше.
+  async updatePresentation(file: File) {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await api.patch<IUser>('users/profile/presentation', formData)
+
+    return response
+  }
+
+  async removePresentation() {
+    const response = await api.delete<IUser>('users/profile/presentation')
+
+    return response
+  }
+
+    async updatePassword(data: TypePasswordChangeSchema) {
     const { confirmPassword, ...payload } = data
 
     const response = await api.patch<boolean>('users/profile/password', payload)

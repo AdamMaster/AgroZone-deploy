@@ -2,8 +2,8 @@
 
 import { useAppModal } from '@/store'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { CameraIcon } from 'lucide-react'
-import { ChangeEvent, useEffect, useState } from 'react'
+import { CameraIcon, FileText, X } from 'lucide-react'
+import { ChangeEvent, useEffect, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 
 import { UserType } from '@/components/features/auth/types'
@@ -32,11 +32,16 @@ import {
 
 import { USER_TYPE_LABELS, USER_TYPE_OPTIONS } from '@/shared/constants/user-types'
 import { useProfile } from '@/shared/hooks'
-import { formatPhoneNumber, getPrimaryPhone } from '@/shared/utils'
+import { formatFileSize, formatPhoneNumber, getPrimaryPhone } from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
 
-import { useUpdateAvatarMutation, useVerifyBusinessMutation } from '../hooks'
+import {
+  useRemovePresentationMutation,
+  useUpdateAvatarMutation,
+  useUpdatePresentationMutation,
+  useVerifyBusinessMutation
+} from '../hooks'
 import { useUpdateProfileMutation } from '../hooks/use-update-profile-mutation'
 import { SettingsSchema, TypeSettingsSchema } from '../schemes'
 import { UserAvatar } from './user-avatar'
@@ -96,6 +101,22 @@ export const ContentGeneral = () => {
     }
   }
 
+  const { updatePresentation, isLoadingUpdatePresentation } = useUpdatePresentationMutation()
+  const { removePresentation, isLoadingRemovePresentation } = useRemovePresentationMutation()
+  const presentationInputRef = useRef<HTMLInputElement>(null)
+  const isLoadingPresentation = isLoadingUpdatePresentation || isLoadingRemovePresentation
+
+  const onPresentationFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      updatePresentation(file)
+    }
+    // Иначе повторный выбор того же файла (например, сразу после неудачной
+    // загрузки — исправили и выбрали снова) не вызовет onChange: браузер
+    // не считает это изменением value инпута.
+    if (presentationInputRef.current) presentationInputRef.current.value = ''
+  }
+
   return (
     <div className='relative'>
       <Heading level={2} className='mb-6'>
@@ -147,7 +168,7 @@ export const ContentGeneral = () => {
                   control={form.control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid} className={cn('group')}>
-                      <Label className='mb-1'>Имя</Label>
+                      <Label className='mb-1!'>Имя</Label>
                       {isLoading ? (
                         <Skeleton className='rounded-1 h-11 w-full sm:h-12' />
                       ) : (
@@ -164,7 +185,7 @@ export const ContentGeneral = () => {
                   control={form.control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid} isInvalid={fieldState.invalid}>
-                      <Label className='mb-1'>Тип продавца</Label>
+                      <Label className='mb-1!'>Тип продавца</Label>
                       {isLoading ? (
                         <Skeleton className='rounded-1 h-11 w-full sm:h-12' />
                       ) : (
@@ -188,8 +209,8 @@ export const ContentGeneral = () => {
               </div>
               {selectedType !== UserType.Individual && (
                 <Field>
-                  <Label className='mb-0'>ИНН</Label>
-                  <FieldDescription>
+                  <Label className='mb-0!'>ИНН</Label>
+                  <FieldDescription className='mb-1'>
                     Подтвердите {selectedType === UserType.Business ? 'компанию ' : 'ИП '} по ИНН — данные проверяются
                     через сервис DaData. Подтверждённое название будет показано на ваших объявлениях.
                   </FieldDescription>
@@ -219,7 +240,7 @@ export const ContentGeneral = () => {
             </div>
 
             <Field>
-              <Label className='mb-1'>Почта</Label>
+              <Label className='mb-1!'>Почта</Label>
               {isLoading ? (
                 <Skeleton className='rounded-1 h-11 w-full sm:h-12' />
               ) : (
@@ -233,7 +254,7 @@ export const ContentGeneral = () => {
               )}
             </Field>
             <Field>
-              <Label className='mb-1'>Номер телефона</Label>
+              <Label className='mb-1!'>Номер телефона</Label>
 
               {isLoading ? (
                 <Skeleton className='rounded-1 h-11 w-full sm:h-12' />
@@ -251,6 +272,73 @@ export const ContentGeneral = () => {
                   </FieldButton>
                 </div>
               )}
+            </Field>
+
+            <Field>
+              <Label className='mb-0!'>Презентация компании</Label>
+              <FieldDescription className='mb-1'>
+                Прайс-лист, каталог или файл о вашей компании — покажем его в вашем публичном профиле, всем посетителям
+                сайта. Форматы: PDF, DOCX, XLSX, PPTX, до 15 МБ.
+              </FieldDescription>
+
+              {isLoading ? (
+                <Skeleton className='rounded-1 h-11 w-full sm:h-12' />
+              ) : user?.presentationUrl ? (
+                <div className='relative flex items-center gap-3 rounded-lg border p-3'>
+                  <FileText className='text-gray-400' size={20} />
+                  <div className='min-w-0 flex-1'>
+                    <a
+                      href={user.presentationUrl}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='block truncate text-sm font-medium hover:underline'
+                    >
+                      {user.presentationFileName ?? 'Презентация'}
+                    </a>
+                    {typeof user.presentationFileSize === 'number' && (
+                      <p className='text-xs text-gray-500'>{formatFileSize(user.presentationFileSize)}</p>
+                    )}
+                  </div>
+                  <button
+                    type='button'
+                    onClick={() => presentationInputRef.current?.click()}
+                    disabled={isLoadingPresentation}
+                    className='shrink-0 text-sm text-gray-500 hover:text-gray-900 hover:underline disabled:opacity-50'
+                  >
+                    Заменить
+                  </button>
+                  <button
+                    type='button'
+                    aria-label='Удалить презентацию'
+                    onClick={() => removePresentation()}
+                    disabled={isLoadingPresentation}
+                    className='shrink-0 rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50'
+                  >
+                    <X size={16} />
+                  </button>
+                  {isLoadingPresentation && <Loading />}
+                </div>
+              ) : (
+                <div className='relative'>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    onClick={() => presentationInputRef.current?.click()}
+                    disabled={isLoadingPresentation}
+                  >
+                    {isLoadingPresentation ? 'Загружаем...' : 'Загрузить файл'}
+                  </Button>
+                </div>
+              )}
+
+              <input
+                ref={presentationInputRef}
+                type='file'
+                accept='.pdf,.docx,.xlsx,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.presentationml.presentation'
+                className='hidden'
+                onChange={onPresentationFileChange}
+                disabled={isLoadingPresentation}
+              />
             </Field>
           </FieldGroup>
         </form>

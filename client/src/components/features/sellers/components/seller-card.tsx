@@ -1,4 +1,4 @@
-import { Crown } from 'lucide-react'
+import { Crown, FileText } from 'lucide-react'
 
 import { UserType } from '@/components/features/auth/types'
 import { UserAvatar } from '@/components/features/user/components'
@@ -52,6 +52,20 @@ export function SellerCard({ seller }: SellerCardProps) {
             {seller.adsCount} {pluralizeRu(seller.adsCount, ['объявление', 'объявления', 'объявлений'])}
           </p>
         </div>
+
+        {seller.presentationUrl && (
+          <a
+            href={seller.presentationUrl}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='mt-3 flex items-center gap-2 rounded-lg border p-2.5 text-sm hover:bg-gray-50'
+          >
+            <FileText className='shrink-0 text-gray-400' size={18} />
+            <span className='min-w-0 truncate font-medium'>
+              {seller.presentationFileName ?? 'Презентация компании'}
+            </span>
+          </a>
+        )}
       </div>
     </div>
   )

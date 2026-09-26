@@ -60,6 +60,13 @@ export interface IUser {
   // комментарий в schema.prisma на бэкенде, UserRole.Premium оставлен
   // только для обратной совместимости и новым кодом не используется).
   premiumUntil?: string | null
+  // Документ-презентация компании (прайс-лист/каталог/о компании) в
+  // профиле продавца — см. UserController.updatePresentation на бэкенде.
+  // Один файл на аккаунт (не таблица), presentationFileName — оригинальное
+  // имя, как его назвал пользователь (S3 хранит под сгенерированным).
+  presentationUrl?: string | null
+  presentationFileName?: string | null
+  presentationFileSize?: number | null
 }
 
 export interface IUserPhone {

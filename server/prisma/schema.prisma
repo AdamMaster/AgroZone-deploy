@@ -32,6 +32,25 @@ model User {
   businessName       String?   @map("business_name")
   businessVerifiedAt DateTime? @map("business_verified_at")
 
+  // Презентация компании — один документ (прайс-лист/каталог/описание
+  // компании), который продавец прикладывает к своему профилю (см.
+  // обсуждение с пользователем: аналог фичи "Размещение файлов в товарах"
+  // у agroserver.ru, но на уровне профиля продавца, а не объявления —
+  // прайс общий для всех лотов, незачем грузить его на каждое объявление
+  // заново). Один файл, а не таблица вложений — сознательный выбор для
+  // MVP: закрывает основной сценарий "прайс + о компании" простой схемой;
+  // если понадобится несколько документов — мигрируется на отдельную
+  // таблицу без потери текущих данных (это поле станет первой записью).
+  // presentationFileName — оригинальное имя файла, как у пользователя (S3
+  // хранит его под сгенерированным именем, см. FileService.uploadFile),
+  // нужно, чтобы показать "Прайс-лист_2026.pdf", а не голую ссылку.
+  // presentationFileSize — байты, для отображения размера рядом с именем
+  // на фронте, не участвует в проверке лимита (лимит проверяется на
+  // бэкенде в момент загрузки, см. UserController.updatePresentation).
+  presentationUrl      String? @map("presentation_url")
+  presentationFileName String? @map("presentation_file_name")
+  presentationFileSize Int?    @map("presentation_file_size")
+
   role UserRole @default(REGULAR)
 
   premiumUntil DateTime? @map("premium_until")

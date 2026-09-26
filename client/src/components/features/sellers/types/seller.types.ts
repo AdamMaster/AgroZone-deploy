@@ -15,4 +15,9 @@ export interface IPublicSeller {
   premiumUntil: string | null
   createdAt: string
   adsCount: number
+  // Документ-презентация компании — публично, если продавец её загрузил
+  // (см. UserService.getPublicProfile на бэкенде). presentationFileName
+  // нужен, чтобы показать реальное имя файла, а не голую ссылку на S3.
+  presentationUrl: string | null
+  presentationFileName: string | null
 }

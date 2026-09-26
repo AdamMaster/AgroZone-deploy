@@ -105,6 +105,8 @@ export class UserService {
         premiumUntil: true,
         createdAt: true,
         deletedAt: true,
+        presentationUrl: true,
+        presentationFileName: true,
         _count: {
           select: {
             ads: {
@@ -499,6 +501,62 @@ export class UserService {
     })
   }
 
+  // Аналог updateAvatar выше, но для документа презентации компании (см.
+  // UserController.updatePresentation) — тоже принимает уже загруженный в
+  // S3 файл (контроллер вызывает FileService.uploadFile сам, с папкой
+  // 'presentations', а не 'avatars'), тут только: удалить старый файл,
+  // если был, и сохранить новые ссылку/имя/размер.
+  async updatePresentation(userId: string, uploadResult: { url: string; fileId: string }, originalName: string, fileSize: number) {
+    const user = await this.findById(userId)
+
+    if (user.presentationUrl) {
+      try {
+        await this.fileService.deleteFileByUrl(user.presentationUrl)
+      } catch (error) {
+        console.error('Не удалось удалить старый файл презентации из S3:', error)
+      }
+    }
+
+    return this.prismaService.user.update({
+      where: {
+        id: userId
+      },
+      data: {
+        presentationUrl: uploadResult.url,
+        presentationFileName: originalName,
+        presentationFileSize: fileSize
+      }
+    })
+  }
+
+  // Удаление презентации без загрузки новой — отдельная ручка (см.
+  // UserController.removePresentation), а не updatePresentation(null):
+  // тут нет файла на входе вообще, только очистка уже сохранённого.
+  async removePresentation(userId: string) {
+    const user = await this.findById(userId)
+
+    if (!user.presentationUrl) {
+      return user
+    }
+
+    try {
+      await this.fileService.deleteFileByUrl(user.presentationUrl)
+    } catch (error) {
+      console.error('Не удалось удалить файл презентации из S3:', error)
+    }
+
+    return this.prismaService.user.update({
+      where: {
+        id: userId
+      },
+      data: {
+        presentationUrl: null,
+        presentationFileName: null,
+        presentationFileSize: null
+      }
+    })
+  }
+
   async updatePassword(userId: string, dto: PasswordChangeDto) {
     const user = await this.findById(userId)
 
@@ -843,6 +901,14 @@ export class UserService {
     // "осиротевшим" файлом в хранилище, о котором больше негде узнать.
     if (user.picture) {
       await this.fileService.deleteFileByUrl(user.picture)
+    }
+
+    // То же самое — для файла презентации, по той же причине (см.
+    // комментарий выше про аватарку): без этого при удалении аккаунта файл
+    // так и остался бы висеть в S3 навсегда, ссылки на него из БД больше
+    // не будет.
+    if (user.presentationUrl) {
+      await this.fileService.deleteFileByUrl(user.presentationUrl)
     }
 
     await this.prismaService.$transaction(async tx => {

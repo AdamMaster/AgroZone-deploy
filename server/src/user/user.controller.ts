@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   FileTypeValidator,
   Get,
   HttpCode,
@@ -37,6 +38,11 @@ import { AdminSearchUsersQueryDto } from './dto/admin-search-users-query.dto'
 import { AdminSetPremiumDto } from './dto/admin-set-premium.dto'
 import { PhoneThrottlerGuard } from '@/libs/common/guards/phone-throttler.guard'
 import { ConfigService } from '@nestjs/config'
+import {
+  PRESENTATION_ALLOWED_EXTENSIONS,
+  PRESENTATION_FILE_TYPE_PATTERN,
+  PRESENTATION_MAX_FILE_SIZE
+} from './constants/user.constants'
 
 @Controller('users')
 export class UserController {
@@ -159,6 +165,47 @@ export class UserController {
     const uploadResult = await this.fileService.uploadFile(file, 'avatars')
 
     return this.userService.updateAvatar(userId, uploadResult.url)
+  }
+
+  // Документ-презентация компании в профиле продавца (прайс-лист/каталог/
+  // о компании) — см. обсуждение с пользователем: аналог "Размещение
+  // файлов в товарах" у agroserver.ru, но привязан к профилю продавца, а
+  // не к конкретному объявлению, и с белым списком форматов (см.
+  // constants/user.constants.ts — почему без .exe и без legacy .doc/.xls/
+  // .ppt). FileTypeValidator проверяет содержимое файла по магическим
+  // числам (пакет file-type), а не просто mimetype/расширение из запроса.
+  @Authorization()
+  @HttpCode(HttpStatus.OK)
+  @Patch('profile/presentation')
+  @UseInterceptors(FileInterceptor('file'))
+  async updatePresentation(
+    @Authorized('id') userId: string,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({
+            maxSize: PRESENTATION_MAX_FILE_SIZE,
+            errorMessage: `Размер файла не должен превышать ${PRESENTATION_MAX_FILE_SIZE / 1024 / 1024} МБ`
+          }),
+          new FileTypeValidator({
+            fileType: PRESENTATION_FILE_TYPE_PATTERN,
+            errorMessage: `Допустимые форматы файла: ${PRESENTATION_ALLOWED_EXTENSIONS.join(', ').toUpperCase()}`
+          })
+        ]
+      })
+    )
+    file: Express.Multer.File
+  ) {
+    const uploadResult = await this.fileService.uploadFile(file, 'presentations')
+
+    return this.userService.updatePresentation(userId, uploadResult, file.originalname, file.size)
+  }
+
+  @Authorization()
+  @HttpCode(HttpStatus.OK)
+  @Delete('profile/presentation')
+  async removePresentation(@Authorized('id') userId: string) {
+    return this.userService.removePresentation(userId)
   }
 
   @Authorization()
