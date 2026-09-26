@@ -84,16 +84,24 @@ interface ProductJsonLdAd {
   category?: { name: string }
 }
 
-// Product + Offer — на странице объявления. Offer добавляется, только если
-// у объявления реально есть цена: у "Цена договорная" (price: null/0)
-// указывать <Offer> с обязательным по гайдлайну Google полем price
-// нечестно (мы его на самом деле не знаем) — в этом случае отдаём просто
-// Product без offers, что тоже валидная разметка, только без ценового
-// сниппета в выдаче (что и есть правда).
+// Product + Offer — на странице объявления. Раньше при отсутствии цены
+// ("Цена договорная", price: null/0) отдавался Product без offers, из
+// расчёта "это тоже валидная разметка, просто без ценового сниппета" — по
+// факту оказалось не так: Google Search Console помечает такой Product как
+// НЕДЕЙСТВИТЕЛЬНЫЙ ("Задайте значение для offers, review или
+// aggregateRating"), а не просто "без обогащения" — у нас на сайте нет ни
+// одного из этих трёх полей вовсе (отзывов/рейтингов тоже нет), так что
+// такая страница не может быть валидным Product в принципе. Поэтому теперь
+// для объявлений без цены билдер возвращает null — сама функция ничего не
+// решает про то, рендерить ли JsonLd, это на вызывающей стороне (см.
+// app/(main)/ads/[id]/page.tsx, там же фильтруются null-значения из
+// массива перед JSON.stringify).
 export function buildProductJsonLd(ad: ProductJsonLdAd) {
-  const url = `${SITE_URL}/ads/${ad.id}`
   const hasPrice = typeof ad.price === 'number' && ad.price > 0
 
+  if (!hasPrice) return null
+
+  const url = `${SITE_URL}/ads/${ad.id}`
   const unitText = ad.unit ? PRICE_UNITS_SHORT[ad.unit] : undefined
 
   return {
@@ -104,34 +112,32 @@ export function buildProductJsonLd(ad: ProductJsonLdAd) {
     image: ad.images,
     url,
     ...(ad.category?.name && { category: ad.category.name }),
-    ...(hasPrice && {
-      offers: {
-        '@type': 'Offer',
-        url,
-        price: ad.price,
-        priceCurrency: 'RUB',
-        availability: 'https://schema.org/InStock',
-        // Цена "за тонну"/"за кг" и т.п. — существенная часть смысла цены
-        // для оптовой агроплощадки (см. formatPriceWithUnit), поэтому кроме
-        // плоского price/priceCurrency (обязательных для Offer) добавляем
-        // ещё и priceSpecification с единицей, когда она содержательна
-        // (ITEM/неизвестная — "цена целиком", уточнять нечего).
-        ...(unitText && {
-          priceSpecification: {
-            '@type': 'UnitPriceSpecification',
-            price: ad.price,
-            priceCurrency: 'RUB',
-            unitText
-          }
-        }),
-        ...(ad.user?.displayName && {
-          seller: {
-            '@type': ad.user.type === UserType.Individual ? 'Person' : 'Organization',
-            name: ad.user.displayName
-          }
-        })
-      }
-    })
+    offers: {
+      '@type': 'Offer',
+      url,
+      price: ad.price,
+      priceCurrency: 'RUB',
+      availability: 'https://schema.org/InStock',
+      // Цена "за тонну"/"за кг" и т.п. — существенная часть смысла цены
+      // для оптовой агроплощадки (см. formatPriceWithUnit), поэтому кроме
+      // плоского price/priceCurrency (обязательных для Offer) добавляем
+      // ещё и priceSpecification с единицей, когда она содержательна
+      // (ITEM/неизвестная — "цена целиком", уточнять нечего).
+      ...(unitText && {
+        priceSpecification: {
+          '@type': 'UnitPriceSpecification',
+          price: ad.price,
+          priceCurrency: 'RUB',
+          unitText
+        }
+      }),
+      ...(ad.user?.displayName && {
+        seller: {
+          '@type': ad.user.type === UserType.Individual ? 'Person' : 'Organization',
+          name: ad.user.displayName
+        }
+      })
+    }
   }
 }
 

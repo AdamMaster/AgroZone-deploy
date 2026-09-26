@@ -82,7 +82,11 @@ export default async function AdPage({ params }: AdPageProps) {
   return (
     <div>
       <Container>
-        <JsonLd data={[buildBreadcrumbListJsonLd(breadcrumbItems), buildProductJsonLd(ad)]} />
+        <JsonLd
+          data={[buildBreadcrumbListJsonLd(breadcrumbItems), buildProductJsonLd(ad)].filter(
+            (item): item is NonNullable<typeof item> => item !== null
+          )}
+        />
         <AdDetail ad={ad} categoryFeatures={categoryFeatures} categoryPath={categoryPath} similarAds={similarAds} />
       </Container>
     </div>
