@@ -38,21 +38,25 @@ export const AboutTrust = () => {
   return (
     <section className='bg-gray-50 py-20'>
       <Container>
-        <div className='mx-auto mb-10 max-w-2xl text-center'>
-          <Heading level={2}>Как мы следим за порядком на площадке</Heading>
-          <p className='mt-3 text-gray-500'>
+        <div className='mb-10'>
+          <Heading level={2} className='sm:text-4xl'>
+            Как мы следим за порядком на площадке
+          </Heading>
+          <p className='mt-3 text-lg text-gray-500'>
             AgroZone только начинает расти — и с первого дня работает на доверии, а не на количестве объявлений.
           </p>
         </div>
 
-        <div className='grid grid-cols-2 gap-4'>
+        <div className='grid grid-cols-2 gap-6'>
           {TRUST_FEATURES.map(feature => (
-            <div key={feature.title} className='custom-shadow rounded-3xl bg-white p-6 dark:bg-card'>
-              <div className='bg-primary/10 text-primary mb-4 flex size-13 items-center justify-center rounded-xl'>
+            <div key={feature.title} className='custom-shadow dark:bg-card flex gap-4 rounded-3xl bg-white p-6'>
+              <div className='bg-primary/10 text-primary mb-4 flex size-13 min-w-13 items-center justify-center rounded-xl'>
                 <feature.icon className='size-8' />
               </div>
-              <Heading level={4}>{feature.title}</Heading>
-              <p className='mt-1.5 text-gray-500'>{feature.description}</p>
+              <div>
+                <Heading level={4}>{feature.title}</Heading>
+                <p className='mt-1.5 text-gray-500'>{feature.description}</p>
+              </div>
             </div>
           ))}
         </div>
