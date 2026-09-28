@@ -16,7 +16,6 @@ export default function AboutPage() {
       <AboutHero />
       <AboutMission />
       <AboutTrust />
-      <AboutFounder />
       <AboutContact />
     </div>
   )

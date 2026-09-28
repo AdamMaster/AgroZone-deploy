@@ -47,7 +47,7 @@ export const AboutTrust = () => {
           </p>
         </div>
 
-        <div className='grid grid-cols-2 gap-6'>
+        <div className='grid grid-cols-2 gap-8'>
           {TRUST_FEATURES.map(feature => (
             <div key={feature.title} className='custom-shadow dark:bg-card flex gap-4 rounded-3xl bg-white p-6'>
               <div className='bg-primary/10 text-primary mb-4 flex size-13 min-w-13 items-center justify-center rounded-xl'>

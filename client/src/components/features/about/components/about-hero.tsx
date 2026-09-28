@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -36,32 +37,24 @@ export const AboutHero = () => {
           sizes='100vw'
           className='object-cover'
         />
-
-        {/* Два градиента: горизонтальный — тёмный слева под текст, светлее
-            справа, где видно кадр; вертикальный — лёгкое затемнение снизу,
-            чтобы низ секции не выглядел "обрезанным" на светлом небе. */}
-        <div className='absolute inset-0 bg-gradient-to-r from-black/65 via-black/55 to-black/10' />
-        <div className='absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent' />
-
         <Container className=''>
           <div className='relative flex min-h-[520px] max-w-xl flex-col justify-center py-20 sm:min-h-[580px]'>
+            <Image src='/images/logo-white.svg' alt='' width={260} height={40} className='mb-2' />
             <Heading level={1} className='leading-[1.1] text-white md:text-5xl'>
-              <span className='text-primary font-extrabold uppercase'>AgroZone</span> — агропромышленная площадка
-              объявлений
+              агропромышленная площадка объявлений
             </Heading>
 
             <p className='mt-6 max-w-xl text-lg leading-snug text-gray-200'>От поля до сделки — в одном месте</p>
 
             <div className='mt-8 flex flex-wrap gap-3'>
+              <Button render={<Link href='/ads/create' />} size='lg'>
+                <Plus />
+                Разместить объявление
+              </Button>
               <Button render={<Link href='/catalog' />} size='lg'>
                 Перейти в каталог
               </Button>
-              <Button
-                render={<Link href='/help' />}
-                variant='outline'
-                size='lg'
-                className='border-white/30 bg-white/10 text-white backdrop-blur-sm hover:bg-white/20'
-              >
+              <Button render={<Link href='/help' />} variant='outline' size='lg'>
                 Как это работает
               </Button>
             </div>
@@ -70,7 +63,7 @@ export const AboutHero = () => {
             {CATEGORIES_STRIP.map((category, index) => (
               <span key={category} className='flex items-center gap-x-3'>
                 <span className='text-xs tracking-wide text-white uppercase'>{category}</span>
-                {index < CATEGORIES_STRIP.length - 1 && <span className='text-primary/40'>·</span>}
+                {index < CATEGORIES_STRIP.length - 1 && <span className='text-white'>·</span>}
               </span>
             ))}
           </div>

@@ -29,7 +29,8 @@ export const Footer = () => {
           ))}
         </div>
 
-        <div className='dark:border-accent border-t border-gray-200 py-5'>
+        <div className='dark:border-accent grid gap-2 border-t border-gray-200 py-5'>
+          <p className='text-xs text-gray-600'>ИНН: 070113203655</p>
           <p className='text-xs text-gray-600'>© {year} AgroZone. Все права защищены.</p>
         </div>
       </Container>
