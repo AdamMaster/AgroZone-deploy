@@ -129,7 +129,7 @@ export const PromoteAd = ({ id }: PromoteAdProps) => {
         <Heading level={1} className='mb-1'>
           Поднять просмотры
         </Heading>
-        <p className='mb-8 text-gray-500'>
+        <p className='mb-8 text-sm text-gray-500 sm:text-[15px]'>
           Выберите нужные услуги — они действуют 7 дней, оплата одним платежом за весь выбранный набор.
         </p>
 
