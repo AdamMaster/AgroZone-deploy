@@ -7,9 +7,9 @@ import { AdBadge, AdServiceType } from '../types/ad.types'
 export const AD_SERVICE_DURATION_DAYS = 7
 
 export const AD_SERVICE_PRICES_KOPECKS: Record<AdServiceType, number> = {
-  BUMP: 1000, // ВРЕМЕННО для теста реальной оплаты (было 14900) — вернуть обратно после теста!
-  PRICE_HIGHLIGHT: 14900,
-  BADGE: 14900
+  BUMP: 14800,
+  PRICE_HIGHLIGHT: 14800,
+  BADGE: 14800
 }
 
 export const AD_SERVICE_LABELS: Record<AdServiceType, string> = {
