@@ -89,9 +89,7 @@ export const Header = () => {
                   </DropdownMenu>
                 </div>
               ) : isAdFormPage || isAdDetailPage ? null : (
-                <p>
-                  <SearchBar className={cn('grow', showCompactHeader && 'md:hidden')} />
-                </p>
+                <SearchBar className={cn('grow', showCompactHeader && 'md:hidden')} />
               )}
               {showCompactHeader && (
                 <div className='hidden md:block md:grow'>
