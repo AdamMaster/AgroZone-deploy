@@ -9,7 +9,7 @@ export default async function PromoteAdPage({ params }: PromoteAdPageProps) {
   const { id } = await params
 
   return (
-    <div className='py-10'>
+    <div className='sm:py-10'>
       <Container>
         <PromoteAd id={id} />
       </Container>

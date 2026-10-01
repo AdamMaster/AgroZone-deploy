@@ -25,7 +25,7 @@ export const Header = () => {
   const router = useRouter()
   const isMessagesPage = pathname.startsWith('/profile/settings/messages')
   const isAdsPage = pathname.startsWith('/ads/')
-  const isAdFormPage = isAdsPage && (pathname === '/ads/create' || pathname.endsWith('/edit'))
+  const isAdFormPage = isAdsPage
   const isAdDetailPage = isAdsPage && !isAdFormPage && !pathname.endsWith('/promote')
   const isProfileSection = pathname.startsWith('/profile/') && !isMessagesPage && !isAdsPage
   const showCompactHeader = isProfileSection || isMessagesPage || isAdsPage
@@ -60,7 +60,11 @@ export const Header = () => {
               </div>
               {isProfileSection ? (
                 <div className='flex w-full items-center justify-end gap-4 md:hidden'>
-                  <Link href='/profile/settings/notifications' aria-label='Уведомления' className='relative inline-flex'>
+                  <Link
+                    href='/profile/settings/notifications'
+                    aria-label='Уведомления'
+                    className='relative inline-flex'
+                  >
                     <Bell className='size-6 text-gray-700' />
                     {user && <ProfileHeaderBellBadge />}
                   </Link>
@@ -85,7 +89,9 @@ export const Header = () => {
                   </DropdownMenu>
                 </div>
               ) : isAdFormPage || isAdDetailPage ? null : (
-                <SearchBar className={cn('grow', showCompactHeader && 'md:hidden')} />
+                <p>
+                  <SearchBar className={cn('grow', showCompactHeader && 'md:hidden')} />
+                </p>
               )}
               {showCompactHeader && (
                 <div className='hidden md:block md:grow'>
