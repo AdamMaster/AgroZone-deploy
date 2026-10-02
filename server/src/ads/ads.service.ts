@@ -98,6 +98,22 @@ function buildRegionMatchPattern(name: string): string {
   return `\\y${escaped}\\y`
 }
 
+// Разбивает поисковый запрос на отдельные слова для AND-поиска "каждое
+// слово где-то в title/description" (порядок слов не важен — "мтз
+// трактор" находит и "Трактор МТЗ-82", см. AdsService.findAll). lower()
+// тут осознанно: ILIKE в Postgres сам регистронезависим, а вот
+// similarity()/% (pg_trgm), которые используются ниже для опечаток и
+// релевантности, регистрозависимы — поэтому normalizedQuery и каждое
+// слово уже в нижнем регистре, и колонки в SQL тоже оборачиваются в
+// lower(). Длинные запросы режем до 8 слов — защита от патологически
+// длинной строки поиска, раздувающей WHERE в десятки AND-условий.
+function normalizeSearchWords(raw: string): { normalizedQuery: string; words: string[] } {
+  const normalizedQuery = raw.trim().toLowerCase().replace(/\s+/g, ' ')
+  const words = [...new Set(normalizedQuery.split(' ').filter(Boolean))].slice(0, 8)
+
+  return { normalizedQuery, words }
+}
+
 @Injectable()
 export class AdsService {
   private readonly logger = new Logger(AdsService.name)
@@ -255,9 +271,32 @@ export class AdsService {
       conditions.push(Prisma.sql`ads.category_id IN (SELECT id FROM category_tree)`)
     }
 
-    if (query.search) {
-      const pattern = `%${query.search}%`
-      conditions.push(Prisma.sql`(ads.title ILIKE ${pattern} OR ads.description ILIKE ${pattern})`)
+    // Умный поиск (см. обсуждение с пользователем — старая версия искала
+    // ОДНОЙ слитной подстрокой ILIKE '%запрос%', не прощала опечаток и не
+    // умела сортировать по релевантности, хотя pg_trgm + GIN-индексы под
+    // это уже были заведены для автодополнения, см. search.service.ts).
+    // Слова запроса ищутся по отдельности (AND) — порядок не важен, каждое
+    // слово должно найтись в title ИЛИ description. % (similarity) — тот
+    // же оператор, что и в автодополнении, но только для слов от 4 букв:
+    // на 2-3-буквенных словах триграммное сходство слишком шумное (мало
+    // триграмм) и начинает находить случайные совпадения, поэтому короткие
+    // слова ищутся только точной подстрокой через ILIKE.
+    const { normalizedQuery, words } = query.search
+      ? normalizeSearchWords(query.search)
+      : { normalizedQuery: '', words: [] }
+
+    if (words.length > 0) {
+      const wordConditions = words.map(word => {
+        const pattern = `%${word}%`
+        const fuzzy =
+          word.length >= 4
+            ? Prisma.sql`OR lower(ads.title) % ${word} OR lower(ads.description) % ${word}`
+            : Prisma.sql``
+
+        return Prisma.sql`(ads.title ILIKE ${pattern} OR ads.description ILIKE ${pattern} ${fuzzy})`
+      })
+
+      conditions.push(Prisma.join(wordConditions, ' AND '))
     }
 
     // regionIsoCode (несмотря на название параметра — оставили для
@@ -332,8 +371,36 @@ export class AdsService {
     // цене/дате намеренно не учитывает bumped_at — поднятие влияет только
     // на дефолтную ленту, а не переупорядочивает то, что юзер явно
     // отсортировал сам.
+    // Сортировка по релевантности — только когда реально ищем (words.length)
+    // И пользователь сам не выбрал конкретную сортировку (sortBy не
+    // передан — фронт вообще не шлёт sortBy=date_desc явно, см.
+    // CatalogSort.tsx: выбор дефолтной опции "Сначала новые" тоже сбрасывает
+    // sortBy в undefined). Если sortBy пришёл явно (цена/расстояние/дата) —
+    // это осознанный выбор пользователя поверх поиска, релевантность его не
+    // перебивает. similarity() регистрозависим — lower() с обеих сторон,
+    // как и в search.service.ts. COALESCE(description, '') — similarity()
+    // с NULL вернула бы NULL и сломала бы DESC-сортировку (NULLS FIRST по
+    // умолчанию для DESC в Postgres — такие строки улетели бы в начало
+    // выдачи, а не в конец).
+    const searchScoreExpr =
+      words.length > 0
+        ? Prisma.sql`(
+            similarity(lower(ads.title), ${normalizedQuery}) * 2.0
+            + CASE
+                WHEN lower(ads.title) LIKE ${normalizedQuery + '%'} THEN 1.5
+                WHEN lower(ads.title) LIKE ${'%' + normalizedQuery + '%'} THEN 1.0
+                ELSE 0
+              END
+            + similarity(lower(COALESCE(ads.description, '')), ${normalizedQuery}) * 0.5
+          )`
+        : Prisma.sql`0`
+
+    const useRelevanceSort = words.length > 0 && query.sortBy === undefined
+
     const sortMap: Record<AdsSortBy, Prisma.Sql> = {
-      [AdsSortBy.DATE_DESC]: Prisma.sql`COALESCE(ads.bumped_at, ads.created_at) DESC`,
+      [AdsSortBy.DATE_DESC]: useRelevanceSort
+        ? Prisma.sql`${searchScoreExpr} DESC, COALESCE(ads.bumped_at, ads.created_at) DESC`
+        : Prisma.sql`COALESCE(ads.bumped_at, ads.created_at) DESC`,
       [AdsSortBy.DATE_ASC]: Prisma.sql`ads.created_at ASC`,
       [AdsSortBy.PRICE_ASC]: Prisma.sql`ads.price ASC NULLS LAST`,
       [AdsSortBy.PRICE_DESC]: Prisma.sql`ads.price DESC NULLS LAST`,
