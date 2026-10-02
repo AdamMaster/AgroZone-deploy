@@ -66,6 +66,21 @@ body.yarl__no_scroll {
   padding-left: 0 !important;
 }
 
+/*
+ * Контейнер Yandex SmartCaptcha (.smart-captcha) получает min-width: 300px
+ * из стилей, которые подгружает сам скрипт Яндекса (captcha.js с их CDN,
+ * не из нашего бандла) — безусловно, даже когда виджет невидим (height: 0,
+ * класс .smart-captcha_invisible). На узких модалках/формах это раздвигает
+ * родительский блок шире вьюпорта. hideShield тут не помогает — это другой
+ * элемент (сам контейнер капчи, а не плавающий щит). Переопределяем жёстко,
+ * т.к. правило от Яндекса той же специфичности и может подгрузиться позже
+ * наших стилей.
+ */
+.smart-captcha {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);

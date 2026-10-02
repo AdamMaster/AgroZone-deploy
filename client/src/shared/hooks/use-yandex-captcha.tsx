@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import { useCallback, useRef, useState } from 'react'
 
 // Виджет нужен только на формах авторизации/регистрации — незачем
@@ -76,16 +77,38 @@ export function useYandexCaptcha() {
   }, [])
 
   const CaptchaWidget = (
-    <InvisibleSmartCaptcha
-      // key — см. комментарий выше про resetKey: без него это был бы тот
-      // же смонтированный виджет, и вторая проверка подряд молча зависала
-      // бы.
-      key={resetKey}
-      sitekey={process.env.NEXT_PUBLIC_YANDEX_CAPTCHA_CLIENT_KEY as string}
-      visible={visible}
-      onSuccess={handleSuccess}
-      onChallengeHidden={handleChallengeHidden}
-    />
+    <>
+      <InvisibleSmartCaptcha
+        // key — см. комментарий выше про resetKey: без него это был бы тот
+        // же смонтированный виджет, и вторая проверка подряд молча зависала
+        // бы.
+        key={resetKey}
+        sitekey={process.env.NEXT_PUBLIC_YANDEX_CAPTCHA_CLIENT_KEY as string}
+        visible={visible}
+        onSuccess={handleSuccess}
+        onChallengeHidden={handleChallengeHidden}
+        // hideShield: без этого виджет рисует плавающий "щит" с крестиком,
+        // который Яндекс позиционирует fixed в угол ВЬЮПОРТА (а не модалки
+        // или формы) — на узких экранах он вылезает за край экрана и
+        // накладывается на модалку (баг с "каптча растягивает блок").
+        // Скрывая щит, обязаны уведомить пользователя об обработке данных
+        // другим способом — см. текст ниже и
+        // https://yandex.ru/legal/smartcaptcha_notice/.
+        hideShield
+      />
+      <p className='mt-4 text-xs text-gray-500'>
+        Этот сайт защищён сервисом Yandex SmartCaptcha. Обработка данных осуществляется в соответствии с{' '}
+        <Link
+          href='https://yandex.ru/legal/smartcaptcha_notice/'
+          target='_blank'
+          rel='noopener noreferrer'
+          className='text-primary underline'
+        >
+          уведомлением Яндекса
+        </Link>
+        .
+      </p>
+    </>
   )
 
   return { executeCaptcha, CaptchaWidget }

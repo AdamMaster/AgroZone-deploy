@@ -61,7 +61,9 @@ export const AppModal = () => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className='max-w-105 overflow-hidden border-none p-8'>{renderContent()}</DialogContent>
+      <DialogContent className='w-[calc(100%-30px)] max-w-105 overflow-hidden border-none px-5 pt-8 pb-5 sm:px-8 sm:pb-8'>
+        {renderContent()}
+      </DialogContent>
     </Dialog>
   )
 }
