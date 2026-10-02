@@ -80,7 +80,13 @@ function CommandInput({ className, ...props }: React.ComponentProps<typeof Comma
         <CommandPrimitive.Input
           data-slot='command-input'
           className={cn(
-            'h-full w-full text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
+            // text-base на мобильных, md:text-sm от планшета и выше — тот же
+            // паттерн, что и в Input.tsx/Textarea.tsx. Без этого поле было
+            // 14px (text-sm) на всех экранах, а iOS Safari автоматически
+            // зумит страницу при фокусе на текстовом поле мельче 16px (см.
+            // обсуждение с пользователем — отсюда "сайт сам увеличился" на
+            // айфоне друга после тапа по выбору региона/категории).
+            'h-full w-full text-base outline-hidden disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
             className
           )}
           {...props}
