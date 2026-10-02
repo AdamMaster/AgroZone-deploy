@@ -68,7 +68,7 @@ export const MobileTabBar = () => {
 
   return (
     <nav
-      className='fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around bg-white pb-[env(safe-area-inset-bottom)] md:hidden dark:bg-neutral-800'
+      className='yarl__no_scroll_padding fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around bg-white pb-[env(safe-area-inset-bottom)] md:hidden dark:bg-neutral-800'
       aria-label='Основная навигация'
     >
       {TABS.map(tab => {

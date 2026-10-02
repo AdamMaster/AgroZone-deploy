@@ -42,7 +42,7 @@ export const FilterModal = () => {
           Фильтры
         </Heading>
         <Button
-          className='absolute top-2 right-10 bg-transparent text-base text-black sm:hidden'
+          className='absolute top-2 right-10 bg-transparent text-base text-gray-900 sm:hidden'
           onClick={filters.reset}
         >
           Сбросить

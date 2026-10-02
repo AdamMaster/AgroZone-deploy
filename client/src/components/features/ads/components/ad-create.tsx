@@ -6,6 +6,7 @@ import { useCreateAd } from '../hooks'
 import { useSaveDraft } from '../hooks/use-save-draft-ad'
 import { TypeCreateAdSchema } from '../schemes'
 import { ICategory } from '../types/ad.types'
+import { appendImageFields } from '../utils/append-image-fields'
 import { buildAdFormData } from '../utils/build-ad-form-data'
 import { AdForm } from './ad-form'
 
@@ -30,16 +31,16 @@ export const AdCreate = ({ categories }: { categories: ICategory[] }) => {
     createAd(formData)
   }
 
+  // values.images может быть undefined, если черновик сохраняют до шага с
+  // фото — тогда existingImages не трогаем вовсе (см. подробный комментарий
+  // в AdEdit.onSaveDraftSubmit, та же логика и тот же баг с заменой фото
+  // были исправлены одинаково в обоих местах через appendImageFields).
   const onSaveDraft = (values: Partial<TypeCreateAdSchema>) => {
     const formData = buildAdFormData(values)
 
-    values.images?.forEach(img => {
-      if (img instanceof File) {
-        formData.append('files', img)
-      } else if (typeof img === 'string') {
-        formData.append('existingImages', img)
-      }
-    })
+    if (values.images !== undefined) {
+      appendImageFields(formData, values.images, 'files')
+    }
 
     saveDraft(formData, {
       onSuccess: () => {

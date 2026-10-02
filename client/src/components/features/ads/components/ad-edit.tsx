@@ -10,6 +10,7 @@ import { useMyAd, useUpdateAd } from '../hooks'
 import { useSaveDraft } from '../hooks/use-save-draft-ad'
 import { TypeCreateAdSchema } from '../schemes'
 import { ICategory, ICategoryFeature } from '../types/ad.types'
+import { appendImageFields } from '../utils/append-image-fields'
 import { buildAdFormData } from '../utils/build-ad-form-data'
 import { AdForm } from './ad-form'
 
@@ -47,26 +48,10 @@ export const AdEdit = ({ id, categories }: AdEditProps) => {
     categoryFeatures: (ad.features as ICategoryFeature) || {}
   }
 
-  type AdImage = File | string
-
-  const appendImages = (data: FormData, images: AdImage[] = []) => {
-    images.forEach(img => {
-      if (img instanceof File) {
-        data.append('images', img)
-      } else {
-        data.append('existingImages', img)
-      }
-    })
-  }
-
   const onSubmit = (values: TypeCreateAdSchema) => {
     const formData = buildAdFormData(values)
 
-    if ((values.images ?? []).length === 0) {
-      formData.append('existingImages', '')
-    } else {
-      appendImages(formData, values.images)
-    }
+    appendImageFields(formData, values.images ?? [], 'images')
     updateAd(formData, ad.status === 'REJECTED')
   }
 
@@ -74,16 +59,19 @@ export const AdEdit = ({ id, categories }: AdEditProps) => {
   // POST /ads/draft (см. AdsService.saveDraft), а не PATCH /ads/:id, что
   // использует onSubmit выше, поэтому и поле для новых файлов другое
   // ('files', а не 'images').
+  //
+  // values.images тут может быть undefined (Partial-форма черновика,
+  // шаг с фото мог ещё не наступить) — в отличие от onSubmit выше, где
+  // полная схема гарантирует массив. Поэтому existingImages трогаем
+  // только если images реально пришли в этом сабмите — иначе сервер
+  // верно подставит текущие фото черновика сам (см. AdsService.saveDraft,
+  // `existingImages ?? ad.images`).
   const onSaveDraftSubmit = (values: Partial<TypeCreateAdSchema>) => {
     const formData = buildAdFormData(values)
 
-    values.images?.forEach(img => {
-      if (img instanceof File) {
-        formData.append('files', img)
-      } else if (typeof img === 'string') {
-        formData.append('existingImages', img)
-      }
-    })
+    if (values.images !== undefined) {
+      appendImageFields(formData, values.images, 'files')
+    }
 
     saveDraft(formData, {
       onSuccess: () => {

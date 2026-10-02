@@ -51,6 +51,22 @@
 
 :root {
   scrollbar-gutter: stable;
+}
+
+/*
+ * yet-another-react-lightbox сам измеряет ширину скроллбара при открытии и
+ * добавляет такой же padding-right на body, чтобы компенсировать его исчезновение.
+ * Но у нас scrollbar-gutter: stable уже держит это место зарезервированным всегда,
+ * поэтому доп. padding от библиотеки лишний и двигает центрированный контент влево.
+ * Обнуляем именно этот инлайн-padding через класс, который библиотека сама
+ * вешает на body при открытии (лок скролла через overflow:hidden не трогаем).
+ */
+body.yarl__no_scroll {
+  padding-right: 0 !important;
+  padding-left: 0 !important;
+}
+
+:root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -208,4 +224,8 @@ button {
 
 .scrollbar-none::-webkit-scrollbar {
   display: none;
+}
+
+.yarl__container {
+  background: rgba(0, 0, 0, 1);
 }

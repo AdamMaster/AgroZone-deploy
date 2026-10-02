@@ -37,7 +37,7 @@ export const CookieConsentBanner = () => {
     // под чёлку/индикатор), а не просто h-14 — иначе на iPhone с
     // safe-area-inset баннер перекрывал верх таб-панели. На md+ панели
     // нет, баннер прижат к самому низу.
-    <div className='bg-background fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-50 border-t p-3 shadow-lg md:bottom-0'>
+    <div className='yarl__no_scroll_padding bg-background fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-50 border-t p-3 shadow-lg md:bottom-0'>
       <div className='mx-auto flex max-w-6xl flex-col items-center gap-3 sm:flex-row sm:justify-between'>
         <p className='text-xs text-gray-600 sm:text-sm'>
           Мы используем cookie для корректной работы сайта и авторизации. Продолжая пользоваться сайтом, вы соглашаетесь
