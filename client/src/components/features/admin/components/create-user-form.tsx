@@ -21,12 +21,12 @@ import { AdminCreateUserSchema, TypeAdminCreateUserSchema } from '../schemes'
 // команда осталась в репозитории на случай, если админка почему-то
 // недоступна), пользователь попросил перенести в /admin.
 export const CreateUserForm = () => {
-  const [copiedField, setCopiedField] = useState<'phone' | 'password' | null>(null)
+  const [copiedField, setCopiedField] = useState<'phone' | 'password' | 'email' | null>(null)
   const { createVerifiedUser, isCreatingVerifiedUser, createdUser, resetCreatedUser } = useCreateVerifiedUser()
 
   const form = useForm<TypeAdminCreateUserSchema>({
     resolver: zodResolver(AdminCreateUserSchema),
-    defaultValues: { phone: '', password: generatePassword(), displayName: '' }
+    defaultValues: { phone: '', password: generatePassword(), displayName: '', email: '' }
   })
 
   const onSubmit = (data: TypeAdminCreateUserSchema) => {
@@ -37,11 +37,12 @@ export const CreateUserForm = () => {
     createVerifiedUser({
       phone: cleanPhone,
       password: data.password,
-      ...(data.displayName?.trim() && { displayName: data.displayName.trim() })
+      ...(data.displayName?.trim() && { displayName: data.displayName.trim() }),
+      ...(data.email?.trim() && { email: data.email.trim() })
     })
   }
 
-  const handleCopy = async (value: string, field: 'phone' | 'password') => {
+  const handleCopy = async (value: string, field: 'phone' | 'password' | 'email') => {
     try {
       await navigator.clipboard.writeText(value)
       setCopiedField(field)
@@ -55,7 +56,7 @@ export const CreateUserForm = () => {
 
   const handleCreateAnother = () => {
     resetCreatedUser()
-    form.reset({ phone: '', password: generatePassword(), displayName: '' })
+    form.reset({ phone: '', password: generatePassword(), displayName: '', email: '' })
   }
 
   const submittedPassword = form.getValues('password')
@@ -89,6 +90,25 @@ export const CreateUserForm = () => {
               {copiedField === 'phone' ? <Check className='size-4' /> : <Copy className='size-4' />}
             </Button>
           </div>
+
+          {/* Email показываем, только если был указан при создании — поле
+          необязательное. */}
+          {createdUser.email && (
+            <div className='flex items-center justify-between gap-3 bg-mist-600/50 p-3'>
+              <div className='min-w-0'>
+                <p className='text-xs text-mist-300'>Email</p>
+                <p className='truncate text-lg font-semibold'>{createdUser.email}</p>
+              </div>
+              <Button
+                type='button'
+                size='sm'
+                className={cn(ADMIN_BUTTON_CLASS, 'shrink-0')}
+                onClick={() => handleCopy(createdUser.email as string, 'email')}
+              >
+                {copiedField === 'email' ? <Check className='size-4' /> : <Copy className='size-4' />}
+              </Button>
+            </div>
+          )}
 
           <div className='flex items-center justify-between gap-3 bg-mist-600/50 p-3'>
             <div className='min-w-0'>
@@ -150,6 +170,22 @@ export const CreateUserForm = () => {
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid} className={cn(fieldState.invalid && 'pb-5', 'group')}>
                 <Input {...field} placeholder='Имя продавца (необязательно)' className={fieldClassName} />
+                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+              </Field>
+            )}
+          />
+
+          <Controller
+            name='email'
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid} className={cn(fieldState.invalid && 'pb-5', 'group')}>
+                <Input
+                  {...field}
+                  type='email'
+                  placeholder='Email продавца (необязательно)'
+                  className={fieldClassName}
+                />
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
             )}

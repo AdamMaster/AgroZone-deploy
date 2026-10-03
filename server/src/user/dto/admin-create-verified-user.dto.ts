@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator'
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator'
 
 // Создание аккаунта продавцу вручную администратором, минуя подтверждение
 // звонком через Zvonok — см. UserService.createVerifiedByAdmin. Реальный
@@ -17,4 +17,13 @@ export class AdminCreateVerifiedUserDto {
   @IsOptional()
   @IsString({ message: 'Имя должно быть строкой.' })
   displayName?: string
+
+  // Необязательно: не у всех продавцов, заведённых вручную, есть email.
+  // Если указан — проставляется сразу, без письма-подтверждения (см.
+  // UserService.createVerifiedByAdmin) — ровно как и телефон/пароль в этом
+  // сценарии, подтверждение владения тут не требуется, т.к. аккаунт
+  // создаёт сам администратор.
+  @IsOptional()
+  @IsEmail({}, { message: 'Некорректный email.' })
+  email?: string
 }

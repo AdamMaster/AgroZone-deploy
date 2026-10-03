@@ -6,12 +6,14 @@ export interface CreateVerifiedUserPayload {
   phone: string
   password: string
   displayName?: string
+  email?: string
 }
 
 interface CreateVerifiedUserResponse {
   id: string
   displayName: string
   phone: string
+  email: string | null
 }
 
 // Индекс-сигнатура нужна, чтобы TypeScript принял этот тип там, где

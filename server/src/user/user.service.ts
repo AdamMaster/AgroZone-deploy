@@ -255,12 +255,28 @@ export class UserService {
       throw new ConflictException('Этот номер телефона уже привязан к другому аккаунту')
     }
 
+    // Email необязателен — не у всех продавцов, заведённых вручную, он
+    // есть. Если указан, проверяем уникальность так же, как и телефон
+    // выше: иначе Prisma упадёт на unique-constraint с менее понятной
+    // ошибкой. Подтверждение владения (письмо и т.п.) здесь не нужно —
+    // аккаунт целиком заводит администратор, сценарий тот же, что и с
+    // паролем/телефоном.
+    const email = dto.email?.trim().toLowerCase() || null
+
+    if (email) {
+      const existingEmail = await this.prismaService.user.findUnique({ where: { email } })
+
+      if (existingEmail) {
+        throw new ConflictException('Этот email уже привязан к другому аккаунту')
+      }
+    }
+
     const passwordHash = await hash(dto.password)
     const displayName = dto.displayName?.trim() || 'Продавец'
 
     const user = await this.prismaService.user.create({
       data: {
-        email: null,
+        email,
         password: passwordHash,
         displayName,
         picture: '',
@@ -280,7 +296,8 @@ export class UserService {
     return {
       id: user.id,
       displayName: user.displayName,
-      phone: user.phones[0]?.phone ?? phone
+      phone: user.phones[0]?.phone ?? phone,
+      email: user.email
     }
   }
 
