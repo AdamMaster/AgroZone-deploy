@@ -7,22 +7,13 @@ import { Controller, useForm } from 'react-hook-form'
 
 import { Button, Field, FieldError, FieldGroup, Heading, Input, InputGroup } from '@/components/ui'
 
-import { formatPhoneNumber } from '@/shared/utils'
+import { formatPhoneNumber, generatePassword } from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
 
 import { ADMIN_BUTTON_CLASS } from '../constants/admin-ui.constants'
 import { useCreateVerifiedUser } from '../hooks'
 import { AdminCreateUserSchema, TypeAdminCreateUserSchema } from '../schemes'
-
-// Случайный пароль по умолчанию, чтобы администратору не пришлось
-// придумывать его самому под каждого продавца — можно стереть и ввести
-// свой руками. Буквы в обоих регистрах + цифры, без визуально похожих
-// символов (0/O, 1/l/I) — чтобы легко было продиктовать или переписать на
-// бумаге. Длина 10 — с запасом выше минимума в 6 (см. AdminCreateUserSchema).
-const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
-const generatePassword = () =>
-  Array.from({ length: 10 }, () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)]).join('')
 
 // Форма создания продавцу аккаунта вручную, минуя звонок для подтверждения
 // телефона (см. UserService.createVerifiedByAdmin на сервере). Раньше это

@@ -43,7 +43,7 @@ export const Header = () => {
         <Container>
           <div className='flex h-14 items-center justify-between gap-6 py-4'>
             <Logo className='block lg:hidden' />
-            <p className='text-secondary hidden text-sm leading-3 lg:inline dark:text-neutral-200'>
+            <p className='hidden text-sm leading-3 lg:inline dark:text-neutral-200'>
               Агропромышленная торговая площадка
             </p>
             <HeaderActions className='ml-auto' />

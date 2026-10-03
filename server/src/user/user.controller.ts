@@ -36,6 +36,7 @@ import { DeleteAccountDto } from './dto/delete-account.dto'
 import { AdminCreateVerifiedUserDto } from './dto/admin-create-verified-user.dto'
 import { AdminSearchUsersQueryDto } from './dto/admin-search-users-query.dto'
 import { AdminSetPremiumDto } from './dto/admin-set-premium.dto'
+import { AdminSetPasswordDto } from './dto/admin-set-password.dto'
 import { PhoneThrottlerGuard } from '@/libs/common/guards/phone-throttler.guard'
 import { ConfigService } from '@nestjs/config'
 import {
@@ -115,6 +116,15 @@ export class UserController {
   @Patch('admin/:id/premium')
   async setPremiumByAdmin(@Param('id') id: string, @Body() dto: AdminSetPremiumDto) {
     return this.userService.setPremiumByAdmin(id, dto)
+  }
+
+  // Принудительная смена пароля из админки (/admin/users/:id) — см.
+  // UserService.setPasswordByAdmin.
+  @Authorization(UserRole.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @Patch('admin/:id/password')
+  async setPasswordByAdmin(@Param('id') id: string, @Body() dto: AdminSetPasswordDto) {
+    return this.userService.setPasswordByAdmin(id, dto)
   }
 
   // Публичная страница продавца (/sellers/:id на фронте) и блок "Ещё от

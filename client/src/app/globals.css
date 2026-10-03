@@ -88,7 +88,7 @@ body.yarl__no_scroll {
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: #40a500;
+  --primary: oklch(63.669% 0.19821 138.399);
   --primary-foreground: oklch(60.239% 0.18742 138.367);
   --primary-light: oklch(90.482% 0.22207 135.668);
   --secondary: oklch(33.266% 0.07722 257.117);
@@ -126,10 +126,10 @@ body.yarl__no_scroll {
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.32 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: #40a500;
+  --primary: oklch(63.669% 0.19821 138.399);
   --primary-light: oklch(90.482% 0.22207 135.668);
   --secondary: oklch(46.283% 0.1561 255.675);
-  --secondary-foreground: oklch(51.164% 0.17431 255.949);
+  --secondary-foreground: rgb(0, 99, 199);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);

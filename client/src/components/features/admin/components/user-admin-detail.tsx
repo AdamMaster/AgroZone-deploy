@@ -19,6 +19,7 @@ import { useAdminUserDetail } from '../hooks'
 import { DeleteAdAdminDialog } from './delete-ad-admin-dialog'
 import { SetAdCategoryDialog } from './set-ad-category-dialog'
 import { SetAdExpirationDialog } from './set-ad-expiration-dialog'
+import { SetPasswordDialog } from './set-password-dialog'
 import { SetPremiumDialog } from './set-premium-dialog'
 import { UserBadges } from './user-badges'
 
@@ -94,10 +95,13 @@ export const UserAdminDetail = ({ id }: UserAdminDetailProps) => {
 
         <div className='rounded-md bg-mist-700/30 p-3'>
           <p className='text-xs text-mist-400'>Вход</p>
-          <p className='text-sm'>
-            {primaryPhone ? 'По телефону (звонок)' : 'Только через OAuth'}
-            {user.hasPassword ? ', пароль установлен' : ''}
-          </p>
+          <div className='mt-0.5 flex items-center justify-between gap-2'>
+            <p className='text-sm'>
+              {primaryPhone ? 'По телефону (звонок)' : 'Только через OAuth'}
+              {user.hasPassword ? ', пароль установлен' : ''}
+            </p>
+            <SetPasswordDialog userId={id} />
+          </div>
           {user.accounts.length > 0 && (
             <p className='mt-1 text-sm text-mist-300'>
               Также:{' '}

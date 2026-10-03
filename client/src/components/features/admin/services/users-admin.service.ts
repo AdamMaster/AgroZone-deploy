@@ -61,6 +61,15 @@ class UsersAdminService {
       premiumUntil
     })
   }
+
+  // Принудительная смена пароля — см. UserController.setPasswordByAdmin/
+  // UserService.setPasswordByAdmin. Сервер намеренно возвращает только
+  // { id } (select явный, без хэша пароля) — показывать админу только что
+  // введённый/сгенерированный пароль не нужно через повторный запрос, он и
+  // так уже на экране в SetPasswordDialog, пока диалог открыт.
+  async setPassword(userId: string, newPassword: string): Promise<{ id: string }> {
+    return api.patch<{ id: string }>(`${this.URL}/admin/${userId}/password`, { newPassword })
+  }
 }
 
 export const usersAdminService = new UsersAdminService()

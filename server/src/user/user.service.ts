@@ -15,6 +15,8 @@ import { PERSONAL_DATA_CONSENT_DOCUMENT_VERSION } from '@/libs/common/constants/
 import { AdminCreateVerifiedUserDto } from './dto/admin-create-verified-user.dto'
 import { AdminSearchUsersQueryDto } from './dto/admin-search-users-query.dto'
 import { AdminSetPremiumDto } from './dto/admin-set-premium.dto'
+import { AdminSetPasswordDto } from './dto/admin-set-password.dto'
+import { MailService } from '@/libs/mail/mail.service'
 
 @Injectable()
 export class UserService {
@@ -22,7 +24,8 @@ export class UserService {
     private readonly prismaService: PrismaService,
     private readonly fileService: FileService,
     private readonly configService: ConfigService,
-    private readonly zvonokService: ZvonokService
+    private readonly zvonokService: ZvonokService,
+    private readonly mailService: MailService
   ) {}
 
   async findById(id: string) {
@@ -382,6 +385,46 @@ export class UserService {
         where: { userId, status: AdStatus.PUBLISHED },
         data: { bumpedAt: new Date() }
       })
+    }
+
+    return updated
+  }
+
+  // Принудительная смена пароля из админки (/admin/users/:id) — см.
+  // AdminSetPasswordDto. В отличие от updatePassword() выше (самим
+  // пользователем, с проверкой currentPassword) — тут этой проверки нет
+  // умышленно: это и есть весь смысл функции, путь для случая, когда
+  // обычная смена пароля недоступна (пользователь потерял доступ).
+  // select явно, без пароля в ответе — та же причина, что и в
+  // setPremiumByAdmin выше.
+  async setPasswordByAdmin(userId: string, dto: AdminSetPasswordDto) {
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true }
+    })
+
+    if (!user) {
+      throw new NotFoundException('Пользователь не найден')
+    }
+
+    const updated = await this.prismaService.user.update({
+      where: { id: userId },
+      data: { password: await hash(dto.newPassword) },
+      select: { id: true }
+    })
+
+    // Письмо необязательно (email может быть не привязан — вход по
+    // телефону) и не должно валить саму смену пароля, если почтовый сервис
+    // недоступен — та же логика, что и у sendAdRejectedEmail/
+    // sendNewMessageEmail (см. комментарии в MailService). Пароль в письме
+    // не отправляем — см. комментарий в самом шаблоне письма.
+    if (user.email) {
+      try {
+        await this.mailService.sendPasswordChangedByAdminEmail(user.email)
+      } catch {
+        // noop — отсутствие уведомления не должно откатывать уже
+        // сохранённый новый пароль.
+      }
     }
 
     return updated
