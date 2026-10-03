@@ -10,6 +10,7 @@ import { AdRejectedTemplate } from './templates/ad-rejected.template'
 import { NewMessageTemplate } from './templates/new-message.template'
 import { SupportMessageTemplate } from './templates/support-message.template'
 import { PasswordChangedByAdminTemplate } from './templates/password-changed-by-admin.template'
+import { EmailChangedByAdminTemplate } from './templates/email-changed-by-admin.template'
 
 @Injectable()
 export class MailService {
@@ -53,6 +54,15 @@ export class MailService {
     const html = await render(PasswordChangedByAdminTemplate({ domain }))
 
     return this.sendMail(email, 'Пароль изменён администратором', html)
+  }
+
+  // См. UserService.setEmailByAdmin — уведомление на СТАРЫЙ email о смене
+  // (если он был). newEmail тут для текста письма, не адрес отправки.
+  async sendEmailChangedByAdminEmail(oldEmail: string, newEmail: string) {
+    const domain = this.configService.getOrThrow<string>('ALLOWED_ORIGIN')
+    const html = await render(EmailChangedByAdminTemplate({ domain, newEmail }))
+
+    return this.sendMail(oldEmail, 'Email аккаунта изменён администратором', html)
   }
 
   async sendAdRejectedEmail(email: string, adId: string, adTitle: string, reason: string | null) {

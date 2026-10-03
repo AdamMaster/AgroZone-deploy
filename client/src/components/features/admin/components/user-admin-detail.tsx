@@ -19,6 +19,7 @@ import { useAdminUserDetail } from '../hooks'
 import { DeleteAdAdminDialog } from './delete-ad-admin-dialog'
 import { SetAdCategoryDialog } from './set-ad-category-dialog'
 import { SetAdExpirationDialog } from './set-ad-expiration-dialog'
+import { SetEmailDialog } from './set-email-dialog'
 import { SetPasswordDialog } from './set-password-dialog'
 import { SetPremiumDialog } from './set-premium-dialog'
 import { UserBadges } from './user-badges'
@@ -90,7 +91,10 @@ export const UserAdminDetail = ({ id }: UserAdminDetailProps) => {
         </div>
         <div className='rounded-md bg-mist-700/30 p-3'>
           <p className='text-xs text-mist-400'>Email</p>
-          <p className='text-sm'>{user.email ?? '—'}</p>
+          <div className='mt-0.5 flex items-center justify-between gap-2'>
+            <p className='truncate text-sm'>{user.email ?? '—'}</p>
+            <SetEmailDialog userId={id} email={user.email} />
+          </div>
         </div>
 
         <div className='rounded-md bg-mist-700/30 p-3'>

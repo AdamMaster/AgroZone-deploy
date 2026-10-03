@@ -37,6 +37,7 @@ import { AdminCreateVerifiedUserDto } from './dto/admin-create-verified-user.dto
 import { AdminSearchUsersQueryDto } from './dto/admin-search-users-query.dto'
 import { AdminSetPremiumDto } from './dto/admin-set-premium.dto'
 import { AdminSetPasswordDto } from './dto/admin-set-password.dto'
+import { AdminSetEmailDto } from './dto/admin-set-email.dto'
 import { PhoneThrottlerGuard } from '@/libs/common/guards/phone-throttler.guard'
 import { ConfigService } from '@nestjs/config'
 import {
@@ -125,6 +126,15 @@ export class UserController {
   @Patch('admin/:id/password')
   async setPasswordByAdmin(@Param('id') id: string, @Body() dto: AdminSetPasswordDto) {
     return this.userService.setPasswordByAdmin(id, dto)
+  }
+
+  // Задать/сменить email из админки (/admin/users/:id) — см.
+  // UserService.setEmailByAdmin.
+  @Authorization(UserRole.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @Patch('admin/:id/email')
+  async setEmailByAdmin(@Param('id') id: string, @Body() dto: AdminSetEmailDto) {
+    return this.userService.setEmailByAdmin(id, dto)
   }
 
   // Публичная страница продавца (/sellers/:id на фронте) и блок "Ещё от

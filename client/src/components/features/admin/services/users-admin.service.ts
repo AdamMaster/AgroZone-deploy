@@ -70,6 +70,12 @@ class UsersAdminService {
   async setPassword(userId: string, newPassword: string): Promise<{ id: string }> {
     return api.patch<{ id: string }>(`${this.URL}/admin/${userId}/password`, { newPassword })
   }
+
+  // Задать/сменить email — см. UserController.setEmailByAdmin/
+  // UserService.setEmailByAdmin.
+  async setEmail(userId: string, newEmail: string): Promise<{ id: string; email: string }> {
+    return api.patch<{ id: string; email: string }>(`${this.URL}/admin/${userId}/email`, { newEmail })
+  }
 }
 
 export const usersAdminService = new UsersAdminService()

@@ -103,11 +103,12 @@ export const SetPasswordDialog = ({ userId, className }: SetPasswordDialogProps)
                   и передать пароль пользователю, а не просто ввести и забыть. */}
                   <InputGroup className='relative'>
                     <Input {...field} type='text' placeholder='Новый пароль' />
-                    <div className='absolute top-[50%] right-1.75 flex translate-y-[-50%] gap-1'>
+                    <div className='absolute top-[50%] right-1.75 flex translate-y-[-50%] gap-0.5'>
                       <Button
                         type='button'
                         size='sm'
-                        className={cn(ADMIN_BUTTON_CLASS, 'w-fit')}
+                        variant='ghost'
+                        className='w-fit'
                         onClick={() => handleCopy(field.value)}
                       >
                         {copied ? <Check className='size-4' /> : <Copy className='size-4' />}
@@ -115,7 +116,8 @@ export const SetPasswordDialog = ({ userId, className }: SetPasswordDialogProps)
                       <Button
                         type='button'
                         size='sm'
-                        className={cn(ADMIN_BUTTON_CLASS, 'w-fit')}
+                        variant='ghost'
+                        className='w-fit'
                         onClick={() => form.setValue('newPassword', generatePassword(), { shouldValidate: true })}
                       >
                         <RefreshCw className='size-4' />
@@ -128,7 +130,7 @@ export const SetPasswordDialog = ({ userId, className }: SetPasswordDialogProps)
             />
           </FieldGroup>
 
-          <Button type='submit' size='lg' variant='dark' disabled={isLoadingSetPassword} className='w-full'>
+          <Button type='submit' size='lg' variant='mist' disabled={isLoadingSetPassword} className='w-full'>
             {isLoadingSetPassword ? 'Сохраняем...' : 'Сохранить новый пароль'}
           </Button>
         </form>

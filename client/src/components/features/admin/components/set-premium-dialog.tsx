@@ -113,7 +113,7 @@ export const SetPremiumDialog = ({ userId, premiumUntil, className }: SetPremium
           <Button type='button' size='sm' variant='destructive' disabled={isLoadingSetPremium} onClick={handleRevoke}>
             Снять premium
           </Button>
-          <Button type='button' size='sm' variant='dark' disabled={!date || isLoadingSetPremium} onClick={handleSave}>
+          <Button type='button' size='sm' variant='mist' disabled={!date || isLoadingSetPremium} onClick={handleSave}>
             {isLoadingSetPremium ? 'Сохраняем...' : 'Сохранить'}
           </Button>
         </div>

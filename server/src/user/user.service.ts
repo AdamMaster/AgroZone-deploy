@@ -16,6 +16,7 @@ import { AdminCreateVerifiedUserDto } from './dto/admin-create-verified-user.dto
 import { AdminSearchUsersQueryDto } from './dto/admin-search-users-query.dto'
 import { AdminSetPremiumDto } from './dto/admin-set-premium.dto'
 import { AdminSetPasswordDto } from './dto/admin-set-password.dto'
+import { AdminSetEmailDto } from './dto/admin-set-email.dto'
 import { MailService } from '@/libs/mail/mail.service'
 
 @Injectable()
@@ -424,6 +425,55 @@ export class UserService {
       } catch {
         // noop — отсутствие уведомления не должно откатывать уже
         // сохранённый новый пароль.
+      }
+    }
+
+    return updated
+  }
+
+  // Задать/сменить email из админки (/admin/users/:id) — см.
+  // AdminSetEmailDto. Частый случай: у пользователя после регистрации
+  // email вообще не было (вход только по телефону). В отличие от
+  // auth/email-change (самостоятельная смена) — тут НЕТ подтверждения
+  // владения новым адресом по ссылке: админ меняет напрямую, под свою
+  // ответственность, как и currentPassword в setPasswordByAdmin. isVerified
+  // намеренно не трогаем — он означает подтверждённую личность (звонок или
+  // клик по ссылке из письма), а то, что админ ВПИСАЛ какой-то email, само
+  // по себе этого не доказывает.
+  async setEmailByAdmin(userId: string, dto: AdminSetEmailDto) {
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true }
+    })
+
+    if (!user) {
+      throw new NotFoundException('Пользователь не найден')
+    }
+
+    const emailOwner = await this.prismaService.user.findUnique({
+      where: { email: dto.newEmail },
+      select: { id: true }
+    })
+
+    if (emailOwner && emailOwner.id !== userId) {
+      throw new ConflictException('Этот адрес электронной почты уже используется другим аккаунтом')
+    }
+
+    const updated = await this.prismaService.user.update({
+      where: { id: userId },
+      data: { email: dto.newEmail },
+      select: { id: true, email: true }
+    })
+
+    // На СТАРЫЙ адрес (если был) — предупреждение о смене, та же логика,
+    // что и у sendPasswordChangedByAdminEmail (необязательно, не валит
+    // основное действие при сбое почты). Если старого email не было —
+    // уведомлять некого, это и есть тот самый случай "email ещё не задан".
+    if (user.email && user.email !== dto.newEmail) {
+      try {
+        await this.mailService.sendEmailChangedByAdminEmail(user.email, dto.newEmail)
+      } catch {
+        // noop
       }
     }
 
