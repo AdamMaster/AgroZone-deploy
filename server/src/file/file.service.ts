@@ -2,6 +2,7 @@ import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common
 import { ConfigService } from '@nestjs/config'
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import 'multer'
+import { extractS3Key } from './utils/s3-keys.util'
 
 @Injectable()
 export class FileService {
@@ -97,13 +98,11 @@ export class FileService {
     const publicUrl = this.configService.getOrThrow<string>('S3_PUBLIC_URL')
     const bucketName = this.configService.getOrThrow<string>('S3_BUCKET_NAME')
 
-    // Текущий формат (см. uploadFile) — ссылка на публичный домен бакета,
-    // имени бакета в пути нет. Старый формат (Timeweb, и первые тестовые
-    // загрузки на Selectel до того, как выяснилось, что его S3 API не
-    // отдаёт объекты анонимно) — путь вида endpoint/bucketName/fileId.
-    // Пробуем оба варианта, чтобы очистка старых файлов не тихо
-    // проглатывалась только из-за смены формата ссылок.
-    const fileId = url.startsWith(`${publicUrl}/`) ? url.slice(publicUrl.length + 1) : url.split(`${bucketName}/`)[1]
+    // Форматы ссылок (текущий и старый) разбирает extractS3Key — тот же код
+    // использует и скрипт поиска осиротевших файлов, чтобы они не расходились.
+    // Так очистка старых файлов не проглатывается тихо только из-за смены
+    // формата ссылок.
+    const fileId = extractS3Key(url, { publicUrl, bucketName })
 
     if (fileId) {
       await this.deleteFile(fileId)

@@ -87,8 +87,6 @@ export const AdminDashboard = () => {
 
   return (
     <div className='max-w-5xl py-6 text-mist-50'>
-      <h1 className='mb-6 text-xl font-semibold'>Обзор</h1>
-
       <h2 className={SECTION_TITLE_CLASS}>Требует внимания</h2>
       <div className='mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3'>
         {getQueueCards(dashboard).map(card => (
@@ -133,7 +131,8 @@ export const AdminDashboard = () => {
       </div>
 
       <h2 className={SECTION_TITLE_CLASS}>
-        Доход за период <span className='ml-1 text-sm font-normal text-mist-300'>{formatKopecks(dashboard.period.revenueKopecks)}</span>
+        Доход за период{' '}
+        <span className='ml-1 text-sm font-normal text-mist-300'>{formatKopecks(dashboard.period.revenueKopecks)}</span>
       </h2>
       <div className='mb-6 rounded-md bg-mist-700/30 p-4'>
         <DashboardRevenueBreakdown period={dashboard.period} />
