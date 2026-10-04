@@ -63,13 +63,17 @@ export class FetchClient {
     try {
       response = await fetch(url, config)
     } catch (error) {
-      // Отмену запроса (AbortController) пробрасываем как есть — это не сбой.
-      if (error instanceof DOMException && error.name === 'AbortError') throw error
+      // Превращаем в FetchError только настоящий сбой сети: fetch в этих
+      // случаях (обрыв соединения, нет сети, сервер перезапускается, ответ
+      // заблокирован) бросает TypeError("Failed to fetch" в браузере,
+      // "fetch failed" в Node). Всё остальное пробрасываем как есть: отмену
+      // запроса (AbortError) и служебные исключения самого Next.js — например,
+      // DynamicServerError, которым fetch с cache: 'no-store' сообщает во
+      // время `next build`, что страницу нужно рендерить динамически. Если
+      // его проглотить, сборка пойдёт в реальный запрос к API и упадёт.
+      if (!(error instanceof TypeError)) throw error
 
-      // Запрос не дошёл или ответ не получен: обрыв соединения, нет сети,
-      // сервер перезапускается, ответ заблокирован. fetch в этих случаях
-      // бросает TypeError("Failed to fetch") без подробностей.
-      const isOffline = typeof navigator !== 'undefined' && !navigator.onLine
+      const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false
 
       throw new FetchError(0, isOffline ? OFFLINE_ERROR_MESSAGE : NETWORK_ERROR_MESSAGE)
     }
@@ -80,7 +84,10 @@ export class FetchClient {
       // причина потеряется.
       const error = (await response.json().catch(() => undefined)) as { message?: string } | undefined
 
-      throw new FetchError(response.status, error?.message || getStatusErrorMessage(response.status, response.statusText))
+      throw new FetchError(
+        response.status,
+        error?.message || getStatusErrorMessage(response.status, response.statusText)
+      )
     }
 
     if (response.headers.get('Content-Type')?.includes('application/json')) {
