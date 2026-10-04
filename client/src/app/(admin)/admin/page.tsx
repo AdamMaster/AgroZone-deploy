@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation'
+import { AdminDashboard } from '@/components/features/admin/components'
 
 export default function AdminPage() {
-  redirect('/admin/moderation')
+  return <AdminDashboard />
 }

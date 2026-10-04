@@ -31,6 +31,7 @@ import { SupportModule } from './support/support.module'
 import { SessionModule } from './session/session.module'
 import { DealerFeedsModule } from './dealer-feeds/dealer-feeds.module'
 import { SecurityEventsModule } from './security-events/security-events.module'
+import { AdminDashboardModule } from './admin-dashboard/admin-dashboard.module'
 
 @Module({
   imports: [
@@ -92,7 +93,8 @@ import { SecurityEventsModule } from './security-events/security-events.module'
     AdServicesModule,
     NotificationsModule,
     SupportModule,
-    DealerFeedsModule
+    DealerFeedsModule,
+    AdminDashboardModule
   ]
 })
 export class AppModule {}

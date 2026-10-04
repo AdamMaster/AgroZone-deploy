@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft, Building2, Flag, ShieldCheck, UserPlus } from 'lucide-react'
+import { ArrowLeft, Building2, Flag, LayoutDashboard, ShieldCheck, UserPlus } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -11,7 +11,10 @@ import { cn } from '@/lib/utils'
 // components/features/user/components/settings-nav.tsx) — отдельный
 // компонент, а не переиспользование SettingsNav, потому что аудитория и
 // набор разделов у админки совсем другие.
+// exact — у "Обзора" href '/admin' является префиксом всех остальных
+// разделов, поэтому он подсвечивается только на точном совпадении.
 const items = [
+  { label: 'Обзор', icon: LayoutDashboard, id: 'dashboard', href: '/admin', exact: true },
   { label: 'Модерация объявлений', icon: ShieldCheck, id: 'moderation', href: '/admin/moderation' },
   { label: 'Жалобы', icon: Flag, id: 'reports', href: '/admin/reports' },
   { label: 'Фиды дилеров', icon: Building2, id: 'dealers', href: '/admin/dealers' },
@@ -28,7 +31,7 @@ export const AdminNav = () => {
       </Link>
       <ul className='flex flex-col gap-1 px-2'>
         {items.map(item => {
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
+          const isActive = item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`)
 
           return (
             <li key={item.id}>

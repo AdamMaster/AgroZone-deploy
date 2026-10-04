@@ -14,6 +14,8 @@ import {
   Skeleton
 } from '@/components/ui'
 
+import { formatShortDate } from '@/shared/utils'
+
 import { cn } from '@/lib/utils'
 
 import { useAdViewStats } from '../hooks'
@@ -30,11 +32,6 @@ const chartConfig = {
     color: 'var(--chart-1)'
   }
 } satisfies ChartConfig
-
-const formatShortDate = (isoDate: string) => {
-  const [, month, day] = isoDate.split('-')
-  return `${day}.${month}`
-}
 
 export const AdViewsStats = ({ adId }: AdViewsStatsProps) => {
   const [weekOffset, setWeekOffset] = useState(0)

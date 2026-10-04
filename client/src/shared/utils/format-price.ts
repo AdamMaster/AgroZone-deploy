@@ -36,3 +36,10 @@ export function formatPriceWithUnit(price: number | null | undefined, unit?: str
 
   return short ? `${formatted}/${short}` : formatted
 }
+
+// Сумма из платежей (ЮKassa, покупки услуг) — в копейках, как хранится в
+// базе: 14 900 → «149 ₽». В отличие от formatPrice, ноль — это честный
+// «0 ₽» (нет дохода), а не «Цена договорная».
+export function formatKopecks(kopecks: number): string {
+  return `${(kopecks / 100).toLocaleString('ru-RU', { maximumFractionDigits: 2 })} ₽`
+}

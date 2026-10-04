@@ -39,3 +39,12 @@ export const formatDateTime = (value: Date | string): string =>
     hour: '2-digit',
     minute: '2-digit'
   })
+
+// Ключ дня 'yyyy-MM-dd' (так дни приходят с бэкенда в статистике
+// просмотров и дашборде) → '03.10'. Строку не превращаем в Date: она не
+// содержит пояса, и new Date('2026-10-03') в отрицательных часовых поясах
+// показал бы предыдущий день.
+export const formatShortDate = (isoDate: string): string => {
+  const [, month, day] = isoDate.split('-')
+  return `${day}.${month}`
+}
