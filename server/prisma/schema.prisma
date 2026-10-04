@@ -76,6 +76,8 @@ model User {
   // аккаунта, поэтому отдельная append-only таблица, а не колонки в User.
   personalDataConsents PersonalDataConsent[]
 
+  securityEvents UserSecurityEvent[]
+
   deletedAt DateTime? @map("deleted_at")
 
   method   AuthMethod
@@ -137,6 +139,82 @@ model PersonalDataConsent {
 
   @@index([userId])
   @@map("personal_data_consents")
+}
+
+// Тип события в журнале безопасности аккаунта (см. UserSecurityEvent).
+// Набор намеренно узкий: только то, что меняет доступ к аккаунту или его
+// контактные данные, — это журнал для расследования ("мне сменили пароль,
+// я ничего не делал"), а не аналитика поведения. Не добавляйте сюда
+// просмотры страниц, поиск и прочие события, не влияющие на безопасность.
+enum SecurityEventType {
+  ACCOUNT_REGISTERED
+  ACCOUNT_CREATED_BY_ADMIN
+  ACCOUNT_DELETED
+  LOGIN_NEW_DEVICE
+  PASSWORD_CHANGED
+  PASSWORD_RESET
+  PASSWORD_SET_BY_ADMIN
+  EMAIL_CHANGE_REQUESTED
+  EMAIL_CHANGED
+  EMAIL_SET_BY_ADMIN
+  PHONE_ADDED
+  PHONE_CHANGED
+  PRIMARY_PHONE_CHANGED
+  TWO_FACTOR_ENABLED
+  TWO_FACTOR_DISABLED
+  OAUTH_LINKED
+  ROLE_CHANGED
+  PREMIUM_SET_BY_ADMIN
+}
+
+// Кто совершил действие: сам владелец аккаунта (USER — в том числе по
+// ссылке из письма), администратор (ADMIN — actorId указывает на него) или
+// система без участия человека (SYSTEM — например, автоповышение роли по
+// ADMIN_EMAILS, см. AuthService.ensureAdminRole).
+enum SecurityEventActor {
+  USER
+  ADMIN
+  SYSTEM
+}
+
+// Журнал событий безопасности аккаунта: смена пароля/email/телефона, 2FA,
+// привязка соцсетей, вход с нового устройства/IP, действия администратора
+// над аккаунтом. Пишется через SecurityEventsService.record() — он сам
+// подтягивает IP/User-Agent из текущего запроса и определяет, кто актор.
+//
+// Что здесь НЕ хранится никогда: пароли и их хэши, коды из SMS/писем,
+// токены. email и телефон в metadata лежат только в маскированном виде
+// (см. mask.util.ts) — журнал не должен сам становиться вторым хранилищем
+// персональных данных. Срок хранения ограничен (см.
+// SECURITY_EVENTS_RETENTION_DAYS и SecurityEventsRetentionWorker): IP и
+// устройство — персональные данные по 152-ФЗ, хранить их бессрочно нельзя.
+//
+// actorId — id администратора БЕЗ внешнего ключа: запись должна пережить
+// возможное удаление/обезличивание аккаунта самого админа, а не сломаться
+// из-за ссылочной целостности.
+model UserSecurityEvent {
+  id     String @id @default(uuid())
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type    SecurityEventType
+  actor   SecurityEventActor @default(USER)
+  actorId String?            @map("actor_id")
+
+  ip        String?
+  userAgent String? @map("user_agent")
+  // Короткая подпись устройства, вычисленная из User-Agent при записи
+  // ("Chrome · Windows") — чтобы не разбирать строку UA при каждом показе.
+  device String?
+
+  metadata Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, type])
+  @@index([createdAt])
+  @@map("user_security_events")
 }
 
 model UserPhone {

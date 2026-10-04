@@ -6,7 +6,8 @@ import { EmailChangeService } from './email-change.service'
 import { PrismaService } from '@/prisma/prisma.service'
 import { UserService } from '@/user/user.service'
 import { MailService } from '@/libs/mail/mail.service'
-import { TokenType } from '@/generated/prisma/enums'
+import { SecurityEventType, TokenType } from '@/generated/prisma/enums'
+import { SecurityEventsService } from '@/security-events/security-events.service'
 
 jest.mock('argon2')
 
@@ -17,6 +18,7 @@ describe('EmailChangeService', () => {
   let prisma: any
   let userService: any
   let mailService: any
+  let securityEventsService: any
 
   beforeEach(async () => {
     prisma = {
@@ -27,7 +29,8 @@ describe('EmailChangeService', () => {
         delete: jest.fn()
       },
       user: {
-        update: jest.fn()
+        update: jest.fn(),
+        findUnique: jest.fn()
       }
     }
 
@@ -37,6 +40,7 @@ describe('EmailChangeService', () => {
     }
 
     mailService = { sendEmailChange: jest.fn().mockResolvedValue(true) }
+    securityEventsService = { record: jest.fn().mockResolvedValue(undefined) }
 
     mockedVerify.mockReset()
 
@@ -45,7 +49,8 @@ describe('EmailChangeService', () => {
         EmailChangeService,
         { provide: PrismaService, useValue: prisma },
         { provide: UserService, useValue: userService },
-        { provide: MailService, useValue: mailService }
+        { provide: MailService, useValue: mailService },
+        { provide: SecurityEventsService, useValue: securityEventsService }
       ]
     }).compile()
 
@@ -104,6 +109,30 @@ describe('EmailChangeService', () => {
       expect(mailService.sendEmailChange).toHaveBeenCalledWith('new@example.com', expect.any(String))
       expect(result).toBe(true)
     })
+
+    it('пишет в журнал безопасности запрос смены почты (только маскированный новый адрес)', async () => {
+      userService.findById.mockResolvedValue({ id: 'user-1', password: 'hashed' })
+      mockedVerify.mockResolvedValue(true)
+      userService.findByEmail.mockResolvedValue(null)
+
+      await service.requestEmailChange('user-1', dto)
+
+      expect(securityEventsService.record).toHaveBeenCalledWith({
+        userId: 'user-1',
+        type: SecurityEventType.EMAIL_CHANGE_REQUESTED,
+        metadata: { newEmail: 'ne***@example.com' }
+      })
+      expect(JSON.stringify(securityEventsService.record.mock.calls)).not.toContain('new@example.com')
+    })
+
+    it('не пишет событие, если запрос отклонён (неверный пароль)', async () => {
+      userService.findById.mockResolvedValue({ id: 'user-1', password: 'hashed' })
+      mockedVerify.mockResolvedValue(false)
+
+      await expect(service.requestEmailChange('user-1', dto)).rejects.toThrow()
+
+      expect(securityEventsService.record).not.toHaveBeenCalled()
+    })
   })
 
   describe('confirmEmailChange', () => {
@@ -141,6 +170,53 @@ describe('EmailChangeService', () => {
       })
       expect(prisma.token.delete).toHaveBeenCalledWith({ where: { id: 'token-1' } })
       expect(result).toBe(true)
+    })
+
+    it('при подтверждении пишет EMAIL_CHANGED с маскированными прежним и новым адресом', async () => {
+      prisma.token.findFirst.mockResolvedValue({
+        id: 'token-1',
+        userId: 'user-1',
+        email: 'new@example.com',
+        expiresIn: new Date(Date.now() + 3600_000)
+      })
+      prisma.user.findUnique.mockResolvedValue({ email: 'previous.owner@example.com' })
+
+      await service.confirmEmailChange('valid-token')
+
+      expect(securityEventsService.record).toHaveBeenCalledWith({
+        userId: 'user-1',
+        type: SecurityEventType.EMAIL_CHANGED,
+        metadata: { previousEmail: 'pr***@example.com', newEmail: 'ne***@example.com' }
+      })
+    })
+
+    it('если прежней почты не было, previousEmail = null', async () => {
+      prisma.token.findFirst.mockResolvedValue({
+        id: 'token-1',
+        userId: 'user-1',
+        email: 'new@example.com',
+        expiresIn: new Date(Date.now() + 3600_000)
+      })
+      prisma.user.findUnique.mockResolvedValue({ email: null })
+
+      await service.confirmEmailChange('valid-token')
+
+      expect(securityEventsService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ metadata: { previousEmail: null, newEmail: 'ne***@example.com' } })
+      )
+    })
+
+    it('не пишет событие для просроченной ссылки', async () => {
+      prisma.token.findFirst.mockResolvedValue({
+        id: 'token-1',
+        userId: 'user-1',
+        email: 'new@example.com',
+        expiresIn: new Date(Date.now() - 1000)
+      })
+
+      await expect(service.confirmEmailChange('expired-token')).rejects.toThrow()
+
+      expect(securityEventsService.record).not.toHaveBeenCalled()
     })
   })
 })

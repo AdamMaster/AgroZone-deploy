@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
+import { MY_SECURITY_EVENTS_KEY } from '../../security-events/hooks'
 import { userServices } from '../services'
 
 export function useAddPhoneMutation() {
@@ -31,6 +32,7 @@ export function useAddPhoneMutation() {
       queryClient.invalidateQueries({
         queryKey: ['profile']
       })
+      queryClient.invalidateQueries({ queryKey: MY_SECURITY_EVENTS_KEY })
     },
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -57,6 +59,7 @@ export function useAddPhoneMutation() {
       queryClient.invalidateQueries({
         queryKey: ['profile']
       })
+      queryClient.invalidateQueries({ queryKey: MY_SECURITY_EVENTS_KEY })
     },
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

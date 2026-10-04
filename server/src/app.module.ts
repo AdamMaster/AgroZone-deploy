@@ -30,6 +30,7 @@ import { NotificationsModule } from './notifications/notifications.module'
 import { SupportModule } from './support/support.module'
 import { SessionModule } from './session/session.module'
 import { DealerFeedsModule } from './dealer-feeds/dealer-feeds.module'
+import { SecurityEventsModule } from './security-events/security-events.module'
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { DealerFeedsModule } from './dealer-feeds/dealer-feeds.module'
     CaptchaModule,
     PrismaModule,
     SessionModule,
+    SecurityEventsModule,
 
     // host/port раньше были захардкожены на 'localhost'/6379 — работало
     // только пока Redis и сервер были на одной машине. В докер-компоузе

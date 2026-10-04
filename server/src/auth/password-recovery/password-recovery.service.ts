@@ -4,7 +4,8 @@ import { PrismaService } from '@/prisma/prisma.service'
 import { UserService } from '@/user/user.service'
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common'
 import { v4 as uuidv4 } from 'uuid'
-import { TokenType } from '@/generated/prisma/enums'
+import { SecurityEventType, TokenType } from '@/generated/prisma/enums'
+import { SecurityEventsService } from '@/security-events/security-events.service'
 import { ResetPasswordDto } from './dto/reset-password.dto'
 import { NewPasswordDto } from './dto/new-password.dto'
 
@@ -13,7 +14,8 @@ export class PasswordRecoveryService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly userService: UserService,
-    private readonly mailService: MailService
+    private readonly mailService: MailService,
+    private readonly securityEventsService: SecurityEventsService
   ) {}
 
   async resetPassword(dto: ResetPasswordDto) {
@@ -87,6 +89,8 @@ export class PasswordRecoveryService {
         type: TokenType.PASSWORD_RESET
       }
     })
+
+    await this.securityEventsService.record({ userId: existingUser.id, type: SecurityEventType.PASSWORD_RESET })
 
     return true
   }

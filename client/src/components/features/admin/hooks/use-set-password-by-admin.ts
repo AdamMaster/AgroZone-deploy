@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 
 import { toastMessageHandler } from '@/shared/utils'
 
+import { adminUserSecurityEventsKey } from '../../security-events/hooks'
 import { usersAdminService } from '../services/users-admin.service'
 
 // Принудительная смена пароля с карточки пользователя в админке
@@ -23,6 +24,7 @@ export function useSetPasswordByAdmin(userId: string) {
     onSuccess() {
       toast.success('Пароль изменён')
       queryClient.invalidateQueries({ queryKey: ['admin-user-detail', userId] })
+      queryClient.invalidateQueries({ queryKey: adminUserSecurityEventsKey(userId) })
     },
     onError(error) {
       toastMessageHandler(error)

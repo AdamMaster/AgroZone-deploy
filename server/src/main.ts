@@ -14,6 +14,7 @@ import { createClient } from 'redis'
 import compression from 'compression'
 import { SessionMiddlewareHolder } from './session/session-middleware.holder'
 import { SupportIoAdapter } from './support/support-io.adapter'
+import { requestContextMiddleware } from './security-events/request-context'
 ;(BigInt.prototype as any).toJSON = function () {
   return Number(this)
 }
@@ -88,6 +89,11 @@ async function bootstrap() {
 
   app.use(sessionMiddleware)
   app.get(SessionMiddlewareHolder).set(sessionMiddleware)
+
+  // Контекст запроса (IP, User-Agent, кто действует) для журнала событий
+  // безопасности — см. security-events/request-context.ts. После session,
+  // чтобы req.session к моменту записи событий был уже разобран.
+  app.use(requestContextMiddleware)
 
   app.enableCors({
     origin: config.getOrThrow<string>('ALLOWED_ORIGIN'),

@@ -62,7 +62,7 @@ export const CreateUserForm = () => {
   const submittedPassword = form.getValues('password')
 
   const fieldClassName =
-    'bg-mist-700 border-none hover:bg-mist-600 focus-visible:bg-mist-600 placeholder:text-mist-400 rounded-sm'
+    'bg-mist-700/50 border-none hover:bg-mist-700/50 focus-visible:bg-mist-700/70 placeholder:text-mist-400 rounded-sm'
 
   if (createdUser) {
     return (
@@ -204,7 +204,8 @@ export const CreateUserForm = () => {
                   <Button
                     type='button'
                     size='sm'
-                    className={cn(ADMIN_BUTTON_CLASS, 'absolute top-[50%] right-1.75 w-fit translate-y-[-50%]')}
+                    variant='mist'
+                    className={cn('absolute top-[50%] right-1.75 w-fit translate-y-[-50%]')}
                     onClick={() => form.setValue('password', generatePassword(), { shouldValidate: true })}
                   >
                     <RefreshCw className='size-4' />
@@ -217,7 +218,7 @@ export const CreateUserForm = () => {
           />
         </FieldGroup>
 
-        <Button type='submit' size='lg' className={cn(ADMIN_BUTTON_CLASS, 'mt-6')} disabled={isCreatingVerifiedUser}>
+        <Button type='submit' variant='secondary' size='lg' className='mt-6' disabled={isCreatingVerifiedUser}>
           {isCreatingVerifiedUser ? 'Создаём...' : 'Создать аккаунт'}
         </Button>
       </form>

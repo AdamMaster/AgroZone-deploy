@@ -11,7 +11,8 @@ import { EmailConfirmationService } from './email-confirmation/email-confirmatio
 import { TwoFactorAuthService } from './two-factor-auth/two-factor-auth.service'
 import { ZvonokService } from '@/libs/zvonok/zvonok.service'
 import { SupportGuestsService } from '@/support/support-guests.service'
-import { AuthMethod, TokenType, UserRole } from '@/generated/prisma/enums'
+import { SecurityEventsService } from '@/security-events/security-events.service'
+import { AuthMethod, SecurityEventActor, SecurityEventType, TokenType, UserRole } from '@/generated/prisma/enums'
 
 jest.mock('argon2')
 
@@ -26,6 +27,7 @@ describe('AuthService', () => {
   let twoFactorAuthService: any
   let zvonokService: any
   let supportGuestsService: any
+  let securityEventsService: any
   let configService: any
 
   const createReq = () =>
@@ -79,6 +81,10 @@ describe('AuthService', () => {
     twoFactorAuthService = { sendTwoFactorToken: jest.fn().mockResolvedValue(true), validateTwoFactorToken: jest.fn() }
     zvonokService = { requestCallbackConfirmation: jest.fn(), checkCallbackConfirmed: jest.fn() }
     supportGuestsService = { mergeIntoUser: jest.fn().mockResolvedValue(undefined) }
+    securityEventsService = {
+      record: jest.fn().mockResolvedValue(undefined),
+      recordLoginIfNew: jest.fn().mockResolvedValue(undefined)
+    }
     // ADMIN_EMAILS пуст по умолчанию — ensureAdminRole() внутри saveSession()
     // не должен трогать prisma.user.update ни в одном из "обычных" тестов.
     configService = { get: jest.fn().mockReturnValue(''), getOrThrow: jest.fn() }
@@ -95,7 +101,8 @@ describe('AuthService', () => {
         { provide: EmailConfirmationService, useValue: emailConfirmationService },
         { provide: TwoFactorAuthService, useValue: twoFactorAuthService },
         { provide: ZvonokService, useValue: zvonokService },
-        { provide: SupportGuestsService, useValue: supportGuestsService }
+        { provide: SupportGuestsService, useValue: supportGuestsService },
+        { provide: SecurityEventsService, useValue: securityEventsService }
       ]
     }).compile()
 
@@ -298,6 +305,41 @@ describe('AuthService', () => {
       ).rejects.toThrow('Неверный пароль. Пожалуйста, попробуйте еще раз, или восстановите пароль, если забыли его.')
     })
 
+    it('успешный вход паролем проверяет вход с нового устройства в журнале безопасности', async () => {
+      const user = baseUser()
+      userService.findByPhone.mockResolvedValue(user)
+      mockedVerify.mockResolvedValue(true)
+
+      await service.login(createReq(), { login: '+79991234567', password: 'secret1' } as any)
+
+      expect(securityEventsService.recordLoginIfNew).toHaveBeenCalledWith(user.id, 'password')
+    })
+
+    it('неудачный вход (неверный пароль) не попадает в журнал как вошедший', async () => {
+      userService.findByPhone.mockResolvedValue(baseUser())
+      mockedVerify.mockResolvedValue(false)
+
+      await expect(
+        service.login(createReq(), { login: '+79991234567', password: 'wrong' } as any)
+      ).rejects.toThrow()
+
+      expect(securityEventsService.recordLoginIfNew).not.toHaveBeenCalled()
+    })
+
+    it('если сессия не сохранилась, вход не фиксируется в журнале', async () => {
+      userService.findByPhone.mockResolvedValue(baseUser())
+      mockedVerify.mockResolvedValue(true)
+      const req = createReq()
+      req.session.save = jest.fn((cb: (err?: unknown) => void) => cb(new Error('redis down')))
+      jest.spyOn(console, 'error').mockImplementation(() => undefined)
+
+      await expect(service.login(req, { login: '+79991234567', password: 'secret1' } as any)).rejects.toThrow(
+        'Не удалось сохранить сессию'
+      )
+
+      expect(securityEventsService.recordLoginIfNew).not.toHaveBeenCalled()
+    })
+
     it('блокирует вход и повторно отправляет письмо, если email не подтверждён', async () => {
       const user = baseUser({ email: 'test@example.com', isVerified: false })
       userService.findByEmail.mockResolvedValue(user)
@@ -409,6 +451,32 @@ describe('AuthService', () => {
       })
       expect(req.session.userRole).toBe(UserRole.ADMIN)
     })
+
+    it('автоповышение до ADMIN фиксируется в журнале как действие SYSTEM (роль выдал не пользователь)', async () => {
+      const user = baseUser({ email: 'boss@example.com', role: UserRole.REGULAR })
+      userService.findByEmail.mockResolvedValue(user)
+      mockedVerify.mockResolvedValue(true)
+      configService.get.mockImplementation((key: string) => (key === 'ADMIN_EMAILS' ? 'boss@example.com' : ''))
+      prisma.user.update.mockResolvedValue({ ...user, role: UserRole.ADMIN })
+
+      await service.login(createReq(), { login: 'boss@example.com', password: 'secret1' } as any)
+
+      expect(securityEventsService.record).toHaveBeenCalledWith({
+        userId: user.id,
+        type: SecurityEventType.ROLE_CHANGED,
+        actor: SecurityEventActor.SYSTEM,
+        metadata: { from: UserRole.REGULAR, to: UserRole.ADMIN }
+      })
+    })
+
+    it('без повышения роли событие ROLE_CHANGED не пишется', async () => {
+      userService.findByPhone.mockResolvedValue(baseUser())
+      mockedVerify.mockResolvedValue(true)
+
+      await service.login(createReq(), { login: '+79991234567', password: 'secret1' } as any)
+
+      expect(securityEventsService.record).not.toHaveBeenCalled()
+    })
   })
 
   // ---------------------------------------------------------------------
@@ -453,6 +521,10 @@ describe('AuthService', () => {
       )
       expect(result).toEqual({ isNewUser: true })
       expect(req.session.userId).toBe('brand-new-user')
+      // Регистрация сама пишет ACCOUNT_REGISTERED (в UserService.create), а
+      // привязка соцсети к НОВОМУ аккаунту — не отдельное событие безопасности.
+      expect(securityEventsService.record).not.toHaveBeenCalled()
+      expect(securityEventsService.recordLoginIfNew).toHaveBeenCalledWith('brand-new-user', 'oauth')
     })
 
     it('находит пользователя по уже привязанному Account (обычный повторный вход через Яндекс)', async () => {
@@ -468,6 +540,7 @@ describe('AuthService', () => {
       expect(prisma.account.create).not.toHaveBeenCalled() // Account уже существует
       expect(result).toEqual({ isNewUser: false })
       expect(req.session.userId).toBe('existing-user')
+      expect(securityEventsService.record).not.toHaveBeenCalled() // привязка уже была раньше
     })
 
     it('ПРИОРИТЕТНЫЙ СЦЕНАРИЙ: привязывает Яндекс-вход к уже существующему аккаунту (например, зарегистрированному по телефону) по совпадению email, не создавая дубликат', async () => {
@@ -503,6 +576,13 @@ describe('AuthService', () => {
       expect(result).toEqual({ isNewUser: false })
       // Сессия открыта именно для существующего (телефонного) аккаунта.
       expect(req.session.userId).toBe('phone-registered-user')
+      // Автопривязка соцсети к чужому по сути аккаунту — отдельный путь
+      // получить доступ, поэтому он обязательно попадает в журнал.
+      expect(securityEventsService.record).toHaveBeenCalledWith({
+        userId: 'phone-registered-user',
+        type: SecurityEventType.OAUTH_LINKED,
+        metadata: { provider: 'yandex' }
+      })
     })
   })
 })

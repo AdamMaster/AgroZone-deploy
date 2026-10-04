@@ -1,7 +1,15 @@
 import { PrismaService } from '@/prisma/prisma.service'
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common'
 import { hash, verify } from 'argon2'
-import { AdStatus, AuthMethod, ConversationType, TokenType, UserRole, UserType } from '@/generated/prisma/enums'
+import {
+  AdStatus,
+  AuthMethod,
+  ConversationType,
+  SecurityEventType,
+  TokenType,
+  UserRole,
+  UserType
+} from '@/generated/prisma/enums'
 import { UpdateUserDto } from './dto/update-user.dto'
 import { PasswordChangeDto } from './dto/password-change.dto'
 import { DeleteAccountDto } from './dto/delete-account.dto'
@@ -18,6 +26,8 @@ import { AdminSetPremiumDto } from './dto/admin-set-premium.dto'
 import { AdminSetPasswordDto } from './dto/admin-set-password.dto'
 import { AdminSetEmailDto } from './dto/admin-set-email.dto'
 import { MailService } from '@/libs/mail/mail.service'
+import { SecurityEventsService } from '@/security-events/security-events.service'
+import { maskEmail, maskPhone } from '@/security-events/utils/mask.util'
 
 @Injectable()
 export class UserService {
@@ -26,7 +36,8 @@ export class UserService {
     private readonly fileService: FileService,
     private readonly configService: ConfigService,
     private readonly zvonokService: ZvonokService,
-    private readonly mailService: MailService
+    private readonly mailService: MailService,
+    private readonly securityEventsService: SecurityEventsService
   ) {}
 
   async findById(id: string) {
@@ -228,6 +239,12 @@ export class UserService {
       }
     })
 
+    await this.securityEventsService.record({
+      userId: user.id,
+      type: SecurityEventType.ACCOUNT_REGISTERED,
+      metadata: { method }
+    })
+
     return user
   }
 
@@ -291,6 +308,12 @@ export class UserService {
         }
       },
       include: { phones: true }
+    })
+
+    await this.securityEventsService.record({
+      userId: user.id,
+      type: SecurityEventType.ACCOUNT_CREATED_BY_ADMIN,
+      metadata: { phone: maskPhone(phone), email: email ? maskEmail(email) : null }
     })
 
     return {
@@ -394,6 +417,15 @@ export class UserService {
       select: { id: true, premiumUntil: true }
     })
 
+    await this.securityEventsService.record({
+      userId,
+      type: SecurityEventType.PREMIUM_SET_BY_ADMIN,
+      metadata: {
+        previousPremiumUntil: user.premiumUntil?.toISOString() ?? null,
+        premiumUntil: premiumUntil?.toISOString() ?? null
+      }
+    })
+
     // Мгновенный эффект, как и при обычной покупке (см.
     // PremiumService.reconcilePayment) — если premium в результате активен,
     // поднимаем все опубликованные объявления сразу, не дожидаясь
@@ -430,6 +462,8 @@ export class UserService {
       data: { password: await hash(dto.newPassword) },
       select: { id: true }
     })
+
+    await this.securityEventsService.record({ userId, type: SecurityEventType.PASSWORD_SET_BY_ADMIN })
 
     // Письмо необязательно (email может быть не привязан — вход по
     // телефону) и не должно валить саму смену пароля, если почтовый сервис
@@ -480,6 +514,15 @@ export class UserService {
       where: { id: userId },
       data: { email: dto.newEmail },
       select: { id: true, email: true }
+    })
+
+    await this.securityEventsService.record({
+      userId,
+      type: SecurityEventType.EMAIL_SET_BY_ADMIN,
+      metadata: {
+        previousEmail: user.email ? maskEmail(user.email) : null,
+        newEmail: maskEmail(dto.newEmail)
+      }
     })
 
     // На СТАРЫЙ адрес (если был) — предупреждение о смене, та же логика,
@@ -681,12 +724,22 @@ export class UserService {
       }
     }
 
-    return this.prismaService.user.update({
+    const updated = await this.prismaService.user.update({
       where: { id: userId },
       data: {
         password: await hash(dto.newPassword)
       }
     })
+
+    // firstPassword: true — у аккаунта (например, созданного через
+    // Яндекс/Google) пароля раньше не было, это установка, а не смена.
+    await this.securityEventsService.record({
+      userId,
+      type: SecurityEventType.PASSWORD_CHANGED,
+      metadata: { firstPassword: !user.password }
+    })
+
+    return updated
   }
 
   async toggleTwoFactor(userId: string) {
@@ -696,12 +749,19 @@ export class UserService {
       throw new BadRequestException('Сначала подтвердите аккаунт')
     }
 
-    return this.prismaService.user.update({
+    const updated = await this.prismaService.user.update({
       where: { id: userId },
       data: {
         isTwoFactorEnabled: !user.isTwoFactorEnabled
       }
     })
+
+    await this.securityEventsService.record({
+      userId,
+      type: updated.isTwoFactorEnabled ? SecurityEventType.TWO_FACTOR_ENABLED : SecurityEventType.TWO_FACTOR_DISABLED
+    })
+
+    return updated
   }
 
   async requestPhoneChange(userId: string, newPhone: string) {
@@ -826,6 +886,12 @@ export class UserService {
         })
       })
 
+      await this.securityEventsService.record({
+        userId,
+        type: SecurityEventType.PRIMARY_PHONE_CHANGED,
+        metadata: { phone: maskPhone(phone) }
+      })
+
       return {
         success: true,
         message: 'Основной номер изменен'
@@ -857,6 +923,12 @@ export class UserService {
           id: tokenRecord.id
         }
       })
+    })
+
+    await this.securityEventsService.record({
+      userId,
+      type: SecurityEventType.PHONE_CHANGED,
+      metadata: { phone: maskPhone(phone) }
     })
 
     return {
@@ -898,6 +970,8 @@ export class UserService {
       throw new BadRequestException('Этот номер уже используется другим аккаунтом')
     }
 
+    let isPrimaryNow = false
+
     await this.prismaService.$transaction(async tx => {
       const existingPhonesCount = await tx.userPhone.count({ where: { userId } })
 
@@ -911,6 +985,7 @@ export class UserService {
       // Если у пользователя уже есть номер(а), ведём себя как раньше — не
       // переключаем основной без явного makePrimary.
       const shouldBePrimary = makePrimary || existingPhonesCount === 0
+      isPrimaryNow = shouldBePrimary
 
       if (shouldBePrimary) {
         await tx.userPhone.updateMany({
@@ -933,6 +1008,12 @@ export class UserService {
           id: tokenRecord.id
         }
       })
+    })
+
+    await this.securityEventsService.record({
+      userId,
+      type: SecurityEventType.PHONE_ADDED,
+      metadata: { phone: maskPhone(phone), primary: isPrimaryNow }
     })
 
     return {
@@ -972,6 +1053,12 @@ export class UserService {
         where: { id: userPhone.id },
         data: { isPrimary: true }
       })
+    })
+
+    await this.securityEventsService.record({
+      userId,
+      type: SecurityEventType.PRIMARY_PHONE_CHANGED,
+      metadata: { phone: maskPhone(normalizedPhone) }
     })
 
     return { success: true, message: 'Основной номер изменён' }
@@ -1095,6 +1182,12 @@ export class UserService {
         }
       })
     })
+
+    // Строка User остаётся (мягкое удаление), поэтому и журнал сохраняется:
+    // если аккаунт удалил не владелец, а тот, кто получил к нему доступ,
+    // цепочка событий до удаления — единственное, по чему это можно понять.
+    // Срок хранения тот же, что у остальных записей (см. SecurityEventsRetentionWorker).
+    await this.securityEventsService.record({ userId, type: SecurityEventType.ACCOUNT_DELETED })
 
     return { success: true }
   }

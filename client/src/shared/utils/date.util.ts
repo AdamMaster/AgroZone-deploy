@@ -28,3 +28,14 @@ export const toDateInputValue = (value: Date | string | null | undefined): strin
 
   return `${year}-${month}-${day}`
 }
+
+// Дата и время — "3 октября 2026 г., 14:05". Для журналов событий
+// (безопасность аккаунта), где важно точное время, а не только день.
+export const formatDateTime = (value: Date | string): string =>
+  new Date(value).toLocaleString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })

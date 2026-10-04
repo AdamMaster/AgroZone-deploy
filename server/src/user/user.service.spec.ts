@@ -7,7 +7,9 @@ import { PrismaService } from '@/prisma/prisma.service'
 import { FileService } from '../file/file.service'
 import { ConfigService } from '@nestjs/config'
 import { ZvonokService } from '@/libs/zvonok/zvonok.service'
-import { TokenType } from '@/generated/prisma/enums'
+import { MailService } from '@/libs/mail/mail.service'
+import { SecurityEventsService } from '@/security-events/security-events.service'
+import { SecurityEventType, TokenType } from '@/generated/prisma/enums'
 
 jest.mock('argon2')
 
@@ -20,6 +22,8 @@ describe('UserService', () => {
   let fileService: any
   let configService: any
   let zvonokService: any
+  let mailService: any
+  let securityEventsService: any
 
   beforeEach(async () => {
     prisma = {
@@ -58,6 +62,12 @@ describe('UserService', () => {
       checkCallbackConfirmed: jest.fn()
     }
 
+    mailService = {
+      sendPasswordChangedByAdminEmail: jest.fn().mockResolvedValue(true),
+      sendEmailChangedByAdminEmail: jest.fn().mockResolvedValue(true)
+    }
+    securityEventsService = { record: jest.fn().mockResolvedValue(undefined) }
+
     mockedVerify.mockReset()
     mockedHash.mockReset()
 
@@ -67,7 +77,9 @@ describe('UserService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: FileService, useValue: fileService },
         { provide: ConfigService, useValue: configService },
-        { provide: ZvonokService, useValue: zvonokService }
+        { provide: ZvonokService, useValue: zvonokService },
+        { provide: MailService, useValue: mailService },
+        { provide: SecurityEventsService, useValue: securityEventsService }
       ]
     }).compile()
 
@@ -538,6 +550,235 @@ describe('UserService', () => {
       await service.setPremiumByAdmin('user-1', { premiumUntil: '2020-01-01T00:00:00.000Z' })
 
       expect(prisma.ad.updateMany).not.toHaveBeenCalled()
+    })
+  })
+
+  // ---------------------------------------------------------------------
+  // Журнал событий безопасности (см. SecurityEventsService): каждое
+  // действие, меняющее доступ к аккаунту, должно оставлять след — и ни в
+  // каком виде не оставлять в нём полные контакты и пароли.
+  // ---------------------------------------------------------------------
+  describe('журнал событий безопасности', () => {
+    it('смена пароля пишет PASSWORD_CHANGED с firstPassword=false, если пароль уже был', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', password: 'old-hash' })
+      mockedVerify.mockResolvedValue(true)
+      mockedHash.mockResolvedValue('hashed' as any)
+
+      await service.updatePassword('user-1', { currentPassword: 'old', newPassword: 'newpass1' } as any)
+
+      expect(securityEventsService.record).toHaveBeenCalledWith({
+        userId: 'user-1',
+        type: SecurityEventType.PASSWORD_CHANGED,
+        metadata: { firstPassword: false }
+      })
+    })
+
+    it('установка первого пароля (OAuth-аккаунт) пишет PASSWORD_CHANGED с firstPassword=true', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', password: null })
+      mockedHash.mockResolvedValue('hashed' as any)
+
+      await service.updatePassword('user-1', { newPassword: 'newpass1' } as any)
+
+      expect(securityEventsService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ type: SecurityEventType.PASSWORD_CHANGED, metadata: { firstPassword: true } })
+      )
+    })
+
+    it('не пишет событие, если смена пароля отклонена (неверный текущий пароль)', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', password: 'old-hash' })
+      mockedVerify.mockResolvedValue(false)
+
+      await expect(
+        service.updatePassword('user-1', { currentPassword: 'wrong', newPassword: 'newpass1' } as any)
+      ).rejects.toThrow()
+
+      expect(securityEventsService.record).not.toHaveBeenCalled()
+    })
+
+    it('2FA: включение и выключение пишут разные типы событий', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', isVerified: true, isTwoFactorEnabled: false })
+      prisma.user.update.mockResolvedValueOnce({ id: 'user-1', isTwoFactorEnabled: true })
+      await service.toggleTwoFactor('user-1')
+
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', isVerified: true, isTwoFactorEnabled: true })
+      prisma.user.update.mockResolvedValueOnce({ id: 'user-1', isTwoFactorEnabled: false })
+      await service.toggleTwoFactor('user-1')
+
+      expect(securityEventsService.record).toHaveBeenNthCalledWith(1, {
+        userId: 'user-1',
+        type: SecurityEventType.TWO_FACTOR_ENABLED
+      })
+      expect(securityEventsService.record).toHaveBeenNthCalledWith(2, {
+        userId: 'user-1',
+        type: SecurityEventType.TWO_FACTOR_DISABLED
+      })
+    })
+
+    it('смена пароля админом пишет PASSWORD_SET_BY_ADMIN и не кладёт пароль в журнал', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', email: null })
+      prisma.user.update.mockResolvedValue({ id: 'user-1' })
+      mockedHash.mockResolvedValue('hashed' as any)
+
+      await service.setPasswordByAdmin('user-1', { newPassword: 'SuperSecret1' })
+
+      expect(securityEventsService.record).toHaveBeenCalledWith({
+        userId: 'user-1',
+        type: SecurityEventType.PASSWORD_SET_BY_ADMIN
+      })
+      expect(JSON.stringify(securityEventsService.record.mock.calls)).not.toContain('SuperSecret1')
+    })
+
+    it('смена email админом пишет только МАСКИРОВАННЫЕ адреса', async () => {
+      prisma.user.findUnique
+        .mockResolvedValueOnce({ id: 'user-1', email: 'old.person@gmail.com' })
+        .mockResolvedValueOnce(null)
+      prisma.user.update.mockResolvedValue({ id: 'user-1', email: 'new.person@mail.ru' })
+
+      await service.setEmailByAdmin('user-1', { newEmail: 'new.person@mail.ru' })
+
+      expect(securityEventsService.record).toHaveBeenCalledWith({
+        userId: 'user-1',
+        type: SecurityEventType.EMAIL_SET_BY_ADMIN,
+        metadata: { previousEmail: 'ol***@gmail.com', newEmail: 'ne***@mail.ru' }
+      })
+      const logged = JSON.stringify(securityEventsService.record.mock.calls)
+      expect(logged).not.toContain('old.person')
+      expect(logged).not.toContain('new.person')
+    })
+
+    it('первый email у аккаунта без почты: previousEmail = null', async () => {
+      prisma.user.findUnique.mockResolvedValueOnce({ id: 'user-1', email: null }).mockResolvedValueOnce(null)
+      prisma.user.update.mockResolvedValue({ id: 'user-1', email: 'new@mail.ru' })
+
+      await service.setEmailByAdmin('user-1', { newEmail: 'new@mail.ru' })
+
+      expect(securityEventsService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ metadata: { previousEmail: null, newEmail: 'ne***@mail.ru' } })
+      )
+    })
+
+    it('смена основного номера пишет PHONE_CHANGED с маскированным номером', async () => {
+      prisma.token.findFirst.mockResolvedValue({
+        id: 'token-1',
+        phone: '79991234567',
+        expiresIn: new Date(Date.now() + 60_000)
+      })
+      prisma.userPhone.findUnique.mockResolvedValue(null)
+
+      await service.confirmPhoneChange('user-1', 'call-1')
+
+      expect(securityEventsService.record).toHaveBeenCalledWith({
+        userId: 'user-1',
+        type: SecurityEventType.PHONE_CHANGED,
+        metadata: { phone: '+7******4567' }
+      })
+    })
+
+    it('переключение на свой существующий номер пишет PRIMARY_PHONE_CHANGED, а не PHONE_CHANGED', async () => {
+      prisma.token.findFirst.mockResolvedValue({
+        id: 'token-1',
+        phone: '79991234567',
+        expiresIn: new Date(Date.now() + 60_000)
+      })
+      prisma.userPhone.findUnique.mockResolvedValue({ id: 'phone-1', userId: 'user-1' })
+
+      await service.confirmPhoneChange('user-1', 'call-1')
+
+      expect(securityEventsService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ type: SecurityEventType.PRIMARY_PHONE_CHANGED })
+      )
+      expect(securityEventsService.record).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: SecurityEventType.PHONE_CHANGED })
+      )
+    })
+
+    it('добавление номера пишет PHONE_ADDED и фиксирует, стал ли он основным', async () => {
+      prisma.token.findFirst.mockResolvedValue({
+        id: 'token-1',
+        phone: '79997654321',
+        expiresIn: new Date(Date.now() + 60_000)
+      })
+      prisma.userPhone.findUnique.mockResolvedValue(null)
+      prisma.userPhone.count.mockResolvedValue(1)
+
+      await service.confirmAddPhone('user-1', 'call-1', false)
+
+      expect(securityEventsService.record).toHaveBeenCalledWith({
+        userId: 'user-1',
+        type: SecurityEventType.PHONE_ADDED,
+        metadata: { phone: '+7******4321', primary: false }
+      })
+    })
+
+    it('если номер уже основной, лишнего события PRIMARY_PHONE_CHANGED нет', async () => {
+      prisma.userPhone.findFirst.mockResolvedValue({ id: 'phone-1', isVerified: true, isPrimary: true })
+
+      await service.setPrimaryPhone('user-1', '+79991234567')
+
+      expect(securityEventsService.record).not.toHaveBeenCalled()
+    })
+
+    it('ручная выдача premium админом пишет PREMIUM_SET_BY_ADMIN с прежним и новым сроком', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', premiumUntil: new Date('2027-01-01T00:00:00.000Z') })
+      prisma.user.update.mockResolvedValue({ id: 'user-1', premiumUntil: null })
+
+      await service.setPremiumByAdmin('user-1', { premiumUntil: null })
+
+      expect(securityEventsService.record).toHaveBeenCalledWith({
+        userId: 'user-1',
+        type: SecurityEventType.PREMIUM_SET_BY_ADMIN,
+        metadata: { previousPremiumUntil: '2027-01-01T00:00:00.000Z', premiumUntil: null }
+      })
+    })
+
+    it('регистрация пишет ACCOUNT_REGISTERED со способом входа', async () => {
+      prisma.user.create = jest.fn().mockResolvedValue({ id: 'new-user', phones: [], accounts: [] })
+
+      await service.create(null, null, 'Иван', '79991234567', '', 'CREDENTIALS' as any, true)
+
+      expect(securityEventsService.record).toHaveBeenCalledWith({
+        userId: 'new-user',
+        type: SecurityEventType.ACCOUNT_REGISTERED,
+        metadata: { method: 'CREDENTIALS' }
+      })
+    })
+
+    it('создание аккаунта админом пишет ACCOUNT_CREATED_BY_ADMIN с маскированными контактами', async () => {
+      prisma.userPhone.findUnique.mockResolvedValue(null)
+      prisma.user.findUnique.mockResolvedValue(null)
+      prisma.user.create = jest.fn().mockResolvedValue({
+        id: 'new-user',
+        displayName: 'Продавец',
+        email: 'seller@mail.ru',
+        phones: [{ phone: '79991234567' }]
+      })
+      mockedHash.mockResolvedValue('hashed' as any)
+
+      await service.createVerifiedByAdmin({
+        phone: '+7 (999) 123-45-67',
+        password: 'secret12',
+        email: 'seller@mail.ru'
+      })
+
+      expect(securityEventsService.record).toHaveBeenCalledWith({
+        userId: 'new-user',
+        type: SecurityEventType.ACCOUNT_CREATED_BY_ADMIN,
+        metadata: { phone: '+7******4567', email: 'se***@mail.ru' }
+      })
+    })
+
+    it('createVerifiedByAdmin отклоняет email, уже привязанный к другому аккаунту, и ничего не создаёт', async () => {
+      prisma.userPhone.findUnique.mockResolvedValue(null)
+      prisma.user.findUnique.mockResolvedValue({ id: 'other-user' })
+      prisma.user.create = jest.fn()
+
+      await expect(
+        service.createVerifiedByAdmin({ phone: '+7 (999) 123-45-67', password: 'secret12', email: 'Taken@Mail.ru' })
+      ).rejects.toThrow('Этот email уже привязан к другому аккаунту')
+
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { email: 'taken@mail.ru' } })
+      expect(prisma.user.create).not.toHaveBeenCalled()
+      expect(securityEventsService.record).not.toHaveBeenCalled()
     })
   })
 })

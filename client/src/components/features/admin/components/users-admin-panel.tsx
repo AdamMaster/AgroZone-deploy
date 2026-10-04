@@ -2,8 +2,7 @@
 
 import { useState } from 'react'
 
-import { cn } from '@/lib/utils'
-
+import { getAdminChipClassName } from '../constants/admin-ui.constants'
 import { CreateUserForm } from './create-user-form'
 import { UsersSearch } from './users-search'
 
@@ -25,20 +24,14 @@ export const UsersAdminPanel = () => {
       <div className='mt-6 flex gap-1'>
         <button
           type='button'
-          className={cn(
-            'rounded-sm px-3 py-1.5 text-sm font-medium',
-            view === 'search' ? 'bg-mist-100 text-mist-950' : 'bg-mist-600/50 hover:bg-mist-600/70'
-          )}
+          className={getAdminChipClassName(view === 'search')}
           onClick={() => setView('search')}
         >
           Поиск
         </button>
         <button
           type='button'
-          className={cn(
-            'rounded-sm px-3 py-1.5 text-sm font-medium',
-            view === 'create' ? 'bg-mist-100 text-mist-950' : 'bg-mist-600/50 hover:bg-mist-600/70'
-          )}
+          className={getAdminChipClassName(view === 'create')}
           onClick={() => setView('create')}
         >
           Новый аккаунт

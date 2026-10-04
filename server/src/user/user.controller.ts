@@ -39,6 +39,8 @@ import { AdminSetPremiumDto } from './dto/admin-set-premium.dto'
 import { AdminSetPasswordDto } from './dto/admin-set-password.dto'
 import { AdminSetEmailDto } from './dto/admin-set-email.dto'
 import { PhoneThrottlerGuard } from '@/libs/common/guards/phone-throttler.guard'
+import { SecurityEventsService } from '@/security-events/security-events.service'
+import { FindSecurityEventsQueryDto } from '@/security-events/dto/find-security-events-query.dto'
 import { ConfigService } from '@nestjs/config'
 import {
   PRESENTATION_ALLOWED_EXTENSIONS,
@@ -51,7 +53,8 @@ export class UserController {
   constructor(
     private readonly userService: UserService,
     private readonly fileService: FileService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly securityEventsService: SecurityEventsService
   ) {}
 
   @Authorization()
@@ -137,6 +140,16 @@ export class UserController {
     return this.userService.setEmailByAdmin(id, dto)
   }
 
+  // Журнал событий безопасности пользователя для карточки в админке
+  // (/admin/users/:id) — смена пароля/email/телефона, 2FA, вход с нового
+  // устройства, действия администратора. См. SecurityEventsService.
+  @Authorization(UserRole.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @Get('admin/:id/security-events')
+  async findSecurityEventsByAdmin(@Param('id') id: string, @Query() query: FindSecurityEventsQueryDto) {
+    return this.securityEventsService.findForAdmin(id, query)
+  }
+
   // Публичная страница продавца (/sellers/:id на фронте) и блок "Ещё от
   // продавца" на странице объявления — без @Authorization(), доступно
   // анонимам. Намеренно НЕ 'by-id/:id' выше (тот отдаёт админу полную
@@ -146,6 +159,17 @@ export class UserController {
   @Get(':id/public')
   async findPublicProfile(@Param('id') id: string) {
     return this.userService.getPublicProfile(id)
+  }
+
+  // Собственный журнал безопасности пользователя ("Недавняя активность"
+  // в настройках) — пользователь видит, что и когда менялось в его
+  // аккаунте, и сам замечает чужие действия. Без User-Agent целиком и без
+  // id администратора — см. SecurityEventForUser.
+  @Authorization()
+  @HttpCode(HttpStatus.OK)
+  @Get('profile/security-events')
+  async findMySecurityEvents(@Authorized('id') userId: string, @Query() query: FindSecurityEventsQueryDto) {
+    return this.securityEventsService.findForUser(userId, query)
   }
 
   @Authorization()

@@ -75,7 +75,7 @@ export class EmailConfirmationService {
 
     const authService = this.moduleRef.get(AuthService, { strict: false })
 
-    return authService.saveSession(req, existingUser)
+    return authService.saveSession(req, existingUser, 'email')
   }
 
   async sendVerificationToken(email: string) {

@@ -18,6 +18,7 @@ import {
 import { useProfile } from '@/shared/hooks'
 
 import { UserRole } from '../../auth/types'
+import { MySecurityEvents } from '../../security-events/components'
 import { useTwoFactorMutation } from '../hooks/use-two-factor-mutation'
 
 export const ContentSecurity = () => {
@@ -71,6 +72,17 @@ export const ContentSecurity = () => {
               </div>
             </Field>
           )}
+        </div>
+
+        <div>
+          <Heading level={5} className='mb-1'>
+            Недавняя активность
+          </Heading>
+          <p className='mb-4 text-sm text-gray-500'>
+            Смена пароля, почты и телефона, вход с нового устройства. Если видите то, чего не делали, — смените пароль
+            и напишите в поддержку.
+          </p>
+          <MySecurityEvents />
         </div>
 
         {/* Администратору самоудаление недоступно — см. UserService.deleteAccount

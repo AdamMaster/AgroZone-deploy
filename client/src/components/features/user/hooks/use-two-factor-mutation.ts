@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
+import { MY_SECURITY_EVENTS_KEY } from '../../security-events/hooks'
 import { userServices } from '../services'
 
 export function useTwoFactorMutation() {
@@ -12,6 +13,7 @@ export function useTwoFactorMutation() {
 
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: ['profile'] })
+      queryClient.invalidateQueries({ queryKey: MY_SECURITY_EVENTS_KEY })
       toast.success('Настройки двухфакторной аутентификации изменены')
     },
 

@@ -4,7 +4,9 @@ import { v4 as uuidv4 } from 'uuid'
 import { MailService } from '@/libs/mail/mail.service'
 import { PrismaService } from '@/prisma/prisma.service'
 import { UserService } from '@/user/user.service'
-import { TokenType } from '@/generated/prisma/enums'
+import { SecurityEventType, TokenType } from '@/generated/prisma/enums'
+import { SecurityEventsService } from '@/security-events/security-events.service'
+import { maskEmail } from '@/security-events/utils/mask.util'
 import { ChangeEmailDto } from './dto/email-change.dto'
 
 @Injectable()
@@ -12,7 +14,8 @@ export class EmailChangeService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly userService: UserService,
-    private readonly mailService: MailService
+    private readonly mailService: MailService,
+    private readonly securityEventsService: SecurityEventsService
   ) {}
 
   async requestEmailChange(userId: string, dto: ChangeEmailDto) {
@@ -57,6 +60,15 @@ export class EmailChangeService {
 
     await this.mailService.sendEmailChange(dto.newEmail, token)
 
+    // Фиксируем именно ЗАПРОС, а не только подтверждение: попытка сменить
+    // почту с чужой сессии (украденная cookie) — сама по себе подозрительное
+    // событие, даже если ссылку из письма так никто и не открыл.
+    await this.securityEventsService.record({
+      userId,
+      type: SecurityEventType.EMAIL_CHANGE_REQUESTED,
+      metadata: { newEmail: maskEmail(dto.newEmail) }
+    })
+
     return true
   }
 
@@ -78,6 +90,13 @@ export class EmailChangeService {
       throw new BadRequestException('Срок действия ссылки истек')
     }
 
+    // Прежний адрес нужен только для записи в журнал безопасности (в
+    // маскированном виде) — после update он уже недоступен.
+    const previous = await this.prismaService.user.findUnique({
+      where: { id: existingToken.userId },
+      select: { email: true }
+    })
+
     // Теперь TypeScript спокоен, так как мы проверили !existingToken.userId выше
     await this.prismaService.user.update({
       where: { id: existingToken.userId },
@@ -89,6 +108,15 @@ export class EmailChangeService {
 
     await this.prismaService.token.delete({
       where: { id: existingToken.id }
+    })
+
+    await this.securityEventsService.record({
+      userId: existingToken.userId,
+      type: SecurityEventType.EMAIL_CHANGED,
+      metadata: {
+        previousEmail: previous?.email ? maskEmail(previous.email) : null,
+        newEmail: existingToken.email ? maskEmail(existingToken.email) : null
+      }
     })
 
     return true

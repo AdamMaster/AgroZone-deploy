@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common'
 import { RegisterDto } from './dto/register.dto'
 import { UserService } from '@/user/user.service'
-import { AuthMethod, TokenType, UserRole } from '@/generated/prisma/enums'
+import { AuthMethod, SecurityEventActor, SecurityEventType, TokenType, UserRole } from '@/generated/prisma/enums'
 import { User } from '@/generated/prisma/client'
 import { Request, Response } from 'express'
 import { LoginDto } from './dto/login.dto'
@@ -26,6 +26,7 @@ import { normalizePhone } from '@/libs/common/utils/phone.util'
 import { ZvonokService } from '@/libs/zvonok/zvonok.service'
 import { getClientIp } from '@/libs/common/utils/request-ip.util'
 import { SupportGuestsService } from '@/support/support-guests.service'
+import { LoginMethod, SecurityEventsService } from '@/security-events/security-events.service'
 
 @Injectable()
 export class AuthService {
@@ -37,7 +38,8 @@ export class AuthService {
     private readonly emailConfirmationService: EmailConfirmationService,
     private readonly twoFactorAuthService: TwoFactorAuthService,
     private readonly zvonokService: ZvonokService,
-    private readonly supportGuestsService: SupportGuestsService
+    private readonly supportGuestsService: SupportGuestsService,
+    private readonly securityEventsService: SecurityEventsService
   ) {}
 
   async registerSmsStart(dto: SmsRegisterDto) {
@@ -85,7 +87,7 @@ export class AuthService {
 
     await this.prismaService.token.delete({ where: { id: smsToken.id } })
 
-    return this.saveSession(req, newUser)
+    return this.saveSession(req, newUser, 'sms')
   }
 
   async register(req: Request, dto: RegisterDto) {
@@ -293,7 +295,7 @@ export class AuthService {
 
     await this.prismaService.token.delete({ where: { id: smsToken.id } })
 
-    return this.saveSession(req, user)
+    return this.saveSession(req, user, 'sms')
   }
 
   async checkRegisterCode(dto: { phone: string; code: string }) {
@@ -369,8 +371,17 @@ export class AuthService {
             expiresAt: profile?.expires_at ?? 0
           }
         })
+
+        // Соцсеть автоматически привязана к УЖЕ существующему аккаунту по
+        // совпадению email (см. поиск user выше) — это отдельный путь
+        // получить доступ к аккаунту, поэтому он в журнале безопасности.
+        await this.securityEventsService.record({
+          userId: user.id,
+          type: SecurityEventType.OAUTH_LINKED,
+          metadata: { provider: profile?.provider ?? '' }
+        })
       }
-      await this.saveSession(req, user)
+      await this.saveSession(req, user, 'oauth')
       // isNewUser — контроллер использует его, чтобы отправить фронт с
       // ?newUser=1 (см. AuthController.callback) для цели "registration" в
       // Яндекс.Метрике (F15 в ROADMAP.md). У OAuth нет отдельного шага
@@ -414,7 +425,7 @@ export class AuthService {
       })
     }
 
-    await this.saveSession(req, user)
+    await this.saveSession(req, user, 'oauth')
     return { isNewUser: true }
   }
 
@@ -459,7 +470,7 @@ export class AuthService {
       await this.twoFactorAuthService.validateTwoFactorToken(user.email, dto.code)
     }
 
-    return this.saveSession(req, user)
+    return this.saveSession(req, user, 'password')
   }
 
   async logout(req: Request, res: Response): Promise<void> {
@@ -484,7 +495,7 @@ export class AuthService {
   // this.saveSession выше), поэтому это самое надёжное место для
   // автоповышения роли: сработает при любом способе входа, без дублирования
   // проверки в каждом методе отдельно.
-  async saveSession(req: Request, user: User) {
+  async saveSession(req: Request, user: User, loginMethod: LoginMethod = 'password') {
     const role = await this.ensureAdminRole(user)
     const sessionUser = role === user.role ? user : { ...user, role }
 
@@ -509,7 +520,7 @@ export class AuthService {
       })
     }
 
-    return new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       req.session.userId = user.id
       req.session.userRole = role
 
@@ -523,9 +534,17 @@ export class AuthService {
           )
         }
 
-        resolve({ user: sessionUser })
+        resolve()
       })
     })
+
+    // Журнал безопасности: вход с нового устройства/IP (повторные входы с
+    // уже знакомого места не пишем — см. SecurityEventsService.recordLoginIfNew).
+    // Только после успешного сохранения сессии — не успевший войти не
+    // должен попадать в журнал как вошедший.
+    await this.securityEventsService.recordLoginIfNew(user.id, loginMethod)
+
+    return { user: sessionUser }
   }
 
   // Автоповышение до ADMIN по списку почт из переменной окружения
@@ -553,6 +572,17 @@ export class AuthService {
     const updated = await this.prismaService.user.update({
       where: { id: user.id },
       data: { role: UserRole.ADMIN }
+    })
+
+    // Повышение роли без участия человека (по ADMIN_EMAILS) — самое важное
+    // событие безопасности из возможных, поэтому актор SYSTEM явно (запрос
+    // в этот момент формально есть — это вход самого пользователя, но
+    // роль выдал не он).
+    await this.securityEventsService.record({
+      userId: user.id,
+      type: SecurityEventType.ROLE_CHANGED,
+      actor: SecurityEventActor.SYSTEM,
+      metadata: { from: user.role, to: updated.role }
     })
 
     return updated.role

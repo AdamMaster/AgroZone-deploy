@@ -8,6 +8,7 @@ import { UserAvatar } from '@/components/features/user/components'
 import { Button, ButtonBack } from '@/components/ui'
 
 import { AD_STATUS_LABELS } from '@/shared/constants/ad-statuses'
+import { AUTH_METHOD_LABELS } from '@/shared/constants/auth-method-labels'
 import { USER_TYPE_LABELS } from '@/shared/constants/user-types'
 import { formatFullDate, formatPhoneNumber, formatPriceWithUnit } from '@/shared/utils'
 
@@ -23,12 +24,7 @@ import { SetEmailDialog } from './set-email-dialog'
 import { SetPasswordDialog } from './set-password-dialog'
 import { SetPremiumDialog } from './set-premium-dialog'
 import { UserBadges } from './user-badges'
-
-const AUTH_METHOD_LABELS: Record<string, string> = {
-  CREDENTIALS: 'Телефон + пароль',
-  GOOGLE: 'Google',
-  YANDEX: 'Яндекс'
-}
+import { UserSecurityEvents } from './user-security-events'
 
 interface UserAdminDetailProps {
   id: string
@@ -130,6 +126,12 @@ export const UserAdminDetail = ({ id }: UserAdminDetailProps) => {
             <p className='text-sm'>{user.businessName}</p>
           </div>
         )}
+      </div>
+
+      <h2 className='mb-3 text-lg font-semibold'>История событий</h2>
+
+      <div className='mb-6'>
+        <UserSecurityEvents userId={id} />
       </div>
 
       <h2 className='mb-3 text-lg font-semibold'>Объявления {totalAds > 0 && `(${totalAds})`}</h2>
