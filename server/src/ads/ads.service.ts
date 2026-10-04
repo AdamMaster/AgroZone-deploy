@@ -160,8 +160,6 @@ export class AdsService {
       throw new BadRequestException('Некорректный номер телефона')
     }
 
-    const images = await this.prepareImages(null, createAdDto.existingImages ?? [], files)
-
     const categoryPath = await this.categoriesService.getCategoryPath(createAdDto.categoryId)
 
     // Единица цены должна быть одной из разрешённых для выбранной
@@ -192,23 +190,28 @@ export class AdsService {
     const slug = `${baseSlug}-${uniqueHash}`
     const seoPath = this.categoriesService.buildSeoPath(categoryPath, slug)
 
+    // existingImages у нового объявления игнорируем: «оставленных» фото у него
+    // быть не может, а принять с клиента готовые ссылки значило бы дать вписать
+    // в объявление произвольный (в том числе чужой) файл.
     const { existingImages, price, features, ...restDto } = createAdDto
 
-    return this.prisma.ad.create({
-      data: {
-        ...restDto,
-        phone,
-        price: price !== undefined && price !== null ? BigInt(Math.round(price)) : null,
-        unit,
-        images,
-        userId,
-        status,
-        categoryPath,
-        seoPath,
-        slug,
-        features: (features ?? {}) as Prisma.InputJsonValue
-      }
-    })
+    return this.saveWithImages([], undefined, files, images =>
+      this.prisma.ad.create({
+        data: {
+          ...restDto,
+          phone,
+          price: price !== undefined && price !== null ? BigInt(Math.round(price)) : null,
+          unit,
+          images,
+          userId,
+          status,
+          categoryPath,
+          seoPath,
+          slug,
+          features: (features ?? {}) as Prisma.InputJsonValue
+        }
+      })
+    )
   }
 
   async findAll(query: FindAdsQueryDto, userId?: string) {
@@ -1174,34 +1177,84 @@ export class AdsService {
     }
   }
 
-  private async deleteImagesFromS3(imageUrls: string[]) {
-    const bucketName = this.configService.getOrThrow<string>('S3_BUCKET_NAME')
-    const deletePromises = imageUrls.map(url => {
-      const fileId = url.split(`${bucketName}/`)[1]
-      return fileId ? this.fileService.deleteFile(fileId) : Promise.resolve()
-    })
-    await Promise.all(deletePromises)
+  // Файлы в S3 живут отдельно от БД, транзакции между ними нет, поэтому порядок
+  // операций выбран так, чтобы любой сбой оставлял в худшем случае лишний файл
+  // в хранилище, но не объявление со ссылкой на уже удалённое фото:
+  //   1. загружаем новые файлы (если часть загрузок упала — откатываем уже
+  //      загруженные, см. uploadImages);
+  //   2. записываем объявление в БД;
+  //   3. и только после успешной записи удаляем из S3 убранные фото. Если
+  //      запись не удалась — наоборот, удаляем только что загруженные файлы,
+  //      а старые остаются нетронутыми.
+  // Ошибка удаления на шаге 3 не должна ломать уже сохранённое объявление —
+  // она только логируется (см. deleteImagesQuietly).
+  //
+  // keepImages — список фото, которые пользователь оставил (undefined = «не
+  // менять»). Учитываются только фото, которые уже принадлежат этому
+  // объявлению (currentImages): список приходит с клиента, и без этой
+  // проверки в объявление можно было бы вписать чужую ссылку, а потом, убрав
+  // её, удалить чужой файл из S3.
+  private async saveWithImages<T>(
+    currentImages: string[],
+    keepImages: string[] | undefined,
+    newFiles: Express.Multer.File[] | undefined,
+    write: (images: string[]) => Promise<T>
+  ): Promise<T> {
+    const kept = keepImages ? [...new Set(keepImages)].filter(url => currentImages.includes(url)) : currentImages
+    const removed = currentImages.filter(url => !kept.includes(url))
+    const uploaded = await this.uploadImages(newFiles ?? [])
+
+    let result: T
+
+    try {
+      result = await write([...kept, ...uploaded])
+    } catch (error) {
+      await this.deleteImagesQuietly(uploaded)
+
+      throw error
+    }
+
+    await this.deleteImagesQuietly(removed)
+
+    return result
   }
 
-  private async prepareImages(
-    ad: { images: string[] } | null,
-    existingImages: string[],
-    newFiles: Express.Multer.File[]
-  ): Promise<string[]> {
-    let images = ad?.images || []
+  // Загружает файлы всё-или-ничего: если хотя бы одна загрузка упала, уже
+  // загруженные файлы удаляются, иначе они остались бы в S3 без ссылки из БД.
+  private async uploadImages(files: Express.Multer.File[]): Promise<string[]> {
+    const results = await Promise.allSettled(files.map(file => this.fileService.uploadFile(file, 'ads')))
+    const uploaded = results.flatMap(result => (result.status === 'fulfilled' ? [result.value.url] : []))
+    const failed = results.find((result): result is PromiseRejectedResult => result.status === 'rejected')
 
-    // Удаление старых
-    const toDelete = images.filter(img => !existingImages.includes(img))
-    if (toDelete.length) await this.deleteImagesFromS3(toDelete)
+    if (failed) {
+      await this.deleteImagesQuietly(uploaded)
 
-    images = existingImages
-
-    // Загрузка новых
-    if (newFiles?.length) {
-      const uploaded = await Promise.all(newFiles.map(f => this.fileService.uploadFile(f, 'ads')))
-      images = [...images, ...uploaded.map(r => r.url)]
+      throw failed.reason
     }
-    return images
+
+    return uploaded
+  }
+
+  // Best-effort: сбой S3 при очистке не должен превращать успешную операцию в
+  // ошибку для пользователя. Файл, который не удалось удалить, остаётся лишним
+  // объектом в бакете (FileService уже пишет причину в лог).
+  private async deleteImagesQuietly(urls: string[]) {
+    const results = await Promise.allSettled(urls.map(url => this.fileService.deleteFileByUrl(url)))
+
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        this.logger.warn(`Не удалось удалить фото ${urls[index]} из S3: ${(result.reason as Error).message}`)
+      }
+    })
+  }
+
+  // Общая часть remove() и removeByAdmin(): сначала удаляем запись (если БД
+  // откажет — фото остаются на месте), потом файлы.
+  private async deleteAdWithImages(ad: { id: string; images: string[] }) {
+    await this.prisma.ad.delete({ where: { id: ad.id } })
+    await this.deleteImagesQuietly(ad.images)
+
+    return { success: true }
   }
 
   async update(id: string, updateAdDto: UpdateAdDto, userId: string, files?: Express.Multer.File[]) {
@@ -1211,26 +1264,6 @@ export class AdsService {
 
     if (!ad) {
       throw new NotFoundException('Объявление не найдено')
-    }
-
-    let images = ad.images
-
-    if (updateAdDto.existingImages) {
-      const remaining = updateAdDto.existingImages
-
-      const toDelete = ad.images.filter(img => !remaining.includes(img))
-
-      if (toDelete.length) {
-        await this.deleteImagesFromS3(toDelete)
-      }
-
-      images = remaining
-    }
-
-    if (files?.length) {
-      const uploaded = await Promise.all(files.map(f => this.fileService.uploadFile(f, 'ads')))
-
-      images = [...images, ...uploaded.map(r => r.url)]
     }
 
     const { existingImages, features, phone, ...rest } = updateAdDto
@@ -1257,19 +1290,21 @@ export class AdsService {
     const nextStatus =
       ad.status === AdStatus.PUBLISHED || ad.status === AdStatus.REJECTED ? AdStatus.PENDING : ad.status
 
-    return this.prisma.ad.update({
-      where: { id },
-      data: {
-        ...rest,
-        status: nextStatus,
-        rejectionReason: null,
-        images,
-        ...(normalizedPhone !== undefined && {
-          phone: normalizedPhone
-        }),
-        features: features ? (features as Prisma.InputJsonValue) : undefined
-      }
-    })
+    return this.saveWithImages(ad.images, existingImages, files, images =>
+      this.prisma.ad.update({
+        where: { id },
+        data: {
+          ...rest,
+          status: nextStatus,
+          rejectionReason: null,
+          images,
+          ...(normalizedPhone !== undefined && {
+            phone: normalizedPhone
+          }),
+          features: features ? (features as Prisma.InputJsonValue) : undefined
+        }
+      })
+    )
   }
 
   async getAddressFromCoords(lat: number, lon: number): Promise<string> {
@@ -1552,33 +1587,31 @@ export class AdsService {
     if (id) {
       const ad = await this.getUserAdOrThrow(id, userId)
 
-      const images = await this.prepareImages(ad, existingImages ?? ad.images, files)
-
       const categoryPath = rest.categoryId
         ? await this.categoriesService.getCategoryPath(rest.categoryId)
         : ad.categoryPath
 
       const seoPath = this.categoriesService.buildSeoPath(categoryPath, ad.slug)
 
-      return this.prisma.ad.update({
-        where: { id },
-        data: {
-          ...rest,
-          phone: normalizedPhone,
-          lat: parsedLat,
-          lng: parsedLng,
-          price: price !== undefined ? parsedPrice : undefined,
-          images,
-          status: AdStatus.DRAFT,
-          rejectionReason: null,
-          features: features ? (features as Prisma.InputJsonValue) : {},
-          categoryPath,
-          seoPath
-        }
-      })
+      return this.saveWithImages(ad.images, existingImages, files, images =>
+        this.prisma.ad.update({
+          where: { id },
+          data: {
+            ...rest,
+            phone: normalizedPhone,
+            lat: parsedLat,
+            lng: parsedLng,
+            price: price !== undefined ? parsedPrice : undefined,
+            images,
+            status: AdStatus.DRAFT,
+            rejectionReason: null,
+            features: features ? (features as Prisma.InputJsonValue) : {},
+            categoryPath,
+            seoPath
+          }
+        })
+      )
     }
-
-    const images = await this.prepareImages(null, [], files)
 
     const categoryPath = await this.categoriesService.getCategoryPath(rest.categoryId)
 
@@ -1593,22 +1626,24 @@ export class AdsService {
 
     const seoPath = this.categoriesService.buildSeoPath(categoryPath, slug)
 
-    return this.prisma.ad.create({
-      data: {
-        ...rest,
-        phone: normalizedPhone,
-        lat: parsedLat,
-        lng: parsedLng,
-        price: parsedPrice,
-        images,
-        userId,
-        status: AdStatus.DRAFT,
-        features: features ? (features as Prisma.InputJsonValue) : {},
-        slug,
-        categoryPath,
-        seoPath
-      }
-    })
+    return this.saveWithImages([], undefined, files, images =>
+      this.prisma.ad.create({
+        data: {
+          ...rest,
+          phone: normalizedPhone,
+          lat: parsedLat,
+          lng: parsedLng,
+          price: parsedPrice,
+          images,
+          userId,
+          status: AdStatus.DRAFT,
+          features: features ? (features as Prisma.InputJsonValue) : {},
+          slug,
+          categoryPath,
+          seoPath
+        }
+      })
+    )
   }
 
   async publishDraft(id: string, userId: string) {
@@ -1723,15 +1758,7 @@ export class AdsService {
       throw new NotFoundException('Объявление не найдено')
     }
 
-    if (ad.images?.length) {
-      await this.deleteImagesFromS3(ad.images)
-    }
-
-    await this.prisma.ad.delete({
-      where: { id }
-    })
-
-    return { success: true }
+    return this.deleteAdWithImages(ad)
   }
 
   // Удаление объявления администратором с карточки пользователя
@@ -1751,15 +1778,7 @@ export class AdsService {
       throw new NotFoundException('Объявление не найдено')
     }
 
-    if (ad.images?.length) {
-      await this.deleteImagesFromS3(ad.images)
-    }
-
-    await this.prisma.ad.delete({
-      where: { id }
-    })
-
-    return { success: true }
+    return this.deleteAdWithImages(ad)
   }
 
   // Ручная правка срока жизни объявления с карточки пользователя в админке

@@ -17,7 +17,7 @@ import {
   useSortable
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, ImagePlus, X } from 'lucide-react'
+import { GripVertical, ImagePlus, Loader2, X } from 'lucide-react'
 import Image from 'next/image'
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { Control, useController } from 'react-hook-form'
@@ -25,7 +25,9 @@ import { toast } from 'sonner'
 
 import { Label } from '@/components/ui'
 
-import { MAX_IMAGE_SIZE } from '../constants/ads.constants'
+import { compressImage } from '@/shared/utils'
+
+import { IMAGE_COMPRESSION, MAX_IMAGE_SIZE } from '../constants/ads.constants'
 import { TypeCreateAdSchema } from '../schemes'
 
 interface PhotoUploaderProps {
@@ -33,6 +35,9 @@ interface PhotoUploaderProps {
   name: 'images'
   maxFiles: number
   isPremium?: boolean
+  // Пока фото сжимаются, форма не должна отправляться: иначе объявление
+  // уйдёт без только что выбранных снимков. Родитель блокирует кнопки.
+  onProcessingChange?: (isProcessing: boolean) => void
 }
 
 // Элементы `images` — File (новые фото) вперемешку со строками-URL (уже
@@ -85,7 +90,7 @@ const SortablePhotoTile = ({ id, url, onRemove }: SortablePhotoTileProps) => {
   )
 }
 
-export const PhotoUploader = ({ control, name, maxFiles, isPremium }: PhotoUploaderProps) => {
+export const PhotoUploader = ({ control, name, maxFiles, isPremium, onProcessingChange }: PhotoUploaderProps) => {
   const { field } = useController<TypeCreateAdSchema, 'images'>({
     name,
     control
@@ -94,6 +99,24 @@ export const PhotoUploader = ({ control, name, maxFiles, isPremium }: PhotoUploa
 
   const currentFiles = useMemo<PhotoItem[]>(() => field.value ?? [], [field.value])
   const count = currentFiles.length
+
+  // Сжатие асинхронное: к его концу пользователь мог удалить или переставить
+  // фото, поэтому добавляем новые к актуальному списку, а не к тому, что был
+  // в момент выбора файлов.
+  const latestFilesRef = useRef(currentFiles)
+  useEffect(() => {
+    latestFilesRef.current = currentFiles
+  }, [currentFiles])
+
+  const [isProcessing, setIsProcessing] = useState(false)
+
+  useEffect(() => {
+    onProcessingChange?.(isProcessing)
+
+    // Если загрузчик убрали с экрана посреди сжатия (например, вернулись на
+    // шаг назад), флаг не должен навсегда остаться включённым.
+    return () => onProcessingChange?.(false)
+  }, [isProcessing, onProcessingChange])
 
   const isLimitReached = count >= maxFiles
 
@@ -149,28 +172,45 @@ export const PhotoUploader = ({ control, name, maxFiles, isPremium }: PhotoUploa
     field.onChange(arrayMove(currentFiles, oldIndex, newIndex))
   }
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const newFiles = Array.from(e.target.files || [])
-    const currentFiles = field.value ?? []
 
-    const oversizedFile = newFiles.find(file => file.size > MAX_IMAGE_SIZE)
+    // Сбрасываем input сразу: иначе повторный выбор того же файла не вызовет
+    // onChange. Сами File остаются валидными.
+    e.target.value = ''
 
-    if (oversizedFile) {
-      toast.error('Размер изображения не должен превышать 10 МБ')
+    if (newFiles.length === 0) return
 
-      if (inputRef.current) inputRef.current.value = ''
-
-      return
-    }
-
-    if (currentFiles.length + newFiles.length > maxFiles) {
+    if (latestFilesRef.current.length + newFiles.length > maxFiles) {
       toast.error(`Можно загрузить не более ${maxFiles} фото`)
       return
     }
 
-    field.onChange([...currentFiles, ...newFiles])
+    setIsProcessing(true)
 
-    if (inputRef.current) inputRef.current.value = ''
+    try {
+      // По одному, а не Promise.all: распаковка нескольких 12-мегапиксельных
+      // снимков одновременно может не поместиться в память слабого телефона.
+      const processedFiles: File[] = []
+
+      for (const file of newFiles) {
+        processedFiles.push(await compressImage(file, IMAGE_COMPRESSION))
+      }
+
+      // Лимит проверяем уже по сжатым файлам: фото в 15 МБ после сжатия
+      // обычно проходит. Негодные пропускаем, остальные добавляем.
+      const acceptedFiles = processedFiles.filter(file => file.size <= MAX_IMAGE_SIZE)
+
+      if (acceptedFiles.length < processedFiles.length) {
+        toast.error('Размер изображения не должен превышать 10 МБ')
+      }
+
+      if (acceptedFiles.length > 0) {
+        field.onChange([...latestFilesRef.current, ...acceptedFiles])
+      }
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const removeFile = (index: number) => {
@@ -196,10 +236,11 @@ export const PhotoUploader = ({ control, name, maxFiles, isPremium }: PhotoUploa
               <button
                 type='button'
                 onClick={() => inputRef.current?.click()}
-                aria-label='Добавить фото'
-                className='hover:border-primary flex aspect-square flex-col items-center justify-center rounded-lg border-2 border-dashed text-sm text-gray-500 transition-colors'
+                disabled={isProcessing}
+                aria-label={isProcessing ? 'Обрабатываем фото' : 'Добавить фото'}
+                className='hover:border-primary flex aspect-square flex-col items-center justify-center rounded-lg border-2 border-dashed text-sm text-gray-500 transition-colors disabled:cursor-wait disabled:hover:border-current'
               >
-                <ImagePlus className='text-gray-900' />
+                {isProcessing ? <Loader2 className='animate-spin text-gray-900' /> : <ImagePlus className='text-gray-900' />}
               </button>
             )}
 

@@ -75,6 +75,9 @@ export const AdForm = ({
   const [features, setFeatures] = useState<ICategoryFeature[]>([])
   const [priceUnits, setPriceUnits] = useState<string[]>(['ITEM'])
   const [step, setStep] = useState(isEdit ? 2 : 1)
+  // Идёт сжатие выбранных фото (см. PhotoUploader) — отправлять форму или
+  // сохранять черновик рано, иначе новые снимки в запрос не попадут.
+  const [isPhotosProcessing, setIsPhotosProcessing] = useState(false)
   const { user } = useProfile()
   const categoryPath = useAdStore(state => state.categoryPath)
   const setCategoryPath = useAdStore(state => state.setCategoryPath)
@@ -173,7 +176,7 @@ export const AdForm = ({
             <button
               type='button'
               className='text-sm font-medium text-gray-500 disabled:opacity-50'
-              disabled={isSaveDrafting}
+              disabled={isSaveDrafting || isPhotosProcessing}
               onClick={handleSaveDraft}
             >
               Сохранить и выйти
@@ -182,7 +185,7 @@ export const AdForm = ({
             <button
               type='button'
               className='text-sm font-medium text-gray-500 disabled:opacity-50'
-              disabled={isSubmitting}
+              disabled={isSubmitting || isPhotosProcessing}
               onClick={handleSubmitForm}
             >
               {submitButtonText}
@@ -316,6 +319,7 @@ export const AdForm = ({
                 name='images'
                 maxFiles={user?.maxUploadLimit ?? 5}
                 isPremium={isPremium}
+                onProcessingChange={setIsPhotosProcessing}
               />
               <Controller
                 name='address'
@@ -430,7 +434,7 @@ export const AdForm = ({
                 variant='secondary'
                 size='lg'
                 type='button'
-                disabled={isSubmitting}
+                disabled={isSubmitting || isPhotosProcessing}
                 onClick={handleSubmitForm}
               >
                 {submitButtonText}
@@ -441,7 +445,7 @@ export const AdForm = ({
                   variant='outline'
                   size='lg'
                   type='button'
-                  disabled={isSaveDrafting}
+                  disabled={isSaveDrafting || isPhotosProcessing}
                   onClick={handleSaveDraft}
                 >
                   Сохранить черновик

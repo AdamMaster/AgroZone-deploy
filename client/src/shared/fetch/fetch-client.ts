@@ -1,4 +1,4 @@
-import { FetchError } from './fetch-error'
+import { FetchError, NETWORK_ERROR_MESSAGE, OFFLINE_ERROR_MESSAGE, getStatusErrorMessage } from './fetch-error'
 import { RequestOptions, TypeSearchParams } from './fetch-types'
 
 export class FetchClient {
@@ -58,12 +58,29 @@ export class FetchClient {
       }
     }
 
-    const response: Response = await fetch(url, config)
+    let response: Response
+
+    try {
+      response = await fetch(url, config)
+    } catch (error) {
+      // Отмену запроса (AbortController) пробрасываем как есть — это не сбой.
+      if (error instanceof DOMException && error.name === 'AbortError') throw error
+
+      // Запрос не дошёл или ответ не получен: обрыв соединения, нет сети,
+      // сервер перезапускается, ответ заблокирован. fetch в этих случаях
+      // бросает TypeError("Failed to fetch") без подробностей.
+      const isOffline = typeof navigator !== 'undefined' && !navigator.onLine
+
+      throw new FetchError(0, isOffline ? OFFLINE_ERROR_MESSAGE : NETWORK_ERROR_MESSAGE)
+    }
 
     if (!response.ok) {
-      const error = (await response.json()) as { message: string } | undefined
+      // Тела может не быть или оно не JSON (HTML-страница ошибки nginx,
+      // пустой ответ) — тогда падать на разборе нельзя, иначе настоящая
+      // причина потеряется.
+      const error = (await response.json().catch(() => undefined)) as { message?: string } | undefined
 
-      throw new FetchError(response.status, error?.message || response.statusText)
+      throw new FetchError(response.status, error?.message || getStatusErrorMessage(response.status, response.statusText))
     }
 
     if (response.headers.get('Content-Type')?.includes('application/json')) {

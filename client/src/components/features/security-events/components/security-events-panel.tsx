@@ -1,10 +1,14 @@
 import { ReactNode } from 'react'
 
-import { cn } from '@/lib/utils'
-
 import { pluralizeRu } from '@/shared/utils'
 
-import { SECURITY_EVENTS_VARIANT_STYLES, SecurityEventGroup, SecurityEventsVariant } from '../constants/security-event.constants'
+import { cn } from '@/lib/utils'
+
+import {
+  SECURITY_EVENTS_VARIANT_STYLES,
+  SecurityEventGroup,
+  SecurityEventsVariant
+} from '../constants/security-event.constants'
 import { IAdminSecurityEvent, ISecurityEvent } from '../types/security-event.types'
 import { SecurityEventsFilter } from './security-events-filter'
 import { SecurityEventsList } from './security-events-list'
@@ -51,15 +55,17 @@ export const SecurityEventsPanel = ({
 
   return (
     <div>
-      <SecurityEventsFilter activeGroupId={activeGroupId} onChange={onGroupChange} getChipClassName={getChipClassName} />
+      <SecurityEventsFilter
+        activeGroupId={activeGroupId}
+        onChange={onGroupChange}
+        getChipClassName={getChipClassName}
+      />
 
       {isLoading && <p className={cn('mt-3 text-sm', styles.muted)}>Загрузка...</p>}
 
       {isError && !isLoading && <p className='mt-3 text-sm text-red-500'>Не удалось загрузить журнал событий.</p>}
 
-      {!isLoading && !isError && events.length === 0 && (
-        <p className={cn('mt-3 text-sm', styles.muted)}>{emptyText}</p>
-      )}
+      {!isLoading && !isError && events.length === 0 && <p className={cn('mt-3 text-sm', styles.muted)}>{emptyText}</p>}
 
       {events.length > 0 && (
         <div className={cn('mt-3 transition-opacity', isRefreshing && 'opacity-60')}>

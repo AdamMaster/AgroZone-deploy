@@ -1,11 +1,11 @@
-import { cn } from '@/lib/utils'
-
 import { formatDateTime } from '@/shared/utils'
 
+import { cn } from '@/lib/utils'
+
 import {
+  SECURITY_EVENTS_VARIANT_STYLES,
   SECURITY_EVENT_ACTOR_LABELS,
   SECURITY_EVENT_META,
-  SECURITY_EVENTS_VARIANT_STYLES,
   SecurityEventsVariant,
   UNKNOWN_SECURITY_EVENT_META
 } from '../constants/security-event.constants'
@@ -21,8 +21,7 @@ interface SecurityEventsListProps {
 // администратора, User-Agent целиком) — различаем по ним, а не по
 // отдельному пропсу, чтобы список нельзя было "включить" в админском режиме
 // на данных пользователя.
-const isAdminEvent = (event: ISecurityEvent | IAdminSecurityEvent): event is IAdminSecurityEvent =>
-  'actorName' in event
+const isAdminEvent = (event: ISecurityEvent | IAdminSecurityEvent): event is IAdminSecurityEvent => 'actorName' in event
 
 // Кто совершил действие, если это не сам владелец аккаунта (обычное
 // действие пользователя отдельной подписью не выделяем — это норма).
@@ -51,7 +50,10 @@ export const SecurityEventsList = ({ events, variant }: SecurityEventsListProps)
         return (
           <li key={event.id} className={cn('flex items-start gap-3 rounded-md p-3', styles.row)}>
             <span
-              className={cn('mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full', styles.tones[meta.tone])}
+              className={cn(
+                'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full',
+                styles.tones[meta.tone]
+              )}
             >
               <Icon className='size-4' />
             </span>

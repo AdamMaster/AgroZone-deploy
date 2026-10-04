@@ -781,4 +781,59 @@ describe('UserService', () => {
       expect(securityEventsService.record).not.toHaveBeenCalled()
     })
   })
+
+  describe('updateAvatar', () => {
+    const OLD = 'https://cdn.example/avatars/old.jpg'
+    const NEW = 'https://cdn.example/avatars/new.jpg'
+
+    beforeEach(() => {
+      fileService.deleteFileByUrl = jest.fn().mockResolvedValue(undefined)
+      prisma.user.update.mockResolvedValue({ id: 'user-1', picture: NEW })
+    })
+
+    it('удаляет прежнюю аватарку из S3 через FileService только после записи новой ссылки', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', picture: OLD })
+      const order: string[] = []
+      prisma.user.update.mockImplementation(() => {
+        order.push('db')
+        return Promise.resolve({ id: 'user-1', picture: NEW })
+      })
+      fileService.deleteFileByUrl.mockImplementation(() => {
+        order.push('s3-delete')
+        return Promise.resolve()
+      })
+
+      await service.updateAvatar('user-1', NEW)
+
+      expect(fileService.deleteFileByUrl).toHaveBeenCalledWith(OLD)
+      expect(order).toEqual(['db', 's3-delete'])
+    })
+
+    it('если БД отказала — прежняя аватарка остаётся в S3', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', picture: OLD })
+      prisma.user.update.mockRejectedValue(new Error('db down'))
+
+      await expect(service.updateAvatar('user-1', NEW)).rejects.toThrow('db down')
+
+      expect(fileService.deleteFileByUrl).not.toHaveBeenCalled()
+    })
+
+    it('не вызывает удаление, если аватарки не было', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', picture: null })
+
+      await service.updateAvatar('user-1', NEW)
+
+      expect(fileService.deleteFileByUrl).not.toHaveBeenCalled()
+    })
+
+    it('сбой очистки S3 не ломает смену аватарки', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', picture: OLD })
+      fileService.deleteFileByUrl.mockRejectedValue(new Error('s3 down'))
+      const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+
+      await expect(service.updateAvatar('user-1', NEW)).resolves.toEqual({ id: 'user-1', picture: NEW })
+
+      consoleError.mockRestore()
+    })
+  })
 })

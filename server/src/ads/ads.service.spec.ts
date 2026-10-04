@@ -24,17 +24,31 @@ describe('AdsService', () => {
   let service: AdsService
   let prisma: any
   let categoriesService: any
+  let fileService: any
+  let userService: any
 
   beforeEach(async () => {
     prisma = {
       ad: {
         findUnique: jest.fn(),
-        update: jest.fn()
+        findFirst: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn()
       },
       category: {
         findUnique: jest.fn()
+      },
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ premiumUntil: null })
       }
     }
+
+    fileService = {
+      uploadFile: jest.fn(),
+      deleteFileByUrl: jest.fn().mockResolvedValue(undefined)
+    }
+    userService = { findById: jest.fn() }
 
     categoriesService = {
       getFeatures: jest.fn().mockResolvedValue([]),
@@ -46,11 +60,11 @@ describe('AdsService', () => {
       providers: [
         AdsService,
         { provide: PrismaService, useValue: prisma },
-        { provide: FileService, useValue: {} },
+        { provide: FileService, useValue: fileService },
         { provide: ConfigService, useValue: { get: jest.fn(), getOrThrow: jest.fn() } },
         { provide: AdStateMachineService, useValue: { canTransition: jest.fn(), transition: jest.fn() } },
         { provide: CategoriesService, useValue: categoriesService },
-        { provide: UserService, useValue: {} },
+        { provide: UserService, useValue: userService },
         { provide: NotificationsService, useValue: {} }
       ]
     }).compile()
@@ -250,6 +264,226 @@ describe('AdsService', () => {
           data: expect.objectContaining({ features: { power: 95, power__unit: 'кВт' } })
         })
       )
+    })
+  })
+
+  // ---------------------------------------------------------------------
+  // Работа с файлами в S3: порядок «сначала БД — потом удаление файлов»,
+  // откат загруженных файлов при сбое записи и защита от чужих ссылок в
+  // existingImages (см. AdsService.saveWithImages).
+  // ---------------------------------------------------------------------
+  describe('фото в S3', () => {
+    const OLD_A = 'https://cdn.example/ads/a.jpg'
+    const OLD_B = 'https://cdn.example/ads/b.jpg'
+    const NEW_URL = 'https://cdn.example/ads/new.jpg'
+    const file = { originalname: 'new.jpg', buffer: Buffer.from('x'), mimetype: 'image/jpeg' } as Express.Multer.File
+
+    const existingAd = {
+      id: 'ad-1',
+      userId: 'user-1',
+      status: 'DRAFT',
+      images: [OLD_A, OLD_B],
+      slug: 'ad-abc',
+      categoryPath: ['tehnika']
+    }
+
+    beforeEach(() => {
+      prisma.ad.findFirst.mockResolvedValue(existingAd)
+      prisma.ad.update.mockImplementation(({ data }: any) => Promise.resolve({ id: 'ad-1', ...data }))
+      prisma.ad.create.mockImplementation(({ data }: any) => Promise.resolve({ id: 'ad-new', ...data }))
+      fileService.uploadFile.mockResolvedValue({ url: NEW_URL, fileId: 'ads/new.jpg' })
+    })
+
+    describe('update', () => {
+      it('удаляет из S3 только убранные фото и только после записи в БД', async () => {
+        const order: string[] = []
+        prisma.ad.update.mockImplementation(() => {
+          order.push('db')
+          return Promise.resolve({ id: 'ad-1' })
+        })
+        fileService.deleteFileByUrl.mockImplementation(() => {
+          order.push('s3-delete')
+          return Promise.resolve()
+        })
+
+        await service.update('ad-1', { existingImages: [OLD_A] } as any, 'user-1')
+
+        expect(prisma.ad.update).toHaveBeenCalledWith(
+          expect.objectContaining({ data: expect.objectContaining({ images: [OLD_A] }) })
+        )
+        expect(fileService.deleteFileByUrl).toHaveBeenCalledTimes(1)
+        expect(fileService.deleteFileByUrl).toHaveBeenCalledWith(OLD_B)
+        expect(order).toEqual(['db', 's3-delete'])
+      })
+
+      it('не трогает фото, если existingImages не передан', async () => {
+        await service.update('ad-1', { title: 'Новое название' } as any, 'user-1')
+
+        expect(prisma.ad.update).toHaveBeenCalledWith(
+          expect.objectContaining({ data: expect.objectContaining({ images: [OLD_A, OLD_B] }) })
+        )
+        expect(fileService.deleteFileByUrl).not.toHaveBeenCalled()
+      })
+
+      it('при сбое записи в БД оставляет старые фото в S3 и удаляет только что загруженные', async () => {
+        prisma.ad.update.mockRejectedValue(new Error('db down'))
+
+        await expect(
+          service.update('ad-1', { existingImages: [OLD_A] } as any, 'user-1', [file])
+        ).rejects.toThrow('db down')
+
+        expect(fileService.deleteFileByUrl).toHaveBeenCalledTimes(1)
+        expect(fileService.deleteFileByUrl).toHaveBeenCalledWith(NEW_URL)
+      })
+
+      it('не загружает файлы и не трогает S3, если телефон некорректен', async () => {
+        await expect(
+          service.update('ad-1', { phone: 'abc', existingImages: [] } as any, 'user-1', [file])
+        ).rejects.toThrow(BadRequestException)
+
+        expect(fileService.uploadFile).not.toHaveBeenCalled()
+        expect(fileService.deleteFileByUrl).not.toHaveBeenCalled()
+        expect(prisma.ad.update).not.toHaveBeenCalled()
+      })
+
+      it('игнорирует в existingImages ссылки, которые не принадлежат объявлению (чужой файл не удаляется)', async () => {
+        const foreign = 'https://cdn.example/ads/someone-elses.jpg'
+
+        await service.update('ad-1', { existingImages: [OLD_A, foreign] } as any, 'user-1')
+
+        expect(prisma.ad.update).toHaveBeenCalledWith(
+          expect.objectContaining({ data: expect.objectContaining({ images: [OLD_A] }) })
+        )
+        expect(fileService.deleteFileByUrl).toHaveBeenCalledTimes(1)
+        expect(fileService.deleteFileByUrl).toHaveBeenCalledWith(OLD_B)
+        expect(fileService.deleteFileByUrl).not.toHaveBeenCalledWith(foreign)
+      })
+
+      it('сбой удаления из S3 не ломает уже сохранённое объявление', async () => {
+        fileService.deleteFileByUrl.mockRejectedValue(new Error('s3 down'))
+
+        await expect(service.update('ad-1', { existingImages: [OLD_A] } as any, 'user-1')).resolves.toBeDefined()
+      })
+
+      it('если одна из загрузок упала — удаляет уже загруженные файлы и не пишет в БД', async () => {
+        fileService.uploadFile
+          .mockResolvedValueOnce({ url: NEW_URL, fileId: 'ads/new.jpg' })
+          .mockRejectedValueOnce(new Error('upload failed'))
+
+        await expect(service.update('ad-1', {} as any, 'user-1', [file, file])).rejects.toThrow('upload failed')
+
+        expect(fileService.deleteFileByUrl).toHaveBeenCalledWith(NEW_URL)
+        expect(prisma.ad.update).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('saveDraft', () => {
+      beforeEach(() => {
+        userService.findById.mockResolvedValue({ phones: [{ phone: '79991234567', isPrimary: true }] })
+        categoriesService.getCategoryPath.mockResolvedValue(['tehnika'])
+      })
+
+      it('при обновлении черновика удаляет убранные фото из S3 после записи в БД', async () => {
+        await service.saveDraft('user-1', { existingImages: [OLD_B], categoryId: 'cat-1' } as any, [], 'ad-1')
+
+        expect(prisma.ad.update).toHaveBeenCalledWith(
+          expect.objectContaining({ data: expect.objectContaining({ images: [OLD_B] }) })
+        )
+        expect(fileService.deleteFileByUrl).toHaveBeenCalledWith(OLD_A)
+      })
+
+      it('при сбое создания черновика удаляет загруженные файлы', async () => {
+        prisma.ad.create.mockRejectedValue(new Error('db down'))
+
+        await expect(service.saveDraft('user-1', { categoryId: 'cat-1', title: 'Т' } as any, [file])).rejects.toThrow(
+          'db down'
+        )
+
+        expect(fileService.deleteFileByUrl).toHaveBeenCalledWith(NEW_URL)
+      })
+    })
+
+    describe('create', () => {
+      beforeEach(() => {
+        userService.findById.mockResolvedValue({ phones: [{ phone: '79991234567', isPrimary: true }] })
+        prisma.category.findUnique.mockResolvedValue({ priceUnits: [] })
+      })
+
+      const dto = { title: 'Трактор', categoryId: 'cat-1', phone: '79991234567' } as any
+
+      it('не принимает готовые ссылки из existingImages — у нового объявления только загруженные файлы', async () => {
+        await service.create({ ...dto, existingImages: ['https://cdn.example/ads/foreign.jpg'] }, 'user-1', [file])
+
+        expect(prisma.ad.create).toHaveBeenCalledWith(
+          expect.objectContaining({ data: expect.objectContaining({ images: [NEW_URL] }) })
+        )
+      })
+
+      it('при сбое записи в БД удаляет загруженные файлы', async () => {
+        prisma.ad.create.mockRejectedValue(new Error('db down'))
+
+        await expect(service.create(dto, 'user-1', [file])).rejects.toThrow('db down')
+
+        expect(fileService.deleteFileByUrl).toHaveBeenCalledWith(NEW_URL)
+      })
+
+      it('не загружает файлы, если единица цены не подходит категории', async () => {
+        prisma.category.findUnique.mockResolvedValue({ priceUnits: ['KG'] })
+
+        await expect(service.create({ ...dto, unit: 'HOUR' }, 'user-1', [file])).rejects.toThrow(BadRequestException)
+
+        expect(fileService.uploadFile).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('remove / removeByAdmin', () => {
+      it('remove: сначала удаляет запись, затем все фото объявления из S3', async () => {
+        const order: string[] = []
+        prisma.ad.delete.mockImplementation(() => {
+          order.push('db')
+          return Promise.resolve({})
+        })
+        fileService.deleteFileByUrl.mockImplementation((url: string) => {
+          order.push(url)
+          return Promise.resolve()
+        })
+
+        await expect(service.remove('ad-1', 'user-1')).resolves.toEqual({ success: true })
+
+        expect(order).toEqual(['db', OLD_A, OLD_B])
+      })
+
+      it('remove: если БД отказала — фото остаются в S3', async () => {
+        prisma.ad.delete.mockRejectedValue(new Error('db down'))
+
+        await expect(service.remove('ad-1', 'user-1')).rejects.toThrow('db down')
+
+        expect(fileService.deleteFileByUrl).not.toHaveBeenCalled()
+      })
+
+      it('remove: сбой удаления файла не мешает успешному удалению объявления', async () => {
+        fileService.deleteFileByUrl.mockRejectedValue(new Error('s3 down'))
+
+        await expect(service.remove('ad-1', 'user-1')).resolves.toEqual({ success: true })
+      })
+
+      it('removeByAdmin: удаляет запись и все фото', async () => {
+        prisma.ad.findUnique.mockResolvedValue(existingAd)
+
+        await expect(service.removeByAdmin('ad-1')).resolves.toEqual({ success: true })
+
+        expect(prisma.ad.delete).toHaveBeenCalledWith({ where: { id: 'ad-1' } })
+        expect(fileService.deleteFileByUrl).toHaveBeenCalledTimes(2)
+      })
+
+      it('removeByAdmin: несуществующее объявление — 404 и никаких удалений', async () => {
+        prisma.ad.findUnique.mockResolvedValue(null)
+
+        await expect(service.removeByAdmin('ad-x')).rejects.toThrow(NotFoundException)
+
+        expect(prisma.ad.delete).not.toHaveBeenCalled()
+        expect(fileService.deleteFileByUrl).not.toHaveBeenCalled()
+      })
     })
   })
 })

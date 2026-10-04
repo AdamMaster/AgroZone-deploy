@@ -628,23 +628,9 @@ export class UserService {
 
   async updateAvatar(userId: string, fileName: string) {
     const user = await this.findById(userId)
+    const previousPicture = user.picture
 
-    // 2. Если у пользователя уже была старая аватарка, удаляем её из S3
-    if (user && user.picture) {
-      try {
-        const bucketName = this.configService.getOrThrow<string>('S3_BUCKET_NAME')
-        const fileId = user.picture.split(`${bucketName}/`)[1]
-
-        if (fileId) {
-          await this.fileService.deleteFile(fileId)
-        }
-      } catch (error) {
-        console.error('Не удалось удалить старую аватарку из S3:', error)
-      }
-    }
-
-    // 3. Обновляем поле picture новой ссылкой
-    return this.prismaService.user.update({
+    const updated = await this.prismaService.user.update({
       where: {
         id: userId
       },
@@ -652,6 +638,21 @@ export class UserService {
         picture: fileName // Сюда прилетит uploadResult.url из контроллера
       }
     })
+
+    // Старую аватарку удаляем из S3 только после успешной записи новой ссылки
+    // — иначе при сбое БД в профиле осталась бы ссылка на уже удалённый файл.
+    // Внешние ссылки (например, аватар из Яндекс OAuth) FileService не
+    // распознаёт как свои файлы и пропускает. Сбой очистки не должен ронять
+    // успешную смену аватара — файл просто останется лишним в бакете.
+    if (previousPicture && previousPicture !== fileName) {
+      try {
+        await this.fileService.deleteFileByUrl(previousPicture)
+      } catch (error) {
+        console.error('Не удалось удалить старую аватарку из S3:', error)
+      }
+    }
+
+    return updated
   }
 
   // Аналог updateAvatar выше, но для документа презентации компании (см.
