@@ -13,10 +13,6 @@ export const DealerFeedsQueue = () => {
 
   return (
     <div className='py-6 text-mist-50'>
-      <Heading level={3} className='mb-4 font-medium text-white'>
-        Фиды дилеров на проверке
-      </Heading>
-
       {isLoading && <p className='text-sm'>Загрузка...</p>}
 
       {!isLoading && pendingDealerFeeds.length === 0 && <p className='text-sm'>Нечего проверять — очередь пуста.</p>}

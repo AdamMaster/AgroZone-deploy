@@ -1,6 +1,7 @@
 'use client'
 
 import { ArrowLeft, Building2, Flag, ShieldCheck, UserPlus } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -22,6 +23,9 @@ export const AdminNav = () => {
 
   return (
     <nav>
+      <Link href='/' className='mb-4 block px-4.5'>
+        <Image src='/images/logo-white.svg' alt='Logo' width={110} height={32} />
+      </Link>
       <ul className='flex flex-col gap-1 px-2'>
         {items.map(item => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
@@ -31,7 +35,7 @@ export const AdminNav = () => {
               <Link
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-2 rounded-sm px-2.5 py-1.5 text-mist-50 hover:bg-mist-600/30',
+                  'flex items-center gap-2 rounded-sm px-3 py-1.5 text-mist-50 hover:bg-mist-600/30',
                   isActive && 'bg-mist-600/30'
                 )}
               >
