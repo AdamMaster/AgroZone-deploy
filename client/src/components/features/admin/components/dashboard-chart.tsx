@@ -49,7 +49,7 @@ export const DashboardChart = ({ series, isRefreshing }: DashboardChartProps) =>
           ))}
         </div>
 
-        <Button type='button' size='sm' className={ADMIN_BUTTON_CLASS} onClick={() => setIsTableView(prev => !prev)}>
+        <Button type='button' variant='mist' size='sm' onClick={() => setIsTableView(prev => !prev)}>
           {isTableView ? 'График' : 'Таблица'}
         </Button>
       </div>
@@ -58,7 +58,10 @@ export const DashboardChart = ({ series, isRefreshing }: DashboardChartProps) =>
         {isTableView ? (
           <DashboardSeriesTable series={series} />
         ) : (
-          <ChartContainer config={chartConfig} className='aspect-auto h-[260px] w-full justify-start'>
+          <ChartContainer
+            config={chartConfig}
+            className='aspect-auto h-[260px] w-full justify-start [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-white/5'
+          >
             <BarChart data={chartData} barCategoryGap='15%'>
               <CartesianGrid vertical={false} stroke='rgba(255, 255, 255, 0.08)' />
               <XAxis
@@ -80,7 +83,7 @@ export const DashboardChart = ({ series, isRefreshing }: DashboardChartProps) =>
                 tick={{ fill: 'var(--muted-foreground)' }}
               />
               <ChartTooltip
-                cursor={{ fill: 'rgba(255, 255, 255, 0.06)' }}
+                cursor={true}
                 isAnimationActive={false}
                 content={
                   <ChartTooltipContent
@@ -97,7 +100,13 @@ export const DashboardChart = ({ series, isRefreshing }: DashboardChartProps) =>
                   />
                 }
               />
-              <Bar dataKey='value' name={metric.label} fill='var(--color-value)' radius={[4, 4, 0, 0]} maxBarSize={36} />
+              <Bar
+                dataKey='value'
+                name={metric.label}
+                fill='var(--color-value)'
+                radius={[4, 4, 0, 0]}
+                maxBarSize={36}
+              />
             </BarChart>
           </ChartContainer>
         )}
