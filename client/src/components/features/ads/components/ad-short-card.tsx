@@ -17,6 +17,7 @@ import { IAd } from '../../ads/types/ad.types'
 import { AD_BADGE_LABELS } from '../constants/ad-services.constants'
 import { useActivateAd, useDraftAd, useRemoveAd, useRepublishAd } from '../hooks'
 import { useArchiveAd } from '../hooks/use-archive-ad'
+import { isAdRemovable } from '../utils/is-ad-removable'
 import { AdRemoveConfirmDialog } from './ad-remove-confirm-dialog'
 
 // Один и тот же вид кнопки «Ещё» для всех статусов объявления.
@@ -101,7 +102,10 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
     republishAd({ id: ad.id })
   }
 
-  const detailHref = ad.status === 'PUBLISHED' ? `/ads/${ad.id}` : `/ads/${ad.id}/edit`
+  // Опубликованное объявление открывается на публичной странице, остальные
+  // (публичная отдаёт для них 404) — на странице просмотра владельца.
+  // Редактирование — отдельная кнопка, а не переход по клику на карточку.
+  const detailHref = ad.status === 'PUBLISHED' ? `/ads/${ad.id}` : `/ads/${ad.id}/my`
 
   const removeAction: AdMenuAction = {
     key: 'remove',
@@ -111,21 +115,17 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
     destructive: true
   }
 
-  // Пункты меню «Ещё» по статусам. Статусы, которых здесь нет, остаются без
-  // меню.
-  const menuActionsByStatus: Partial<Record<IAd['status'], AdMenuAction[]>> = {
-    PUBLISHED: [{ key: 'archive', label: 'Снять с публикации', onClick: handleArchive }, removeAction],
-    PENDING: [
-      { key: 'archive', label: 'Уже не актуально', onClick: handleArchive, disabled: isLoadingArchive },
-      removeAction
-    ],
-    REJECTED: [{ key: 'draft', label: 'В черновик', onClick: handleDraft, disabled: isLoadingDraft }, removeAction],
-    ARCHIVED: [removeAction],
-    DRAFT: [removeAction],
-    EXPIRED: [removeAction]
+  // Пункты меню «Ещё»: действие, специфичное для статуса, плюс «Удалить» —
+  // его нет у объявлений на модерации и опубликованных, их сначала нужно
+  // снять с публикации (см. isAdRemovable). Если пунктов нет вовсе, меню не
+  // показывается.
+  const statusActionsByStatus: Partial<Record<IAd['status'], AdMenuAction[]>> = {
+    PUBLISHED: [{ key: 'archive', label: 'Снять с публикации', onClick: handleArchive }],
+    PENDING: [{ key: 'archive', label: 'Уже не актуально', onClick: handleArchive, disabled: isLoadingArchive }],
+    REJECTED: [{ key: 'draft', label: 'В черновик', onClick: handleDraft, disabled: isLoadingDraft }]
   }
 
-  const menuActions = menuActionsByStatus[ad.status]
+  const menuActions = [...(statusActionsByStatus[ad.status] ?? []), ...(isAdRemovable(ad.status) ? [removeAction] : [])]
 
   const statusItems: { key: string; content: ReactNode }[] = []
 
@@ -259,12 +259,6 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
         </div>
 
         <div className='hidden w-full flex-col gap-2 sm:flex md:w-48'>
-          {ad.status === 'DRAFT' ||
-            (ad.status === 'ARCHIVED' && (
-              <Button variant='outline' onClick={() => handlePublished()} disabled={isLoadingActivate}>
-                Опубликовать
-              </Button>
-            ))}
           {ad.status === 'PUBLISHED' && (
             <div>
               <Button
@@ -277,7 +271,7 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
               </Button>
             </div>
           )}
-          {ad.status === 'DRAFT' && (
+          {(ad.status === 'DRAFT' || ad.status === 'ARCHIVED') && (
             <Button variant='outline' onClick={() => handlePublished()} disabled={isLoadingActivate}>
               Опубликовать
             </Button>
@@ -291,7 +285,7 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
             <Button className='grow' variant='outline' onClick={() => handleEdit()}>
               {ad.status === 'REJECTED' ? 'Исправить' : 'Редактировать'}
             </Button>
-            {menuActions && (
+            {menuActions.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger aria-label='Ещё' className={MENU_TRIGGER_CLASS_NAME}>
                   <Ellipsis className='size-5' />

@@ -17,8 +17,16 @@ import { IAd } from '../types/ad.types'
 // всегда есть (объявление приходит с сервера через SSR-пропс), так что
 // честнее и так и отразить это в типе — заодно react-query сам выводит
 // `data: IAd` без `| undefined`.
+//
+// Публичный запрос делаем только для опубликованного объявления: у остальных
+// (страница просмотра владельца — архив, черновик и т.д.) он вернул бы 404, а
+// записывать просмотр владельцем собственного объявления не нужно. Тогда
+// источник данных — сам initialData, который на странице владельца обновляет
+// родитель (useMyAd).
 export function useAd(id: string, initialData: IAd) {
-  const { data: ad, isLoading } = useQuery({
+  const isPublic = initialData.status === 'PUBLISHED'
+
+  const { data, isLoading } = useQuery({
     queryKey: ['ad-public', id],
     // trackView: true — это и есть настоящий визит браузера (реальная кука
     // сессии, реальные IP/UA), в отличие от SSR-вызова adsService.findOne в
@@ -29,8 +37,8 @@ export function useAd(id: string, initialData: IAd) {
     queryFn: () => adsService.findOne(id, { trackView: true }),
     initialData,
     staleTime: 0,
-    enabled: !!id
+    enabled: !!id && isPublic
   })
 
-  return { ad, isLoading }
+  return { ad: isPublic ? data : initialData, isLoading }
 }

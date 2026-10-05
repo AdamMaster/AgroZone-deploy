@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { BadRequestException, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common'
 
 import { AdsService } from './ads.service'
 import { PrismaService } from '@/prisma/prisma.service'
@@ -328,9 +328,9 @@ describe('AdsService', () => {
       it('при сбое записи в БД оставляет старые фото в S3 и удаляет только что загруженные', async () => {
         prisma.ad.update.mockRejectedValue(new Error('db down'))
 
-        await expect(
-          service.update('ad-1', { existingImages: [OLD_A] } as any, 'user-1', [file])
-        ).rejects.toThrow('db down')
+        await expect(service.update('ad-1', { existingImages: [OLD_A] } as any, 'user-1', [file])).rejects.toThrow(
+          'db down'
+        )
 
         expect(fileService.deleteFileByUrl).toHaveBeenCalledTimes(1)
         expect(fileService.deleteFileByUrl).toHaveBeenCalledWith(NEW_URL)
@@ -437,6 +437,37 @@ describe('AdsService', () => {
     })
 
     describe('remove / removeByAdmin', () => {
+      it.each(['PUBLISHED', 'PENDING'])(
+        'remove: объявление в статусе %s нельзя удалить напрямую — ничего не удаляется',
+        async status => {
+          prisma.ad.findFirst.mockResolvedValue({ ...existingAd, status })
+
+          await expect(service.remove('ad-1', 'user-1')).rejects.toThrow(ConflictException)
+
+          expect(prisma.ad.delete).not.toHaveBeenCalled()
+          expect(fileService.deleteFileByUrl).not.toHaveBeenCalled()
+        }
+      )
+
+      it.each(['DRAFT', 'REJECTED', 'ARCHIVED', 'EXPIRED'])(
+        'remove: объявление в статусе %s удаляется',
+        async status => {
+          prisma.ad.findFirst.mockResolvedValue({ ...existingAd, status })
+
+          await expect(service.remove('ad-1', 'user-1')).resolves.toEqual({ success: true })
+
+          expect(prisma.ad.delete).toHaveBeenCalledWith({ where: { id: 'ad-1' } })
+        }
+      )
+
+      it('removeByAdmin: админ может удалить и опубликованное объявление', async () => {
+        prisma.ad.findUnique.mockResolvedValue({ ...existingAd, status: 'PUBLISHED' })
+
+        await expect(service.removeByAdmin('ad-1')).resolves.toEqual({ success: true })
+
+        expect(prisma.ad.delete).toHaveBeenCalledWith({ where: { id: 'ad-1' } })
+      })
+
       it('remove: сначала удаляет запись, затем все фото объявления из S3', async () => {
         const order: string[] = []
         prisma.ad.delete.mockImplementation(() => {
@@ -484,6 +515,86 @@ describe('AdsService', () => {
         expect(prisma.ad.delete).not.toHaveBeenCalled()
         expect(fileService.deleteFileByUrl).not.toHaveBeenCalled()
       })
+    })
+  })
+
+  describe('findOne', () => {
+    const now = Date.now()
+
+    it('отдаёт публичное объявление без телефона и с плоским adsCount продавца', async () => {
+      prisma.ad.findUnique.mockResolvedValue({
+        id: 'ad-1',
+        userId: 'user-1',
+        status: 'PUBLISHED',
+        expiresAt: new Date(now + 86_400_000),
+        phone: '79990001122',
+        user: { id: 'user-1', displayName: 'Адам', _count: { ads: 2 } }
+      })
+
+      const result = await service.findOne('ad-1')
+
+      expect(result).not.toHaveProperty('phone')
+      expect(result.user).toEqual({ id: 'user-1', displayName: 'Адам', adsCount: 2 })
+    })
+
+    it.each(['DRAFT', 'PENDING', 'REJECTED', 'ARCHIVED', 'EXPIRED'])(
+      'объявление в статусе %s публично недоступно — 404',
+      async status => {
+        prisma.ad.findUnique.mockResolvedValue({
+          id: 'ad-1',
+          userId: 'user-1',
+          status,
+          expiresAt: new Date(now + 86_400_000),
+          user: { id: 'user-1', _count: { ads: 0 } }
+        })
+
+        await expect(service.findOne('ad-1')).rejects.toThrow(NotFoundException)
+      }
+    )
+  })
+
+  describe('findOneForOwner', () => {
+    const rawAd = {
+      id: 'ad-1',
+      userId: 'user-1',
+      status: 'ARCHIVED',
+      phone: '79990001122',
+      category: { id: 'cat-1' },
+      user: { id: 'user-1', displayName: 'Адам', premiumUntil: null, _count: { ads: 3 } }
+    }
+
+    it('отдаёт объявление владельца в любом статусе вместе с продавцом и плоским adsCount', async () => {
+      prisma.ad.findFirst.mockResolvedValue(rawAd)
+
+      const result = await service.findOneForOwner('ad-1', 'user-1')
+
+      expect(prisma.ad.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'ad-1', userId: 'user-1' } })
+      )
+      expect(result.status).toBe('ARCHIVED')
+      expect(result.phone).toBe('79990001122')
+      expect(result.user).toEqual({ id: 'user-1', displayName: 'Адам', premiumUntil: null, adsCount: 3 })
+      expect(result.user).not.toHaveProperty('_count')
+    })
+
+    it('считает adsCount только по другим опубликованным непросроченным объявлениям', async () => {
+      prisma.ad.findFirst.mockResolvedValue(rawAd)
+
+      await service.findOneForOwner('ad-1', 'user-1')
+
+      const { include } = prisma.ad.findFirst.mock.calls[0][0]
+
+      expect(include.user.select._count.select.ads.where).toEqual({
+        status: 'PUBLISHED',
+        expiresAt: { gt: expect.any(Date) },
+        id: { not: 'ad-1' }
+      })
+    })
+
+    it('чужое или несуществующее объявление — 404', async () => {
+      prisma.ad.findFirst.mockResolvedValue(null)
+
+      await expect(service.findOneForOwner('ad-1', 'someone-else')).rejects.toThrow(NotFoundException)
     })
   })
 })

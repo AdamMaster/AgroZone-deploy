@@ -14,7 +14,7 @@ export function useDraftAd() {
     mutationKey: ['draft ad'],
     mutationFn: (id: string) => adsService.draft(id),
 
-    onSuccess() {
+    onSuccess(_data, id) {
       toast.success('Объявление сохранено в черновики')
 
       queryClient.invalidateQueries({
@@ -28,6 +28,8 @@ export function useDraftAd() {
       queryClient.invalidateQueries({
         queryKey: ['rejected-ads']
       })
+
+      queryClient.invalidateQueries({ queryKey: ['ad', id] })
     },
 
     onError(error) {

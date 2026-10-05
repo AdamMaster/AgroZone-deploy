@@ -15,9 +15,10 @@ export function useRepublishAd() {
     mutationKey: ['republish ad'],
     mutationFn: ({ id, data }: { id: string; data?: IUpdateAdDto }) => adsService.republish(id, data), // Теперь вызываем republish
 
-    onSuccess() {
+    onSuccess(_data, { id }) {
       toast.success('Объявление опубликовано')
       queryClient.invalidateQueries({ queryKey: ['my-ads'] })
+      queryClient.invalidateQueries({ queryKey: ['ad', id] })
     },
     onError(error) {
       toastMessageHandler(error)

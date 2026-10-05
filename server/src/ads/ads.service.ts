@@ -3,7 +3,7 @@ import { PrismaService } from '@/prisma/prisma.service'
 import { FileService } from '../file/file.service'
 import { ConfigService } from '@nestjs/config'
 import 'multer'
-import { AD_LIMITS } from './constants/ads.constants'
+import { AD_LIMITS, AD_STATUSES_BLOCKING_OWNER_REMOVAL } from './constants/ads.constants'
 import { isPremiumActive } from '@/premium/utils/is-premium-active.util'
 import { CreateAdDto } from './dto/create-ad.dto'
 import { AdStatus, FeatureType, PriceUnit, Prisma } from '@/generated/prisma/client'
@@ -807,47 +807,7 @@ export class AdsService {
       where: { id },
       include: {
         category: true,
-        user: {
-          select: {
-            id: true,
-            displayName: true,
-            picture: true,
-            createdAt: true,
-            type: true,
-            // Готовое к показу название из DaData ("ИП Иванов И.И." /
-            // "ООО РОМАШКА") — заполнено только если продавец подтвердил
-            // ИП/компанию через ИНН (см. UserService.verifyBusiness).
-            // Фронт показывает его вместо самозаявленного типа только
-            // когда businessVerifiedAt действительно есть (см. AdDetail) —
-            // тут это отдельно не проверяем, просто отдаём как есть.
-            businessName: true,
-            businessVerifiedAt: true,
-            // Для бейджа "Премиум" рядом с именем продавца на публичной
-            // карточке (см. AdDetail) — фронт сам решает, активен ли он
-            // прямо сейчас (premiumUntil > now), тут просто отдаём сырое
-            // значение, без is-premium-active.util (та утилита серверная,
-            // фронту нужна своя копия проверки — см. isPremiumActive в
-            // client/src/shared/utils/user.util.ts).
-            premiumUntil: true,
-            // Считаем ДРУГИЕ активные объявления продавца прямо в этом же
-            // запросе (filtered relation count), без отдельного round-trip
-            // к базе. Фильтр совпадает с условием "объявление видно
-            // публично": опубликовано и не просрочено, плюс исключаем само
-            // текущее объявление — фронту нужно число "ещё объявлений", а
-            // не "всего объявлений включая это".
-            _count: {
-              select: {
-                ads: {
-                  where: {
-                    status: AdStatus.PUBLISHED,
-                    expiresAt: { gt: now },
-                    id: { not: id }
-                  }
-                }
-              }
-            }
-          }
-        },
+        user: { select: this.buildSellerSelect(id, now) },
         // Тот же приём, что и в findAll: тянем связь с избранным только
         // если известен userId, иначе просто не запрашиваем её.
         favorites: userId
@@ -889,14 +849,63 @@ export class AdsService {
     // и рейт-лимитом.
     const { user, favorites, phone: _phone, ...rest } = ad
 
-    let userWithAdsCount: (Omit<NonNullable<typeof user>, '_count'> & { adsCount: number }) | null = null
-
-    if (user) {
-      const { _count, ...userRest } = user
-      userWithAdsCount = { ...userRest, adsCount: _count.ads }
+    return {
+      ...rest,
+      user: user ? this.withSellerAdsCount(user) : null,
+      isFavorite: userId ? (favorites?.length ?? 0) > 0 : false
     }
+  }
 
-    return { ...rest, user: userWithAdsCount, isFavorite: userId ? (favorites?.length ?? 0) > 0 : false }
+  // Какие поля продавца нужны карточке объявления (AdDetail на фронте) —
+  // общий select для публичного findOne и владельческого findOneForOwner:
+  // страница просмотра владельца переиспользует тот же AdDetail, что и
+  // публичная, поэтому состав user в ответах должен совпадать.
+  private buildSellerSelect(adId: string, now: Date) {
+    return {
+      id: true,
+      displayName: true,
+      picture: true,
+      createdAt: true,
+      type: true,
+      // Готовое к показу название из DaData ("ИП Иванов И.И." / "ООО РОМАШКА")
+      // — заполнено только если продавец подтвердил ИП/компанию через ИНН
+      // (см. UserService.verifyBusiness). Фронт показывает его вместо
+      // самозаявленного типа только когда businessVerifiedAt действительно
+      // есть (см. AdDetail) — тут это отдельно не проверяем, просто отдаём
+      // как есть.
+      businessName: true,
+      businessVerifiedAt: true,
+      // Для бейджа "Премиум" рядом с именем продавца (см. AdDetail) — фронт
+      // сам решает, активен ли он прямо сейчас (premiumUntil > now), тут
+      // просто отдаём сырое значение, без is-premium-active.util (та
+      // утилита серверная, фронту нужна своя копия проверки — см.
+      // isPremiumActive в client/src/shared/utils/user.util.ts).
+      premiumUntil: true,
+      // Считаем ДРУГИЕ активные объявления продавца прямо в этом же запросе
+      // (filtered relation count), без отдельного round-trip к базе. Фильтр
+      // совпадает с условием "объявление видно публично": опубликовано и не
+      // просрочено, плюс исключаем само текущее объявление — фронту нужно
+      // число "ещё объявлений", а не "всего объявлений включая это".
+      _count: {
+        select: {
+          ads: {
+            where: {
+              status: AdStatus.PUBLISHED,
+              expiresAt: { gt: now },
+              id: { not: adId }
+            }
+          }
+        }
+      }
+    } satisfies Prisma.UserSelect
+  }
+
+  // Prisma отдаёт счётчик вложенным `_count.ads` — фронту нужен плоский
+  // `adsCount` (см. IAdUser).
+  private withSellerAdsCount<T extends { _count: { ads: number } }>(user: T) {
+    const { _count, ...userRest } = user
+
+    return { ...userRest, adsCount: _count.ads }
   }
 
   // B2 в ROADMAP.md: единственное место, откуда публично можно получить
@@ -1131,6 +1140,10 @@ export class AdsService {
     return Math.min(this.MAX_WEEK_OFFSET, Math.max(weeksSincePublished, 0))
   }
 
+  // Объявление владельца в любом статусе (черновик, архив, отклонённое и
+  // т.д.) — в отличие от публичного findOne. Отдаёт ещё и user (продавца) и
+  // номер телефона: этот ответ кормит и форму редактирования, и страницу
+  // просмотра владельца, которая рендерится тем же AdDetail, что и публичная.
   async findOneForOwner(id: string, userId: string) {
     const ad = await this.prisma.ad.findFirst({
       where: {
@@ -1138,7 +1151,8 @@ export class AdsService {
         userId
       },
       include: {
-        category: true
+        category: true,
+        user: { select: this.buildSellerSelect(id, new Date()) }
       }
     })
 
@@ -1146,7 +1160,9 @@ export class AdsService {
       throw new NotFoundException('Объявление не найдено')
     }
 
-    return ad
+    const { user, ...rest } = ad
+
+    return { ...rest, user: user ? this.withSellerAdsCount(user) : null }
   }
 
   private async getUserAdOrThrow(id: string, userId: string) {
@@ -1756,6 +1772,10 @@ export class AdsService {
 
     if (!ad) {
       throw new NotFoundException('Объявление не найдено')
+    }
+
+    if (AD_STATUSES_BLOCKING_OWNER_REMOVAL.includes(ad.status)) {
+      throw new ConflictException('Объявление активно. Сначала снимите его с публикации, затем удалите.')
     }
 
     return this.deleteAdWithImages(ad)

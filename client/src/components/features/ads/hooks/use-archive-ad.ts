@@ -14,8 +14,10 @@ export function useArchiveAd() {
     mutationKey: ['archive ad'],
     mutationFn: (id: string) => adsService.archive(id),
 
-    onSuccess() {
-      toast.success('Объявление перенесено в архив')
+    onSuccess(_data, id) {
+      toast.success('Объявление перенесено в архив', {
+        description: 'Его можно восстановить в течение 30 дней, затем оно удалится'
+      })
 
       queryClient.invalidateQueries({
         queryKey: ['my-ads']
@@ -28,6 +30,8 @@ export function useArchiveAd() {
       queryClient.invalidateQueries({
         queryKey: ['archived-ads']
       })
+
+      queryClient.invalidateQueries({ queryKey: ['ad', id] })
     },
 
     onError(error) {

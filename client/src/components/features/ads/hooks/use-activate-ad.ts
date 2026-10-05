@@ -14,7 +14,7 @@ export function useActivateAd() {
     mutationKey: ['activate ad'],
     mutationFn: (id: string) => adsService.activate(id),
 
-    onSuccess() {
+    onSuccess(_data, id) {
       toast.success('Объявление отправлено на модерацию')
 
       queryClient.invalidateQueries({
@@ -24,6 +24,8 @@ export function useActivateAd() {
       queryClient.invalidateQueries({
         queryKey: ['pending-ads']
       })
+
+      queryClient.invalidateQueries({ queryKey: ['ad', id] })
     },
 
     onError(error) {

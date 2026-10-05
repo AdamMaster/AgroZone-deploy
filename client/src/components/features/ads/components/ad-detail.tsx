@@ -33,18 +33,24 @@ import { cn } from '@/lib/utils'
 import { UserAvatar } from '../../user/components'
 import { AD_PRICE_HIGHLIGHT_CLASS } from '../constants/ad-services.constants'
 import {
+  useActivateAd,
   useAd,
   useAdCounters,
   useAdPhone,
   useAddFavorite,
   useArchiveAd,
+  useDraftAd,
   useRemoveAd,
-  useRemoveFavorite
+  useRemoveFavorite,
+  useRepublishAd
 } from '../hooks'
 import { IAd, ICategoryFeature } from '../types/ad.types'
+import { isAdRemovable } from '../utils/is-ad-removable'
 import { AdBadgeChip } from './ad-badge-chip'
 import { AdCountersPanel } from './ad-counters-panel'
+import { AdRemoveConfirmDialog } from './ad-remove-confirm-dialog'
 import { AdServicesStatusHandler } from './ad-services-status-handler'
+import { AdStatusBanner } from './ad-status-banner'
 import { BumpStatusHandler } from './bump-status-handler'
 import { CategoryBreadcrumbItem, CategoryBreadcrumbs } from './category-breadcrumbs'
 import { FavoriteButton } from './favorite-button'
@@ -117,11 +123,15 @@ export const AdDetail = ({
   const [hasOpenedLightbox, setHasOpenedLightbox] = useState(false)
   const [revealedPhone, setRevealedPhone] = useState<string | null>(null)
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
+  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false)
 
   const { addFavorite, isAddingFavorite } = useAddFavorite()
   const { removeFavorite, isRemovingFavorite } = useRemoveFavorite()
   const { archiveAd, isLoadingArchive } = useArchiveAd()
   const { removeAd, isLoadingRemove } = useRemoveAd()
+  const { activateAd, isLoadingActivate } = useActivateAd()
+  const { draftAd, isLoadingDraft } = useDraftAd()
+  const { republishAd, isLoadingRepublishAd } = useRepublishAd()
   const { revealPhone, isRevealingPhone } = useAdPhone()
 
   const scrollToImage = (index: number) => {
@@ -153,6 +163,14 @@ export const AdDetail = ({
 
   const isOwner = !!user && user.id === ad.userId
 
+  // Публичная ссылка есть только у опубликованного объявления — у остальных
+  // адрес страницы владельца (/ads/[id]/my), другим людям он отдаёт 404, так
+  // что делиться им бессмысленно. Статистика осмысленна, если объявление
+  // уже показывалось покупателям.
+  const isPublished = ad.status === 'PUBLISHED'
+  const hasViewStats = isPublished || ad.status === 'ARCHIVED' || ad.status === 'EXPIRED'
+  const canMoveToDraft = ad.status === 'REJECTED'
+
   const onClickFavorite = () => {
     if (ad.isFavorite) {
       removeFavorite(ad.id)
@@ -171,7 +189,18 @@ export const AdDetail = ({
   }
 
   const handleArchive = () => archiveAd(ad.id)
-  const handleRemove = () => removeAd(ad.id, { onSuccess: () => router.push('/profile/settings/ads') })
+  const handleActivate = () => activateAd(ad.id)
+  const handleDraft = () => draftAd(ad.id)
+  const handleOpenStats = () => router.push(`/ads/${ad.id}/stats`)
+  const handleRepublish = () => republishAd({ id: ad.id })
+  const handleRemove = () => setIsRemoveDialogOpen(true)
+  const handleConfirmRemove = () =>
+    removeAd(ad.id, {
+      onSuccess: () => {
+        setIsRemoveDialogOpen(false)
+        router.push('/profile/settings/ads')
+      }
+    })
 
   const handleShareTelegram = () => {
     const url = window.location.href
@@ -232,8 +261,17 @@ export const AdDetail = ({
         {!isOwner && user && (
           <ReportAdDialog adId={ad.id} open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen} />
         )}
+        {isOwner && (
+          <AdRemoveConfirmDialog
+            open={isRemoveDialogOpen}
+            onOpenChange={setIsRemoveDialogOpen}
+            adTitle={ad.title}
+            isLoading={isLoadingRemove}
+            onConfirm={handleConfirmRemove}
+          />
+        )}
         <div className='sticky top-0 z-10 -mx-4 mb-4 flex items-center justify-between bg-white md:hidden dark:bg-neutral-800'>
-          <ButtonBack onClick={() => router.back()} className='rounded-none shadow-none!' />
+          <ButtonBack onClick={() => router.back()} className='shadow-none!' />
           {isOwner ? (
             <div className='flex items-center'>
               <button
@@ -244,23 +282,28 @@ export const AdDetail = ({
               >
                 <Edit size={20} />
               </button>
-              <DropdownMenu>
-                <DropdownMenuTrigger className='flex size-13 items-center justify-center' aria-label='Ещё'>
-                  <Ellipsis size={20} />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className='w-48' align='end'>
-                  <DropdownMenuItem onClick={handleShareTelegram}>Telegram</DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleShareWhatsapp}>WhatsApp</DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleCopyLink}>Скопировать ссылку</DropdownMenuItem>
-                  <DropdownMenuItem
-                    className='text-red-500 hover:text-red-500!'
-                    disabled={isLoadingRemove}
-                    onClick={handleRemove}
-                  >
-                    Удалить
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {(isPublished || hasViewStats || canMoveToDraft) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger className='flex size-13 items-center justify-center' aria-label='Ещё'>
+                    <Ellipsis size={20} />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className='w-48' align='end'>
+                    {hasViewStats && <DropdownMenuItem onClick={handleOpenStats}>Статистика</DropdownMenuItem>}
+                    {canMoveToDraft && (
+                      <DropdownMenuItem onClick={handleDraft} disabled={isLoadingDraft}>
+                        В черновик
+                      </DropdownMenuItem>
+                    )}
+                    {isPublished && (
+                      <>
+                        <DropdownMenuItem onClick={handleShareTelegram}>Telegram</DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleShareWhatsapp}>WhatsApp</DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleCopyLink}>Скопировать ссылку</DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           ) : (
             <div className='flex items-center'>
@@ -310,6 +353,55 @@ export const AdDetail = ({
         <Heading level={1} className='mb-6 hidden sm:block'>
           {ad.title}
         </Heading>
+        {/* Неопубликованное объявление открывает только его владелец
+            (страница /ads/[id]/my) — плашка статуса и действия, доступные в
+            этом статусе. Опубликованное объявление управляется блоком ниже. */}
+        {ad.status !== 'PUBLISHED' && (
+          <div className='mb-6'>
+            <AdStatusBanner status={ad.status} rejectionReason={ad.rejectionReason} />
+            {isOwner && (
+              <div className='mt-3 flex flex-col gap-1 sm:flex-row sm:gap-2'>
+                {(ad.status === 'DRAFT' || ad.status === 'ARCHIVED') && (
+                  <Button size='lg' className='w-full sm:w-auto' onClick={handleActivate} disabled={isLoadingActivate}>
+                    Опубликовать
+                  </Button>
+                )}
+                {ad.status === 'EXPIRED' && (
+                  <Button
+                    size='lg'
+                    className='w-full sm:w-auto'
+                    onClick={handleRepublish}
+                    disabled={isLoadingRepublishAd}
+                  >
+                    Опубликовать снова
+                  </Button>
+                )}
+                {ad.status === 'PENDING' && (
+                  <Button
+                    variant='secondary'
+                    size='lg'
+                    className='w-full sm:w-auto'
+                    onClick={handleArchive}
+                    disabled={isLoadingArchive}
+                  >
+                    Снять с публикации
+                  </Button>
+                )}
+                {isAdRemovable(ad.status) && (
+                  <Button
+                    variant='destructive'
+                    size='lg'
+                    className='w-full sm:w-auto'
+                    onClick={handleRemove}
+                    disabled={isLoadingRemove}
+                  >
+                    Удалить
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         {isOwner && (
           <>
             <div className='hidden sm:block'>
@@ -339,7 +431,7 @@ export const AdDetail = ({
                     Поднять объявление
                   </Button>
                 )}
-                {(ad.status === 'PUBLISHED' || ad.status === 'PENDING') && (
+                {ad.status === 'PUBLISHED' && (
                   <Button
                     variant='secondary'
                     size='lg'
@@ -432,19 +524,21 @@ export const AdDetail = ({
                   </span>
                 )}
               </p>
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  aria-label='Поделиться'
-                  className='absolute top-0 right-8 hidden size-8 items-center justify-center text-gray-400 transition-colors hover:text-gray-600 sm:flex'
-                >
-                  <Share2 className='size-5' />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align='end' className='w-44'>
-                  <DropdownMenuItem onClick={handleShareTelegram}>Telegram</DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleShareWhatsapp}>WhatsApp</DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleCopyLink}>Скопировать ссылку</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {isPublished && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    aria-label='Поделиться'
+                    className='absolute top-0 right-8 hidden size-8 items-center justify-center text-gray-400 transition-colors hover:text-gray-600 sm:flex'
+                  >
+                    <Share2 className='size-5' />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align='end' className='w-44'>
+                    <DropdownMenuItem onClick={handleShareTelegram}>Telegram</DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleShareWhatsapp}>WhatsApp</DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleCopyLink}>Скопировать ссылку</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
               <FavoriteButton
                 onClick={onClickFavorite}
                 isFavorite={!!ad.isFavorite}

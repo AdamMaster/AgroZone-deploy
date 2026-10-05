@@ -25,7 +25,7 @@ export const AdStats = ({ adId }: AdStatsProps) => {
   return (
     <div className='max-w-[700px]'>
       <div className='-mx-4 mb-6 flex w-auto items-center gap-3'>
-        <ButtonBack onClick={() => router.back()} />
+        <ButtonBack onClick={() => router.back()} className='shadow-none!' />
         <Heading level={2}>Статистика объявления</Heading>
       </div>
       <AdViewsStats adId={adId} />

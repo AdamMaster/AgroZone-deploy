@@ -4,10 +4,10 @@ import { cache } from 'react'
 
 import { AdDetail } from '@/components/features/ads/components'
 import { adsService } from '@/components/features/ads/services'
+import { buildCategoryPath } from '@/components/features/ads/utils/build-category-path'
 import { categoriesService } from '@/components/features/categories/services'
 import { Container, JsonLd } from '@/components/layout'
 
-import { findCategoryById, getPathToCategory } from '@/shared/utils'
 import { JsonLdBreadcrumbItem, buildBreadcrumbListJsonLd, buildProductJsonLd } from '@/shared/utils/json-ld'
 import { buildPageMetadata, truncateForMeta } from '@/shared/utils/metadata'
 
@@ -67,11 +67,7 @@ export default async function AdPage({ params }: AdPageProps) {
       .catch(() => [])
   ])
 
-  const categoryChain = getPathToCategory(categories, ad.categoryId)
-    .map(id => findCategoryById(categories, id))
-    .filter((c): c is NonNullable<typeof c> => c !== null)
-
-  const categoryPath = categoryChain.map(c => ({ name: c.name, href: `/catalog/${c.fullPath}` }))
+  const categoryPath = buildCategoryPath(categories, ad.categoryId)
 
   const breadcrumbItems: JsonLdBreadcrumbItem[] = [
     { name: 'Объявления', path: '/catalog' },
