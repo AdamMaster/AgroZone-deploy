@@ -170,7 +170,7 @@ export const AdForm = ({
   return (
     <div className='relative'>
       <div className='sticky top-0 z-10 -mx-4 mb-4 flex items-center justify-between bg-white px-4 md:hidden dark:bg-neutral-800'>
-        <ButtonBack onClick={handleTopBarBack} className='-translate-x-4 rounded-none shadow-none!' />
+        <ButtonBack onClick={handleTopBarBack} className='-translate-x-4' />
         {step === 2 &&
           (canSaveDraft ? (
             <button

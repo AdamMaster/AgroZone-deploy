@@ -1,7 +1,8 @@
 'use client'
 
+import { useSupportChatStore } from '@/store'
 import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 
 import {
   ISupportAdminConversationListItem,
@@ -26,11 +27,17 @@ interface UseSupportRealtimeOptions {
 // (см. SupportChatWidget: этот хук вызывается там, а не в каждом
 // под-компоненте панели, иначе панель открылась-закрылась = новое
 // соединение). Компонент виджета живёт в корневом layout всегда, поэтому
-// hasUnread переживает закрытие панели — это и даёт бейдж на закрытой
-// кнопке.
-export function useSupportRealtime({ isAdmin, enabled, isPanelOpen, activeAdminConversationId }: UseSupportRealtimeOptions) {
+// флаг непрочитанного (hasUnread в useSupportChatStore) переживает закрытие
+// панели — по нему рисуются бейдж на кнопке чата и точка на вкладке
+// «Сообщения».
+export function useSupportRealtime({
+  isAdmin,
+  enabled,
+  isPanelOpen,
+  activeAdminConversationId
+}: UseSupportRealtimeOptions) {
   const queryClient = useQueryClient()
-  const [hasUnread, setHasUnread] = useState(false)
+  const setHasUnread = useSupportChatStore(state => state.setHasUnread)
 
   const handleMessage = useCallback(
     (event: ISupportSocketMessageEvent) => {
@@ -57,14 +64,16 @@ export function useSupportRealtime({ isAdmin, enabled, isPanelOpen, activeAdminC
       // Участник подписан на одну-единственную персональную комнату (см.
       // SupportGateway.participantRoom) — любое событие тут гарантированно
       // про его же тикет, отдельно сверять conversationId не нужно.
-      queryClient.setQueryData<ISupportMessage[]>(['support-my-messages'], old => appendSupportMessage(old, event.message))
+      queryClient.setQueryData<ISupportMessage[]>(['support-my-messages'], old =>
+        appendSupportMessage(old, event.message)
+      )
       queryClient.invalidateQueries({ queryKey: ['support-my-conversation'] })
 
       if (event.isFromAdmin && !isPanelOpen) {
         setHasUnread(true)
       }
     },
-    [isAdmin, isPanelOpen, activeAdminConversationId, queryClient]
+    [isAdmin, isPanelOpen, activeAdminConversationId, queryClient, setHasUnread]
   )
 
   // Модераторское удаление (см. SupportGateway.handleMessageDeleted) —
@@ -83,7 +92,9 @@ export function useSupportRealtime({ isAdmin, enabled, isPanelOpen, activeAdminC
         return
       }
 
-      queryClient.setQueryData<ISupportMessage[]>(['support-my-messages'], old => removeSupportMessage(old, event.messageId))
+      queryClient.setQueryData<ISupportMessage[]>(['support-my-messages'], old =>
+        removeSupportMessage(old, event.messageId)
+      )
     },
     [isAdmin, queryClient]
   )
@@ -126,8 +137,4 @@ export function useSupportRealtime({ isAdmin, enabled, isPanelOpen, activeAdminC
     onConversationCleared: handleConversationCleared,
     onConversationHidden: handleConversationHidden
   })
-
-  const clearUnread = useCallback(() => setHasUnread(false), [])
-
-  return { hasUnread, clearUnread }
 }

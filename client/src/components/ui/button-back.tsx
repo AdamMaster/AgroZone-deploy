@@ -17,7 +17,7 @@ export const ButtonBack = ({ className, onClick, ariaLabel = 'Назад' }: But
       type='button'
       aria-label={ariaLabel}
       className={cn(
-        'custom-shadow flex size-13 items-center justify-center bg-white sm:rounded-full dark:bg-neutral-800',
+        'flex size-13 items-center justify-center bg-white sm:rounded-full sm:shadow-[0_2px_15px_rgba(0,0,0,0.08)] dark:bg-neutral-800',
         className
       )}
       onClick={onClick}

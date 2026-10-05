@@ -17,11 +17,18 @@ interface SupportChatStore {
   // конкретный тред (см. SupportAdminInbox). У обычного участника своего
   // значения нет, тикет всегда ровно один.
   activeAdminConversationId: string | null
+  // Есть ответ поддержки, который пользователь ещё не видел (участнику) /
+  // новое обращение (админу). Живёт в сторе, а не внутри виджета: его
+  // показывают и кнопка чата на десктопе, и вкладка «Сообщения»/строка
+  // «Поддержка» на мобильном, где кнопки нет. Не персистится — как и раньше,
+  // это сиюминутное состояние, которое выставляется по событиям сокета.
+  hasUnread: boolean
 
   onOpen: () => void
   onClose: () => void
   onToggle: () => void
   setActiveAdminConversationId: (id: string | null) => void
+  setHasUnread: (value: boolean) => void
 }
 
 export const useSupportChatStore = create<SupportChatStore>()(
@@ -30,11 +37,13 @@ export const useSupportChatStore = create<SupportChatStore>()(
       isOpen: false,
       hasEngaged: false,
       activeAdminConversationId: null,
+      hasUnread: false,
 
       onOpen: () => set({ isOpen: true, hasEngaged: true }),
       onClose: () => set({ isOpen: false }),
       onToggle: () => (get().isOpen ? set({ isOpen: false }) : set({ isOpen: true, hasEngaged: true })),
-      setActiveAdminConversationId: id => set({ activeAdminConversationId: id })
+      setActiveAdminConversationId: id => set({ activeAdminConversationId: id }),
+      setHasUnread: value => set({ hasUnread: value })
     }),
     {
       name: 'support-chat',

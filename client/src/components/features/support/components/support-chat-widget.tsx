@@ -20,9 +20,17 @@ import { SupportParticipantChat } from './support-participant-chat'
 // пока чат закрыт, было бы неоткуда; (2) ровно одно сокет-соединение на
 // вкладку — не по одному на каждое открытие/закрытие панели.
 export const SupportChatWidget = () => {
-  const { user } = useProfile()
-  const { isOpen, hasEngaged, activeAdminConversationId, onClose, onToggle, setActiveAdminConversationId } =
-    useSupportChatStore()
+  const { user, isLoading: isProfileLoading } = useProfile()
+  const {
+    isOpen,
+    hasEngaged,
+    hasUnread,
+    activeAdminConversationId,
+    onClose,
+    onToggle,
+    setActiveAdminConversationId,
+    setHasUnread
+  } = useSupportChatStore()
 
   const isAdmin = user?.role === UserRole.Admin
 
@@ -49,7 +57,7 @@ export const SupportChatWidget = () => {
 
   const socketEnabled = !!user || isGuestIdentityReady
 
-  const { hasUnread, clearUnread } = useSupportRealtime({
+  useSupportRealtime({
     isAdmin,
     enabled: socketEnabled,
     isPanelOpen: isOpen,
@@ -57,8 +65,16 @@ export const SupportChatWidget = () => {
   })
 
   useEffect(() => {
-    if (isOpen) clearUnread()
-  }, [isOpen, clearUnread])
+    if (isOpen) setHasUnread(false)
+  }, [isOpen, setHasUnread])
+
+  // На мобильном (там, где есть нижняя панель вкладок) кнопки нет: залогиненный
+  // участник общается с поддержкой на странице «Сообщения» (строка «Поддержка»
+  // — см. SupportConversationListItem). Кнопка остаётся админу (его инбокс
+  // живёт только в этой панели) и гостю (страницы «Сообщения» у него нет).
+  // Пока профиль грузится, кнопку не показываем — иначе она мигнёт у
+  // залогиненного.
+  const isButtonHiddenOnMobile = isProfileLoading || (!!user && !isAdmin)
 
   const handleClose = () => {
     onClose()
@@ -67,7 +83,12 @@ export const SupportChatWidget = () => {
 
   return (
     <>
-      <SupportChatButton isOpen={isOpen} hasUnread={hasUnread} onClick={onToggle} />
+      <SupportChatButton
+        isOpen={isOpen}
+        hasUnread={hasUnread}
+        isHiddenOnMobile={isButtonHiddenOnMobile}
+        onClick={onToggle}
+      />
 
       {isOpen && (
         <SupportChatPanel onClose={handleClose}>

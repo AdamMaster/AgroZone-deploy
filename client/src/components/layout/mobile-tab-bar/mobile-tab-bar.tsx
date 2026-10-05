@@ -1,6 +1,6 @@
 'use client'
 
-import { useAppModal } from '@/store'
+import { useAppModal, useSupportChatStore } from '@/store'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { JSX, MouseEvent, SVGProps } from 'react'
@@ -30,12 +30,13 @@ interface TabItem {
 }
 
 const PROFILE_HREF = '/profile/settings/general'
+const MESSAGES_HREF = '/profile/settings/messages'
 
 const TABS: TabItem[] = [
   { label: 'Главная', icon: HouseFillIcon, href: '/' },
   { label: 'Избранное', icon: HeartFillIcon, href: '/profile/settings/favorites', requiresAuth: true },
   { label: 'Объявления', icon: StackFillIcon, href: '/profile/settings/ads', requiresAuth: true },
-  { label: 'Сообщения', icon: ChatCircleFillIcon, href: '/profile/settings/messages', requiresAuth: true },
+  { label: 'Сообщения', icon: ChatCircleFillIcon, href: MESSAGES_HREF, requiresAuth: true },
   { label: 'Профиль', icon: UserFillIcon, href: PROFILE_HREF, requiresAuth: true }
 ]
 
@@ -49,6 +50,16 @@ const ProfileTabBadge = () => {
       {unreadCount > 9 ? '9+' : unreadCount}
     </span>
   )
+}
+
+// Новый ответ поддержки: плавающей кнопки чата на мобильном нет (см.
+// SupportChatWidget), поэтому о нём сообщает точка на вкладке «Сообщения».
+const MessagesTabBadge = () => {
+  const hasUnread = useSupportChatStore(state => state.hasUnread)
+
+  if (!hasUnread) return null
+
+  return <span className='bg-primary absolute -top-0.5 -right-1 size-2.5 rounded-full' />
 }
 
 export const MobileTabBar = () => {
@@ -88,6 +99,7 @@ export const MobileTabBar = () => {
             <span className='relative inline-flex'>
               <Icon className={cn('size-5', isActive ? 'dark:text-primary text-gray-950' : 'text-gray-500')} />
               {tab.href === PROFILE_HREF && user && <ProfileTabBadge />}
+              {tab.href === MESSAGES_HREF && user && <MessagesTabBadge />}
             </span>
             {tab.label}
           </Link>

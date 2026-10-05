@@ -4,15 +4,25 @@ import { Ellipsis } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo } from 'react'
 
+import { UserRole } from '@/components/features/auth/types'
+import { SupportConversationListItem } from '@/components/features/support/components/support-conversation-list-item'
+import { SupportParticipantChat } from '@/components/features/support/components/support-participant-chat'
 import { Heading } from '@/components/ui'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+
+import { useProfile } from '@/shared/hooks'
 
 import { useConversations } from '../hooks'
 import { ChatPane } from './chat-pane'
 import { ConversationList } from './conversation-list'
 
+// Значение ?c= для чата поддержки — у него нет conversationId в списке
+// диалогов объявлений (это отдельный тикет, см. SupportParticipantChat).
+const SUPPORT_CHAT_PARAM = 'support'
+
 export const MessagesClient = () => {
   const router = useRouter()
+  const { user } = useProfile()
   const searchParams = useSearchParams()
 
   const activeConversationId = searchParams.get('c')
@@ -47,6 +57,10 @@ export const MessagesClient = () => {
     router.back()
   }
 
+  // Админ отвечает на обращения в своём инбоксе (панель чата поддержки), у
+  // него «Поддержки» как собеседника нет.
+  const isSupportAvailable = !!user && user.role !== UserRole.Admin
+  const isSupportChatOpen = isSupportAvailable && activeConversationId === SUPPORT_CHAT_PARAM
   const isChatOpen = !!activeConversationId || !!newAdId
 
   return (
@@ -67,7 +81,9 @@ export const MessagesClient = () => {
       </div>
 
       <div className='flex h-[600px]'>
-        {isChatOpen ? (
+        {isSupportChatOpen ? (
+          <SupportParticipantChat onBack={handleBack} />
+        ) : isChatOpen ? (
           <ChatPane
             activeConversationId={activeConversationId}
             conversations={conversations}
@@ -81,6 +97,9 @@ export const MessagesClient = () => {
             isLoading={isLoading}
             activeId={activeConversationId}
             onSelect={handleSelect}
+            pinnedItem={
+              isSupportAvailable && <SupportConversationListItem onClick={() => handleSelect(SUPPORT_CHAT_PARAM)} />
+            }
           />
         )}
       </div>

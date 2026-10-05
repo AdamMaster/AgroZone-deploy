@@ -1,8 +1,11 @@
 'use client'
 
+import { useSupportChatStore } from '@/store'
+import { ArrowLeft } from 'lucide-react'
 import { useEffect } from 'react'
 
-import { MessageComposer } from '@/components/features/messages/components'
+import { MessageComposer } from '@/components/features/messages/components/message-composer'
+import { Button } from '@/components/ui'
 
 import { useProfile } from '@/shared/hooks'
 
@@ -15,14 +18,24 @@ import { SupportMessageThread } from './support-message-thread'
 // /guest_unique на бэкенде: у одного участника ровно один тикет
 // поддержки), поэтому и своя ChatPane/ConversationList не нужны — сразу
 // тред + композер.
-export const SupportParticipantChat = () => {
+interface SupportParticipantChatProps {
+  // Есть, когда чат встроен в страницу «Сообщения» (а не открыт в панели с
+  // собственным крестиком) — тогда в шапке показывается стрелка «назад».
+  onBack?: () => void
+}
+
+export const SupportParticipantChat = ({ onBack }: SupportParticipantChatProps) => {
   const { user } = useProfile()
+  const setHasUnread = useSupportChatStore(state => state.setHasUnread)
   const { messages, isLoading, hasMore, isLoadingMore, loadOlder } = useSupportMyMessages(true)
   const { sendMessage, isSending } = useSendSupportMyMessage()
   const { markRead } = useMarkSupportMyConversationRead()
 
+  // Чат открыт и на него смотрят — всё, что пришло, уже прочитано, в том
+  // числе сообщение, которое прилетело по сокету прямо сейчас.
   useEffect(() => {
     markRead()
+    setHasUnread(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length])
 
@@ -36,7 +49,19 @@ export const SupportParticipantChat = () => {
 
   return (
     <div className='flex min-h-0 flex-1 flex-col'>
-      <div className='bg-primary border-b border-gray-100 px-4 py-3 text-[#fff]'>
+      <div className='bg-primary flex items-center gap-2 border-b border-gray-100 px-4 py-3 text-[#fff]'>
+        {onBack && (
+          <Button
+            type='button'
+            variant='ghost'
+            size='icon'
+            onClick={onBack}
+            aria-label='Назад к диалогам'
+            className='-ml-2 size-8 text-[#fff] hover:bg-white/15 hover:text-[#fff]'
+          >
+            <ArrowLeft className='size-5' />
+          </Button>
+        )}
         <p className='font-semibold'>Поддержка AgroZone</p>
       </div>
       <SupportMessageThread

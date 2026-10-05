@@ -1,3 +1,5 @@
+import { ReactNode } from 'react'
+
 import { Skeleton } from '@/components/ui'
 
 import { IConversationListItem } from '../types/message.types'
@@ -8,11 +10,21 @@ interface ConversationListProps {
   activeId: string | null
   isLoading: boolean
   onSelect: (id: string) => void
+  // Закреплённая строка над диалогами (например, «Поддержка AgroZone»).
+  pinnedItem?: ReactNode
 }
 
-export const ConversationList = ({ conversations, activeId, isLoading, onSelect }: ConversationListProps) => {
+export const ConversationList = ({
+  conversations,
+  activeId,
+  isLoading,
+  onSelect,
+  pinnedItem
+}: ConversationListProps) => {
   return (
     <div className='flex w-full flex-col gap-1 overflow-y-auto sm:-ml-3'>
+      {pinnedItem}
+
       {isLoading &&
         Array.from({ length: 3 }).map((_, i) => (
           <div className='flex w-full items-center gap-3' key={i}>

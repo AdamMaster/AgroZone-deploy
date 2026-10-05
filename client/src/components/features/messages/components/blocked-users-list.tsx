@@ -2,8 +2,8 @@
 
 import { useRouter } from 'next/navigation'
 
-import { Button, ButtonBack, Heading, Loading } from '@/components/ui'
 import { UserAvatar } from '@/components/features/user/components'
+import { Button, ButtonBack, Heading, Loading } from '@/components/ui'
 
 import { useBlockedUsers, useUnblockUser } from '../hooks'
 
@@ -14,8 +14,8 @@ export const BlockedUsersList = () => {
 
   return (
     <div className='h-full max-w-[800px]'>
-      <div className='mb-6 flex items-center gap-3'>
-        <ButtonBack onClick={() => router.back()} />
+      <div className='relative z-10 -mx-4 -mt-4 mb-6 flex w-fit items-center sm:mx-0 sm:mt-0 sm:gap-3'>
+        <ButtonBack onClick={() => router.back()} className='' />
         <Heading level={2}>Черный список</Heading>
       </div>
 
