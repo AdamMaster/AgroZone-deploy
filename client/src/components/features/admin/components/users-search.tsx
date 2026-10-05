@@ -32,7 +32,7 @@ export const UsersSearch = () => {
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder='Имя, email или телефон'
-          className='rounded-md border-none bg-mist-700 pl-9 placeholder:text-mist-400 hover:bg-mist-600/80 focus-visible:bg-mist-600/80'
+          className='rounded-md border-mist-700 bg-transparent pl-9 placeholder:text-mist-400 hover:bg-mist-800/40 focus-visible:border-mist-600 focus-visible:bg-mist-800/40'
         />
       </div>
 

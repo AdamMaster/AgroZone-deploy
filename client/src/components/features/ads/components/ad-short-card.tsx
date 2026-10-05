@@ -5,7 +5,7 @@ import { Crown } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Fragment, ReactNode } from 'react'
+import { Fragment, ReactNode, useState } from 'react'
 
 import { Button, Heading, Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -17,6 +17,19 @@ import { IAd } from '../../ads/types/ad.types'
 import { AD_BADGE_LABELS } from '../constants/ad-services.constants'
 import { useActivateAd, useDraftAd, useRemoveAd, useRepublishAd } from '../hooks'
 import { useArchiveAd } from '../hooks/use-archive-ad'
+import { AdRemoveConfirmDialog } from './ad-remove-confirm-dialog'
+
+// Один и тот же вид кнопки «Ещё» для всех статусов объявления.
+const MENU_TRIGGER_CLASS_NAME =
+  'bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-md border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'
+
+interface AdMenuAction {
+  key: string
+  label: string
+  onClick: () => void
+  disabled?: boolean
+  destructive?: boolean
+}
 
 const formatBumpDate = (value: Date | string) => {
   const date = new Date(value)
@@ -48,6 +61,7 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
   const { activateAd, isLoadingActivate } = useActivateAd()
   const { draftAd, isLoadingDraft } = useDraftAd()
   const { republishAd, isLoadingRepublishAd } = useRepublishAd()
+  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false)
 
   const isOwnerPremiumActive = !!user?.premiumUntil && new Date(user.premiumUntil) > new Date()
   const isBumpServiceActive = !!ad.bumpServiceUntil && new Date(ad.bumpServiceUntil) > new Date()
@@ -59,8 +73,13 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
   }
 
   const handleRemove = () => {
+    setIsRemoveDialogOpen(true)
+  }
+
+  const handleConfirmRemove = () => {
     removeAd(ad.id, {
       onSuccess: () => {
+        setIsRemoveDialogOpen(false)
         router.push('/profile/settings/ads')
       }
     })
@@ -83,6 +102,30 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
   }
 
   const detailHref = ad.status === 'PUBLISHED' ? `/ads/${ad.id}` : `/ads/${ad.id}/edit`
+
+  const removeAction: AdMenuAction = {
+    key: 'remove',
+    label: 'Удалить',
+    onClick: handleRemove,
+    disabled: isLoadingRemove,
+    destructive: true
+  }
+
+  // Пункты меню «Ещё» по статусам. Статусы, которых здесь нет, остаются без
+  // меню.
+  const menuActionsByStatus: Partial<Record<IAd['status'], AdMenuAction[]>> = {
+    PUBLISHED: [{ key: 'archive', label: 'Снять с публикации', onClick: handleArchive }, removeAction],
+    PENDING: [
+      { key: 'archive', label: 'Уже не актуально', onClick: handleArchive, disabled: isLoadingArchive },
+      removeAction
+    ],
+    REJECTED: [{ key: 'draft', label: 'В черновик', onClick: handleDraft, disabled: isLoadingDraft }, removeAction],
+    ARCHIVED: [removeAction],
+    DRAFT: [removeAction],
+    EXPIRED: [removeAction]
+  }
+
+  const menuActions = menuActionsByStatus[ad.status]
 
   const statusItems: { key: string; content: ReactNode }[] = []
 
@@ -248,89 +291,22 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
             <Button className='grow' variant='outline' onClick={() => handleEdit()}>
               {ad.status === 'REJECTED' ? 'Исправить' : 'Редактировать'}
             </Button>
-            {ad.status === 'PUBLISHED' && (
+            {menuActions && (
               <DropdownMenu>
-                <DropdownMenuTrigger
-                  aria-label='Ещё'
-                  className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'
-                >
+                <DropdownMenuTrigger aria-label='Ещё' className={MENU_TRIGGER_CLASS_NAME}>
                   <Ellipsis className='size-5' />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className='w-40' align='end'>
-                  <DropdownMenuItem onClick={() => handleArchive()}>Снять с публикации</DropdownMenuItem>
-                  <DropdownMenuItem
-                    className='text-red-500 hover:text-red-500!'
-                    disabled={isLoadingRemove}
-                    onClick={() => handleRemove()}
-                  >
-                    Удалить
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            {ad.status === 'PENDING' && (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  aria-label='Ещё'
-                  className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'
-                >
-                  <Ellipsis className='size-5' />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className='w-40' align='end'>
-                  <DropdownMenuItem onClick={() => handleArchive()} disabled={isLoadingArchive}>
-                    Уже не актуально
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className='text-red-500 hover:text-red-500!' onClick={() => handleRemove()}>
-                    Удалить
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            {ad.status === 'REJECTED' && (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  aria-label='Ещё'
-                  className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'
-                >
-                  <Ellipsis className='size-5' />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className='w-40' align='end'>
-                  <DropdownMenuItem onClick={() => handleDraft()} disabled={isLoadingDraft}>
-                    В черновик
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className='text-red-500 hover:text-red-500!' onClick={() => handleRemove()}>
-                    Удалить
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            {ad.status === 'ARCHIVED' && (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  aria-label='Ещё'
-                  className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'
-                >
-                  <Ellipsis className='size-5' />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className='w-40' align='end'>
-                  <DropdownMenuItem className='text-red-500 hover:text-red-500!' onClick={() => handleRemove()}>
-                    Удалить
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            {ad.status === 'DRAFT' && (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  aria-label='Ещё'
-                  className='bg-background! hover:bg-muted! hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-input/50 flex w-10 items-center justify-center rounded-lg border! dark:border-none dark:bg-neutral-50! dark:text-neutral-900!'
-                >
-                  <Ellipsis className='size-5' />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className='w-40' align='end'>
-                  <DropdownMenuItem className='text-red-500 hover:text-red-500!' onClick={() => handleRemove()}>
-                    Удалить
-                  </DropdownMenuItem>
+                  {menuActions.map(action => (
+                    <DropdownMenuItem
+                      key={action.key}
+                      className={action.destructive ? 'text-red-500 hover:text-red-500!' : undefined}
+                      disabled={action.disabled}
+                      onClick={action.onClick}
+                    >
+                      {action.label}
+                    </DropdownMenuItem>
+                  ))}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -351,6 +327,14 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
           ))}
         </div>
       )}
+
+      <AdRemoveConfirmDialog
+        open={isRemoveDialogOpen}
+        onOpenChange={setIsRemoveDialogOpen}
+        adTitle={ad.title}
+        isLoading={isLoadingRemove}
+        onConfirm={handleConfirmRemove}
+      />
     </div>
   )
 }

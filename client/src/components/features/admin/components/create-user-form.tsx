@@ -62,7 +62,7 @@ export const CreateUserForm = () => {
   const submittedPassword = form.getValues('password')
 
   const fieldClassName =
-    'bg-mist-700/50 border-none hover:bg-mist-700/50 focus-visible:bg-mist-700/70 placeholder:text-mist-400 rounded-sm'
+    'rounded-md border-mist-700 bg-transparent placeholder:text-mist-500 hover:bg-mist-800/50 focus-visible:border-mist-600 focus-visible:bg-mist-800/50'
 
   if (createdUser) {
     return (
@@ -90,9 +90,6 @@ export const CreateUserForm = () => {
               {copiedField === 'phone' ? <Check className='size-4' /> : <Copy className='size-4' />}
             </Button>
           </div>
-
-          {/* Email показываем, только если был указан при создании — поле
-          необязательное. */}
           {createdUser.email && (
             <div className='flex items-center justify-between gap-3 bg-mist-600/50 p-3'>
               <div className='min-w-0'>
@@ -205,7 +202,7 @@ export const CreateUserForm = () => {
                     type='button'
                     size='sm'
                     variant='mist'
-                    className={cn('absolute top-[50%] right-1.75 w-fit translate-y-[-50%]')}
+                    className='absolute top-[50%] right-1.75 w-fit translate-y-[-50%]'
                     onClick={() => form.setValue('password', generatePassword(), { shouldValidate: true })}
                   >
                     <RefreshCw className='size-4' />
