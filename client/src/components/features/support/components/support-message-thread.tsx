@@ -64,7 +64,7 @@ export const SupportMessageThread = ({
   }
 
   return (
-    <ScrollArea className='min-h-0 flex-1 px-3 py-3'>
+    <ScrollArea className='min-h-0 flex-1 py-3 sm:px-3'>
       <div className='flex flex-col gap-2'>
         {hasMore && onLoadOlder && (
           <div className='flex justify-center pb-1'>

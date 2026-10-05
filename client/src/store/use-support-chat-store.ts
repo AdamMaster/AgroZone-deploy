@@ -43,7 +43,10 @@ export const useSupportChatStore = create<SupportChatStore>()(
       onClose: () => set({ isOpen: false }),
       onToggle: () => (get().isOpen ? set({ isOpen: false }) : set({ isOpen: true, hasEngaged: true })),
       setActiveAdminConversationId: id => set({ activeAdminConversationId: id }),
-      setHasUnread: value => set({ hasUnread: value })
+      // Не меняем состояние, если значение то же: вызывается из эффектов
+      // ("сбросить, раз на чат смотрят"), а set() с новым объектом будит всех
+      // подписчиков стора даже при том же значении.
+      setHasUnread: value => set(state => (state.hasUnread === value ? state : { hasUnread: value }))
     }),
     {
       name: 'support-chat',

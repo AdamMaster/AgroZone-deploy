@@ -1,9 +1,10 @@
 import { ArrowLeft, ImageIcon } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { ReactNode } from 'react'
 
-import { Button } from '@/components/ui'
 import { UserAvatar } from '@/components/features/user/components'
+import { Button } from '@/components/ui'
 
 import { cn } from '@/lib/utils'
 
@@ -27,9 +28,11 @@ interface ChatHeaderProps {
   counterpart?: ChatHeaderCounterpart
   isLoading?: boolean
   onBack?: () => void
+  // Своя аватарка вместо буквы на цветном фоне (например, у чата поддержки).
+  avatar?: ReactNode
 }
 
-export const ChatHeader = ({ ad, counterpart, isLoading, onBack }: ChatHeaderProps) => {
+export const ChatHeader = ({ ad, counterpart, isLoading, onBack, avatar }: ChatHeaderProps) => {
   return (
     <div className='flex items-center gap-3 rounded-lg bg-gray-100 px-3 py-3'>
       {onBack && (
@@ -44,7 +47,7 @@ export const ChatHeader = ({ ad, counterpart, isLoading, onBack }: ChatHeaderPro
           <ArrowLeft className='size-5' />
         </Button>
       )}
-      <UserAvatar user={counterpart ?? { id: '', displayName: null, picture: null }} />
+      {avatar ?? <UserAvatar user={counterpart ?? { id: '', displayName: null, picture: null }} />}
       <div className='min-w-0 flex-1'>
         <p className={cn('truncate text-sm font-medium', counterpart?.deletedAt && 'text-gray-400 italic')}>
           {counterpart?.deletedAt

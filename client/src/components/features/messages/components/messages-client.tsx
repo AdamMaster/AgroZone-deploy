@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo } from 'react'
 
 import { UserRole } from '@/components/features/auth/types'
+import { SupportAdminInbox } from '@/components/features/support/components/support-admin-inbox'
 import { SupportConversationListItem } from '@/components/features/support/components/support-conversation-list-item'
 import { SupportParticipantChat } from '@/components/features/support/components/support-participant-chat'
 import { Heading } from '@/components/ui'
@@ -16,8 +17,9 @@ import { useConversations } from '../hooks'
 import { ChatPane } from './chat-pane'
 import { ConversationList } from './conversation-list'
 
-// Значение ?c= для чата поддержки — у него нет conversationId в списке
-// диалогов объявлений (это отдельный тикет, см. SupportParticipantChat).
+// Значение ?c= для поддержки — у неё нет conversationId в списке диалогов
+// объявлений: участнику это его единственный тикет (SupportParticipantChat),
+// админу — инбокс всех обращений (SupportAdminInbox).
 const SUPPORT_CHAT_PARAM = 'support'
 
 export const MessagesClient = () => {
@@ -57,9 +59,8 @@ export const MessagesClient = () => {
     router.back()
   }
 
-  // Админ отвечает на обращения в своём инбоксе (панель чата поддержки), у
-  // него «Поддержки» как собеседника нет.
-  const isSupportAvailable = !!user && user.role !== UserRole.Admin
+  const isAdmin = user?.role === UserRole.Admin
+  const isSupportAvailable = !!user
   const isSupportChatOpen = isSupportAvailable && activeConversationId === SUPPORT_CHAT_PARAM
   const isChatOpen = !!activeConversationId || !!newAdId
 
@@ -82,7 +83,11 @@ export const MessagesClient = () => {
 
       <div className='flex h-[600px]'>
         {isSupportChatOpen ? (
-          <SupportParticipantChat onBack={handleBack} />
+          isAdmin ? (
+            <SupportAdminInbox onBack={handleBack} />
+          ) : (
+            <SupportParticipantChat onBack={handleBack} />
+          )
         ) : isChatOpen ? (
           <ChatPane
             activeConversationId={activeConversationId}
@@ -98,7 +103,9 @@ export const MessagesClient = () => {
             activeId={activeConversationId}
             onSelect={handleSelect}
             pinnedItem={
-              isSupportAvailable && <SupportConversationListItem onClick={() => handleSelect(SUPPORT_CHAT_PARAM)} />
+              isSupportAvailable && (
+                <SupportConversationListItem isAdmin={isAdmin} onClick={() => handleSelect(SUPPORT_CHAT_PARAM)} />
+              )
             }
           />
         )}

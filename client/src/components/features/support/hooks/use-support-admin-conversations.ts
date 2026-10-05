@@ -3,6 +3,12 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { supportService } from '../services/support.service'
+import { ISupportAdminConversationListItem } from '../types/support.types'
+
+// Один и тот же массив на все рендеры, пока данных нет: `?? []` каждый раз
+// давал бы новую ссылку, и эффекты с conversations в зависимостях
+// перезапускались бы на каждый рендер.
+const NO_CONVERSATIONS: ISupportAdminConversationListItem[] = []
 
 export function useSupportAdminConversations(enabled: boolean) {
   const query = useQuery({
@@ -12,7 +18,7 @@ export function useSupportAdminConversations(enabled: boolean) {
   })
 
   return {
-    conversations: query.data ?? [],
+    conversations: query.data ?? NO_CONVERSATIONS,
     isLoading: query.isLoading
   }
 }

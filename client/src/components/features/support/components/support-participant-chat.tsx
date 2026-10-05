@@ -1,16 +1,16 @@
 'use client'
 
 import { useSupportChatStore } from '@/store'
-import { ArrowLeft } from 'lucide-react'
 import { useEffect } from 'react'
 
+import { ChatHeader } from '@/components/features/messages/components/chat-header'
 import { MessageComposer } from '@/components/features/messages/components/message-composer'
-import { Button } from '@/components/ui'
 
 import { useProfile } from '@/shared/hooks'
 
 import { useMarkSupportMyConversationRead, useSendSupportMyMessage, useSupportMyMessages } from '../hooks'
 import { ISupportMessage } from '../types/support.types'
+import { SupportAvatar } from './support-avatar'
 import { SupportMessageThread } from './support-message-thread'
 
 // Единственный тикет участника — в отличие от AD-переписки тут нет списка
@@ -49,21 +49,11 @@ export const SupportParticipantChat = ({ onBack }: SupportParticipantChatProps) 
 
   return (
     <div className='flex min-h-0 flex-1 flex-col'>
-      <div className='bg-primary flex items-center gap-2 border-b border-gray-100 px-4 py-3 text-[#fff]'>
-        {onBack && (
-          <Button
-            type='button'
-            variant='ghost'
-            size='icon'
-            onClick={onBack}
-            aria-label='Назад к диалогам'
-            className='-ml-2 size-8 text-[#fff] hover:bg-white/15 hover:text-[#fff]'
-          >
-            <ArrowLeft className='size-5' />
-          </Button>
-        )}
-        <p className='font-semibold'>Поддержка AgroZone</p>
-      </div>
+      <ChatHeader
+        counterpart={{ id: 'support', displayName: 'Поддержка AgroZone' }}
+        avatar={<SupportAvatar />}
+        onBack={onBack}
+      />
       <SupportMessageThread
         messages={messages}
         isLoading={isLoading}

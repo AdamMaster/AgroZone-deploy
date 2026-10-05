@@ -4,14 +4,16 @@ import { useSupportChatStore } from '@/store'
 import { Headset } from 'lucide-react'
 
 interface SupportConversationListItemProps {
+  // Админ видит не собеседника «Поддержка», а входящие обращения.
+  isAdmin: boolean
   onClick: () => void
 }
 
-// Закреплённая строка «Поддержка AgroZone» в списке диалогов на странице
-// «Сообщения» — вход в чат поддержки для залогиненного участника (на мобильном
-// плавающей кнопки чата у него нет, см. SupportChatWidget). Внешний вид — в
-// тон обычных диалогов (ConversationListItem).
-export const SupportConversationListItem = ({ onClick }: SupportConversationListItemProps) => {
+// Закреплённая строка в списке диалогов на странице «Сообщения» — вход в чат
+// поддержки (участнику) или в инбокс обращений (админу). На мобильном
+// плавающей кнопки чата у залогиненного нет, см. SupportChatWidget. Внешний
+// вид — в тон обычных диалогов (ConversationListItem).
+export const SupportConversationListItem = ({ isAdmin, onClick }: SupportConversationListItemProps) => {
   const hasUnread = useSupportChatStore(state => state.hasUnread)
 
   return (
@@ -24,10 +26,14 @@ export const SupportConversationListItem = ({ onClick }: SupportConversationList
         <Headset className='size-6' />
       </span>
       <span className='flex min-w-0 flex-1 flex-col sm:gap-0.5'>
-        <span className='text-base leading-5 font-semibold sm:text-[16px]'>Поддержка AgroZone</span>
-        <span className='truncate text-sm text-gray-500'>Задайте вопрос по работе площадки</span>
+        <span className='text-base leading-5 font-semibold sm:text-[16px]'>
+          {isAdmin ? 'Обращения в поддержку' : 'Поддержка AgroZone'}
+        </span>
+        <span className='truncate text-sm text-gray-500'>
+          {isAdmin ? 'Вопросы пользователей и гостей' : 'Задайте вопрос по работе площадки'}
+        </span>
       </span>
-      {hasUnread && <span className='bg-primary size-2 shrink-0 rounded-full' aria-label='Есть новый ответ' />}
+      {hasUnread && <span className='bg-primary size-2 shrink-0 rounded-full' aria-label='Есть новые сообщения' />}
     </button>
   )
 }

@@ -3,7 +3,7 @@
 import { ArrowLeft, Ellipsis, UserRound } from 'lucide-react'
 import { useEffect } from 'react'
 
-import { MessageComposer } from '@/components/features/messages/components'
+import { MessageComposer } from '@/components/features/messages/components/message-composer'
 import { UserAvatar } from '@/components/features/user/components'
 import { Button } from '@/components/ui'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -66,7 +66,7 @@ export const SupportAdminThread = ({ conversation, onBack }: SupportAdminThreadP
 
   return (
     <div className='flex min-h-0 flex-1 flex-col'>
-      <div className='flex items-center gap-2 border-b border-gray-100 px-2 py-2'>
+      <div className='flex items-center gap-2 border-b border-gray-100 py-2 sm:px-2'>
         <Button
           type='button'
           variant='ghost'
