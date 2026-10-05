@@ -101,7 +101,7 @@ export const ContentAds = () => {
   if (!ads?.length) {
     return (
       <div className='flex flex-col items-center justify-center text-center'>
-        <Heading className='mb-2 font-semibold' level={3}>
+        <Heading className='sm:mpt-0 mb-2 pt-12 font-semibold' level={3}>
           У вас нет объявлений
         </Heading>
         <p className='mb-4 leading-5 text-gray-500'>

@@ -81,7 +81,12 @@ export const MessagesClient = () => {
         </DropdownMenu>
       </div>
 
-      <div className='flex h-[600px]'>
+      {/* На мобильном высота — по экрану за вычетом заголовка (≈72px), нижней
+          панели вкладок (56px) и небольшого отступа, иначе поле ввода
+          уезжает под панель. -mb-10 гасит нижний padding у <main> (место под
+          панель), чтобы страница не скроллилась. На md+ панели нет —
+          фиксированные 600px. */}
+      <div className='-mb-10 flex h-[calc(100dvh-8.5rem-env(safe-area-inset-bottom))] md:mb-0 md:h-[600px]'>
         {isSupportChatOpen ? (
           isAdmin ? (
             <SupportAdminInbox onBack={handleBack} />
