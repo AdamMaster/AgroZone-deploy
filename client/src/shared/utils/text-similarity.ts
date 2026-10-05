@@ -44,3 +44,36 @@ export function sharesRussianStem(a: string, b: string): boolean {
 
   return wordA.slice(0, prefixLength) === wordB.slice(0, prefixLength)
 }
+
+const splitWords = (text: string): string[] =>
+  text
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean)
+
+// Насколько название категории соответствует поисковому запросу — для
+// сортировки подсказок (чем меньше число, тем релевантнее). Без этого
+// подсказки шли в порядке дерева категорий, и точная "Сливы" оказывалась
+// ниже "Сливок" и "Масла сливочного" (все они подходят по основе "слив-").
+//   0 — название совпадает с запросом целиком;
+//   1 — название начинается с запроса;
+//   2 — каждое слово запроса совпадает (буквально или по основе) со словом
+//       названия;
+//   3 — совпадение только через родительские категории пути.
+export function rankNameMatch(name: string, query: string): number {
+  const normalizedName = name.toLowerCase().trim()
+  const normalizedQuery = query.toLowerCase().trim()
+
+  if (normalizedName === normalizedQuery) return 0
+
+  if (normalizedName.startsWith(normalizedQuery)) return 1
+
+  const nameWords = splitWords(normalizedName)
+  const queryWords = splitWords(normalizedQuery)
+
+  const isEveryWordMatched = queryWords.every(queryWord =>
+    nameWords.some(nameWord => sharesRussianStem(queryWord, nameWord))
+  )
+
+  return isEveryWordMatched ? 2 : 3
+}

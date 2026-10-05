@@ -19,7 +19,13 @@ import {
 } from '@/components/ui'
 
 import { useMediaQuery } from '@/shared/hooks'
-import { findCategoryById, flattenCategories, getPathToCategory, sharesRussianStem } from '@/shared/utils'
+import {
+  findCategoryById,
+  flattenCategories,
+  getPathToCategory,
+  rankNameMatch,
+  sharesRussianStem
+} from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
 
@@ -73,7 +79,7 @@ export const CategoryCascader = ({ categories, form, onCategorySelect }: Categor
 
     const queryWords = term.split(/\s+/)
 
-    return source.filter(cat => {
+    const matched = source.filter(cat => {
       const pathText = cat.path.join(' ').toLowerCase()
 
       if (pathText.includes(term)) return true
@@ -82,6 +88,15 @@ export const CategoryCascader = ({ categories, form, onCategorySelect }: Categor
 
       return queryWords.every(queryWord => pathWords.some(pathWord => sharesRussianStem(queryWord, pathWord)))
     })
+
+    // Релевантность — по названию самой категории, а не по всему пути (см.
+    // rankNameMatch): точное "Сливы" должно быть выше "Сливок" и "Масла
+    // сливочного". Внутри одной релевантности — короткие названия вперёд,
+    // дальше порядок дерева (сортировка стабильна).
+    return matched
+      .map(cat => ({ cat, rank: rankNameMatch(cat.name, term) }))
+      .sort((a, b) => a.rank - b.rank || a.cat.name.length - b.cat.name.length)
+      .map(({ cat }) => cat)
   }, [flatCategories, searchTerm, isMobile])
 
   // Раньше это был переключатель "или-или" (isShowingSemanticSuggestions):
