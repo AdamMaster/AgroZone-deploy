@@ -2,7 +2,7 @@ import { IsBoolean, IsNotEmpty, IsOptional, IsString, Length } from 'class-valid
 
 export class ConfirmPhoneChangeDto {
   // См. комментарий в SmsCompleteDto/VerifySmsDto — теперь сюда
-  // подставляется call_id от zvonok (подтверждение звонком на
+  // подставляется id проверки от провайдера (подтверждение звонком на
   // проверочный номер), а не введённый пользователем четырёхзначный код.
   @IsNotEmpty({ message: 'Код подтверждения обязателен' })
   @IsString({ message: 'Код должен быть строкой' })

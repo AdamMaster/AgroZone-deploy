@@ -23,7 +23,7 @@ import { VerifySmsDto } from './dto/verify-sms.dto'
 import { SmsRegisterDto } from './dto/sms-register.dto'
 import { SmsCompleteDto } from './dto/sms-complete.dto'
 import { normalizePhone } from '@/libs/common/utils/phone.util'
-import { ZvonokService } from '@/libs/zvonok/zvonok.service'
+import { PhoneConfirmationService } from '@/libs/phone-confirmation/phone-confirmation.service'
 import { getClientIp } from '@/libs/common/utils/request-ip.util'
 import { SupportGuestsService } from '@/support/support-guests.service'
 import { LoginMethod, SecurityEventsService } from '@/security-events/security-events.service'
@@ -37,12 +37,23 @@ export class AuthService {
     private readonly providerService: ProviderService,
     private readonly emailConfirmationService: EmailConfirmationService,
     private readonly twoFactorAuthService: TwoFactorAuthService,
-    private readonly zvonokService: ZvonokService,
+    private readonly phoneConfirmationService: PhoneConfirmationService,
     private readonly supportGuestsService: SupportGuestsService,
     private readonly securityEventsService: SecurityEventsService
   ) {}
 
-  async registerSmsStart(dto: SmsRegisterDto) {
+  // Токен из БД сам по себе звонка не доказывает: он создаётся ещё на старте
+  // и содержит id проверки у провайдера. Поэтому перед любым действием,
+  // которое опирается на «номер подтверждён», заново спрашиваем провайдера.
+  private async assertCallConfirmed(phone: string, token: string) {
+    const confirmed = await this.phoneConfirmationService.checkCallbackConfirmed(phone, token)
+
+    if (!confirmed) {
+      throw new BadRequestException('Звонок не получен. Позвоните на указанный номер и попробуйте снова.')
+    }
+  }
+
+  async registerSmsStart(dto: SmsRegisterDto, ip?: string) {
     const phone = normalizePhone(dto.phone)
 
     const isExists = await this.userService.findByPhone(phone)
@@ -51,7 +62,7 @@ export class AuthService {
       throw new ConflictException('Пользователь с таким номером телефона уже зарегистрирован.')
     }
 
-    return this.sendSmsCode(phone)
+    return this.sendSmsCode(phone, TokenType.SMS_VERIFICATION, ip)
   }
 
   async registerSmsComplete(req: Request, dto: SmsCompleteDto) {
@@ -72,6 +83,8 @@ export class AuthService {
       await this.prismaService.token.delete({ where: { id: smsToken.id } })
       throw new BadRequestException('Срок действия кода истек. Запросите новый.')
     }
+
+    await this.assertCallConfirmed(phone, smsToken.token)
 
     const newUser = await this.userService.create(
       null,
@@ -123,7 +136,7 @@ export class AuthService {
     }
 
     if (newUser.phones.length) {
-      await this.sendSmsCode(newUser.phones[0].phone)
+      await this.sendSmsCode(newUser.phones[0].phone, TokenType.SMS_VERIFICATION, getClientIp(req))
       return { message: 'Код подтверждения отправлен на ваш телефон.' }
     }
 
@@ -133,14 +146,15 @@ export class AuthService {
     }
   }
 
-  async sendSmsCode(phone: string, type: TokenType = TokenType.SMS_VERIFICATION) {
-    // "Звонок на проверочный номер" — пользователь сам звонит на общий
-    // номер zvonok, никакого кода нет вообще (см. ZvonokService). Вместо
-    // кода в поле token храним call_id, который вернул zvonok — по нему
-    // потом (в checkSmsCallbackStatus) опрашиваем, поступил ли звонок.
-    // Токен сохраняем только после успешного ответа zvonok, иначе при
-    // сбое в базе остался бы "код", о котором фронт никогда не узнает.
-    const { callId, number } = await this.zvonokService.requestCallbackConfirmation(phone)
+  async sendSmsCode(phone: string, type: TokenType = TokenType.SMS_VERIFICATION, ip?: string) {
+    // "Звонок на проверочный номер" — пользователь сам звонит на выданный
+    // номер, никакого кода нет вообще (см. PhoneConfirmationService). Вместо
+    // кода в поле token храним id проверки у провайдера (sms.ru, а при сбое —
+    // Zvonok) — по нему потом (в checkSmsCallbackStatus) опрашиваем, поступил
+    // ли звонок. Токен сохраняем только после успешного ответа провайдера,
+    // иначе при сбое в базе остался бы "код", о котором фронт никогда не
+    // узнает.
+    const { callId, number } = await this.phoneConfirmationService.requestCallbackConfirmation(phone, ip)
 
     // Удаляем старые коды для этого номера
     await this.prismaService.token.deleteMany({
@@ -169,11 +183,11 @@ export class AuthService {
   }
 
   // Опрашивается с фронта, пока пользователь не позвонит на выданный
-  // номер. Кода тут нет и сверять нечего — как только zvonok подтвердит,
-  // что звонок с нужного номера поступил, отдаём фронту сам call_id
-  // (в поле code) — фронт подставляет его в уже существующие ручки
-  // подтверждения (verify-sms/register/sms/complete и т.д.), которые как
-  // раз ищут токен по этому значению, так что их менять не пришлось.
+  // номер. Кода тут нет и сверять нечего — как только провайдер подтвердит,
+  // что звонок с нужного номера поступил, отдаём фронту сам id проверки
+  // (в поле code) — фронт подставляет его в ручки подтверждения
+  // (verify-sms/register/sms/complete и т.д.), которые ищут токен по этому
+  // значению и дополнительно заново проверяют звонок у провайдера.
   async checkSmsCallbackStatus(phone: string, type: TokenType = TokenType.SMS_VERIFICATION) {
     phone = normalizePhone(phone)
 
@@ -190,12 +204,12 @@ export class AuthService {
       throw new BadRequestException('Время ожидания звонка истекло. Запросите новый код.')
     }
 
-    const confirmed = await this.zvonokService.checkCallbackConfirmed(phone, smsToken.token)
+    const confirmed = await this.phoneConfirmationService.checkCallbackConfirmed(phone, smsToken.token)
 
     return confirmed ? { confirmed: true, code: smsToken.token } : { confirmed: false }
   }
 
-  async sendPhoneChangeCode(phone: string, userId: string) {
+  async sendPhoneChangeCode(phone: string, userId: string, ip?: string) {
     phone = normalizePhone(phone)
 
     const exists = await this.userService.findByPhone(phone)
@@ -204,7 +218,7 @@ export class AuthService {
       throw new ConflictException('Этот номер уже используется.')
     }
 
-    return this.sendSmsCode(phone, TokenType.PHONE_CHANGE)
+    return this.sendSmsCode(phone, TokenType.PHONE_CHANGE, ip)
   }
 
   async confirmPhoneChange(userId: string, phone: string, code: string) {
@@ -282,6 +296,8 @@ export class AuthService {
       throw new BadRequestException('Срок действия кода истек. Запросите новый.')
     }
 
+    await this.assertCallConfirmed(phone, smsToken.token)
+
     const user = await this.userService.findByPhone(phone)
 
     if (!user) {
@@ -317,6 +333,8 @@ export class AuthService {
       await this.prismaService.token.delete({ where: { id: smsToken.id } })
       throw new BadRequestException('Срок действия кода истек. Запросите новый.')
     }
+
+    await this.assertCallConfirmed(phone, smsToken.token)
 
     return { success: true }
   }

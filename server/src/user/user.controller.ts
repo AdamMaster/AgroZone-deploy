@@ -20,6 +20,7 @@ import {
   UseGuards
 } from '@nestjs/common'
 import { Request, Response } from 'express'
+import { getClientIp } from '@/libs/common/utils/request-ip.util'
 import { UserService } from './user.service'
 import { Authorized } from '@/auth/decorators/authorized.decorator'
 import { Authorization } from '@/auth/decorators/auth.decorator'
@@ -270,8 +271,8 @@ export class UserController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(PhoneThrottlerGuard)
   @Post('profile/change-phone/request')
-  async requestPhoneChange(@Authorized('id') userId: string, @Body() dto: PhoneChangeDto) {
-    return this.userService.requestPhoneChange(userId, dto.newPhone)
+  async requestPhoneChange(@Req() req: Request, @Authorized('id') userId: string, @Body() dto: PhoneChangeDto) {
+    return this.userService.requestPhoneChange(userId, dto.newPhone, getClientIp(req))
   }
 
   @Authorization()
@@ -285,8 +286,8 @@ export class UserController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(PhoneThrottlerGuard)
   @Post('profile/phones/request')
-  async requestAddPhone(@Authorized('id') userId: string, @Body() dto: PhoneChangeDto) {
-    return this.userService.requestPhoneChange(userId, dto.newPhone)
+  async requestAddPhone(@Req() req: Request, @Authorized('id') userId: string, @Body() dto: PhoneChangeDto) {
+    return this.userService.requestPhoneChange(userId, dto.newPhone, getClientIp(req))
   }
 
   @Authorization()

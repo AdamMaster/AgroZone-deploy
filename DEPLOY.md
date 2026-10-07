@@ -96,8 +96,17 @@ cd agro-zone
    - `REDIS_HOST=dredis`
    - `POSTGRES_URI` / `REDIS_URI` — пересобрать под новые host/пароли из
      `.env` (п.1)
-   - Остальное (S3, почта, OAuth-ключи, ЮKassa, DaData, Zvonok, GigaChat)
-     — как было, эти сервисы внешние и от переезда не зависят.
+   - Подтверждение номера звонком (`server/.env`): основной провайдер —
+     sms.ru (`SMSRU_API_ID`, ключ из личного кабинета sms.ru), «Звонок»
+     (`ZVONOK_*`) остаётся запасным. Пока `SMSRU_API_ID` не задан, всё
+     работает на «Звонке», как раньше. `PHONE_CONFIRM_PROVIDER=smsru` или
+     `zvonok` принудительно выбирает основного провайдера (например, чтобы
+     быстро вернуться на «Звонок»). Если sms.ru не отвечает, а номер
+     российский, регистрация автоматически идёт через «Звонок»; для
+     иностранных номеров запасного нет. После смены переменных
+     `docker compose ... up -d server`.
+   - Остальное (S3, почта, OAuth-ключи, ЮKassa, DaData, GigaChat) — как
+     было, эти сервисы внешние и от переезда не зависят.
 3. Домены в `nginx/bootstrap/app.conf` и `nginx/conf.d/app.conf` — уже
    заменены на agro-zone.ru/api.agro-zone.ru, дополнительно ничего
    делать не нужно.
@@ -209,6 +218,186 @@ docker compose -f docker-compose.prod.yml --env-file .env up -d
 `git submodule update --init --recursive` перед сборкой, и стоит
 разобраться, почему на сервере состояние отличается от того, что видно
 в этой рабочей копии.
+
+## 6.6. Бэкапы базы данных и обслуживание диска
+
+Настроено 05.10.2026. До этого автоматических бэкапов не было — только
+ручной `pg_dump` перед рискованными операциями.
+
+### Что и куда копируется
+
+- **Когда:** каждый день в 03:30 по времени сервера (UTC, это 06:30 МСК),
+  cron root: `30 3 * * * /root/backup-db.sh >> /root/backups/backup.log 2>&1`.
+- **Что:** вся база Postgres (`pg_dump` из контейнера `postgres`), архив
+  `agrozone-ГГГГ-ММ-ДД_ЧЧММ.sql.gz` (сейчас ~100 МБ; текстовый SQL в
+  несколько раз больше — основной объём это `category_terms`).
+- **Куда:**
+  1. на сервер, `/root/backups/` (папка `chmod 700`) — хранятся 14 дней;
+  2. в Selectel S3, приватный бакет `agrozone-backups`, папка `db/` —
+     хранятся 30 дней, старше скрипт удаляет сам. Стоимость ~8–10 ₽/мес.
+- **Доступ к бакету:** политика доступа бакета, правило `backups-readwrite`
+  (набор «Редактор») для сервисного пользователя `agrozone-server-s3` —
+  тех же S3-ключей, что у приложения (`S3_ACCESS_KEY` / `S3_SECRET_KEY`
+  из `server/.env`). Чтобы видеть файлы в панели Selectel, в это же
+  правило нужно добавить и свою учётную запись владельца, иначе панель
+  покажет «Доступ запрещён» (сама загрузка при этом работает).
+- Версионирование и Object Lock на бакете выключены намеренно: иначе
+  ротация не освобождала бы место.
+
+Скрипт `/root/backup-db.sh` лежит только на сервере (в репозитории его
+нет), поэтому его текст сохранён ниже — на случай переезда на новый сервер:
+
+```bash
+#!/bin/bash
+set -euo pipefail
+DIR=/root/backups
+ENVF=/root/agro-zone/server/.env
+BUCKET=agrozone-backups
+REMOTE_KEEP_DAYS=30
+OUT="$DIR/agrozone-$(date +%F_%H%M).sql.gz"
+
+# 1. Локальный дамп
+docker exec postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB"' | gzip > "$OUT.tmp"
+gzip -t "$OUT.tmp"
+mv "$OUT.tmp" "$OUT"
+find "$DIR" -name 'agrozone-*.sql.gz' -mtime +14 -delete
+echo "$(date -Is) OK local $OUT $(du -h "$OUT" | cut -f1)"
+
+# 2. Выгрузка в Selectel (ключи берём из .env приложения)
+envval() { grep -E "^$1=" "$ENVF" | head -1 | cut -d= -f2- | tr -d '\r' | sed -E "s/^['\"]//; s/['\"]$//"; }
+export AWS_ACCESS_KEY_ID="$(envval S3_ACCESS_KEY)"
+export AWS_SECRET_ACCESS_KEY="$(envval S3_SECRET_KEY)"
+REGION="$(envval S3_REGION)"
+export AWS_DEFAULT_REGION="${REGION:-ru-6}"
+export AWS_REQUEST_CHECKSUM_CALCULATION=when_required
+export AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+EP="$(envval S3_ENDPOINT)"
+
+s3() {
+  docker run --rm -e AWS_CA_BUNDLE=/ca.pem -v /root/ca-bundle.pem:/ca.pem:ro \
+    -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_DEFAULT_REGION \
+    -e AWS_REQUEST_CHECKSUM_CALCULATION -e AWS_RESPONSE_CHECKSUM_VALIDATION \
+    -v "$DIR":/b:ro amazon/aws-cli --endpoint-url "$EP" s3 "$@" < /dev/null
+}
+
+NAME="$(basename "$OUT")"
+if s3 cp "/b/$NAME" "s3://$BUCKET/db/$NAME" --only-show-errors; then
+  echo "$(date -Is) OK remote s3://$BUCKET/db/$NAME"
+else
+  echo "$(date -Is) ERROR: upload to Selectel failed" >&2
+  exit 1
+fi
+
+# 3. Чистка старых копий в бакете
+CUT="$(date -d "$REMOTE_KEEP_DAYS days ago" +%F)"
+FILES="$(s3 ls "s3://$BUCKET/db/" | awk '{print $4}' | grep -E '^agrozone-[0-9]{4}-[0-9]{2}-[0-9]{2}_' || true)"
+for f in $FILES; do
+  d="${f:9:10}"
+  if [[ "$d" < "$CUT" ]]; then
+    s3 rm "s3://$BUCKET/db/$f" --only-show-errors
+    echo "$(date -Is) removed old remote $f"
+  fi
+done
+```
+
+Нюанс с TLS: S3-эндпоинт Selectel отдаёт сертификат с российским корневым
+центром, которого нет в образе `amazon/aws-cli` (ошибка
+`CERTIFICATE_VERIFY_FAILED ... self-signed certificate in certificate
+chain`). Поэтому скрипт монтирует в контейнер набор доверенных
+сертификатов сервера плюс корневой сертификат из репозитория. Если на
+новом сервере файла нет — создать:
+
+```bash
+cat /etc/ssl/certs/ca-certificates.crt /root/agro-zone/server/certs/russian_trusted_root_ca.pem > /root/ca-bundle.pem
+```
+
+Установка на новом сервере: положить скрипт в `/root/backup-db.sh`,
+`chmod 700`, создать `/root/backups` (`chmod 700`), создать
+`/root/ca-bundle.pem` (команда выше), добавить cron-строку из начала
+раздела и один раз запустить скрипт вручную — в конце должно быть
+`OK local …` и `OK remote …`.
+
+### Как убедиться, что бэкап работает
+
+```bash
+tail -5 /root/backups/backup.log   # свежие строки OK local / OK remote
+ls -lh /root/backups               # архивы за последние дни, ~100 МБ каждый
+```
+
+Ошибки пишутся в тот же лог, уведомлений на почту/в мессенджер нет —
+поэтому заглядывать в лог стоит раз в пару недель. Внеочередной бэкап
+(например, перед рискованной миграцией): `/root/backup-db.sh`.
+
+### Восстановление из архива
+
+Проверено 05.10.2026: архив развёрнут в пустую временную базу
+(`postgres:15.2`) без единой ошибки, число записей в таблицах совпало с
+боевой базой. Откат на самой боевой базе не репетировали — делайте его
+осознанно и только по шагам ниже.
+
+1. Взять архив. Свежий лежит на сервере в `/root/backups/`. Если сервера
+   нет или диск потерян — скачать из панели Selectel: бакет
+   `agrozone-backups` → папка `db` → нужный файл.
+2. Остановить API, чтобы никто не писал в базу во время восстановления:
+
+   ```bash
+   cd ~/agro-zone
+   docker compose -f docker-compose.prod.yml --env-file .env stop server
+   ```
+3. Сделать страховочную копию текущего состояния (даже если оно
+   «сломано») — `/root/backup-db.sh`.
+4. Пересоздать пустую базу и залить архив (`U`/`DB` — логин и имя базы
+   из контейнера `postgres`):
+
+   ```bash
+   U=$(docker exec postgres printenv POSTGRES_USER); DB=$(docker exec postgres printenv POSTGRES_DB)
+   docker exec postgres psql -U "$U" -d postgres -c "DROP DATABASE \"$DB\" WITH (FORCE);" -c "CREATE DATABASE \"$DB\";"
+   gunzip -c /root/backups/agrozone-ГГГГ-ММ-ДД_ЧЧММ.sql.gz | docker exec -i postgres psql -U "$U" -d "$DB" -q
+   ```
+5. Запустить API и проверить сайт:
+
+   ```bash
+   docker compose -f docker-compose.prod.yml --env-file .env up -d server
+   ```
+
+Таблица `_prisma_migrations` восстанавливается вместе с остальным, так
+что `prisma migrate deploy` после этого ничего лишнего не применит.
+
+Переезд на новый сервер: поднять `db` по разделам 2–4, остановить
+`server`, выполнить шаг 4 (без DROP, если база пустая), затем запустить
+остальное.
+
+### Что бэкапом НЕ покрыто
+
+- **Файл `.env` и секреты** (`.env`, `server/.env`, ключи) — в репозитории
+  их нет, в бэкап базы они не попадают. Храните копию в менеджере
+  паролей или другом защищённом месте: без них новый сервер не поднять.
+- **Фото объявлений** лежат в бакете `agrozone-media` без отдельной копии
+  и без версионирования. Если файлы удалить случайно, вернуть их нечем.
+  При желании можно включить версионирование на этом бакете.
+- **Сертификаты Let's Encrypt** — выпускаются заново по разделу 5.
+
+### Диск: кэш сборки Docker
+
+05.10.2026 диск был заполнен на 85 %: кэш сборки Docker (BuildKit) занимал
+57 ГБ, потому что копится при каждом деплое и сам не чистится. Очистили
+вручную (`docker builder prune -af`), освободилось 55 ГБ. Чтобы не
+повторилось, в cron добавлена еженедельная чистка — по воскресеньям в
+04:00 остаётся не более 8 ГБ самого свежего кэша:
+
+```bash
+0 4 * * 0 docker builder prune -af --keep-storage 8GB >> /root/backups/prune.log 2>&1
+```
+
+Не запускайте `docker volume prune` и `docker system prune --volumes`:
+они могут удалить том `postgres_data` с боевой базой, если контейнер в
+этот момент остановлен.
+
+Состояние диска: `df -h /`; что занимает место в Docker: `docker system df`.
+
+Баланс Selectel: если он закончится, сервер и хранилище могут быть
+остановлены. Включите уведомления о низком балансе / автоплатёж в
+разделе «Биллинг».
 
 ## 7. На будущее (не сегодня, но держите в уме)
 

@@ -5,12 +5,12 @@ import { MailModule } from '@/libs/mail/mail.module'
 import { AuthModule } from '../auth.module'
 import { UserService } from '@/user/user.service'
 import { MailService } from '@/libs/mail/mail.service'
-import { ZvonokService } from '@/libs/zvonok/zvonok.service'
+import { PhoneConfirmationModule } from '@/libs/phone-confirmation/phone-confirmation.module'
 
 @Module({
-  imports: [MailModule, forwardRef(() => AuthModule)],
+  imports: [MailModule, PhoneConfirmationModule, forwardRef(() => AuthModule)],
   controllers: [EmailConfirmationController],
-  providers: [EmailConfirmationService, UserService, MailService, ZvonokService],
+  providers: [EmailConfirmationService, UserService, MailService],
   exports: [EmailConfirmationService]
 })
 export class EmailConfirmationModule {}

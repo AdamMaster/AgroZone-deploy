@@ -17,6 +17,7 @@ import {
 import { AuthService } from './auth.service'
 import { RegisterDto } from './dto/register.dto'
 import { Request, Response } from 'express'
+import { getClientIp } from '@/libs/common/utils/request-ip.util'
 import { LoginDto } from './dto/login.dto'
 import { Captcha } from '@/libs/captcha/captcha.decorator'
 import { AuthProviderGuard } from './guards/provider.quard'
@@ -51,8 +52,10 @@ export class AuthController {
   @Throttle(REQUEST_CODE_THROTTLE)
   @Post('register/sms/start')
   @HttpCode(HttpStatus.OK)
-  async registerSmsStart(@Body() dto: SmsRegisterDto) {
-    return this.authService.registerSmsStart(dto)
+  async registerSmsStart(@Req() req: Request, @Body() dto: SmsRegisterDto) {
+    // IP пользователя (не сервера) нужен sms.ru, чтобы выдать звонящему из-за
+    // границы обычный номер вместо 8-800 — см. SmsRuService.
+    return this.authService.registerSmsStart(dto, getClientIp(req))
   }
 
   @UseGuards(ThrottlerGuard)

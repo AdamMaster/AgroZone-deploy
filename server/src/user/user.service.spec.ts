@@ -6,7 +6,7 @@ import { UserService } from './user.service'
 import { PrismaService } from '@/prisma/prisma.service'
 import { FileService } from '../file/file.service'
 import { ConfigService } from '@nestjs/config'
-import { ZvonokService } from '@/libs/zvonok/zvonok.service'
+import { PhoneConfirmationService } from '@/libs/phone-confirmation/phone-confirmation.service'
 import { MailService } from '@/libs/mail/mail.service'
 import { SecurityEventsService } from '@/security-events/security-events.service'
 import { SecurityEventType, TokenType } from '@/generated/prisma/enums'
@@ -21,7 +21,7 @@ describe('UserService', () => {
   let prisma: any
   let fileService: any
   let configService: any
-  let zvonokService: any
+  let phoneConfirmationService: any
   let mailService: any
   let securityEventsService: any
 
@@ -57,9 +57,10 @@ describe('UserService', () => {
 
     fileService = {}
     configService = { get: jest.fn(), getOrThrow: jest.fn() }
-    zvonokService = {
+    phoneConfirmationService = {
       requestCallbackConfirmation: jest.fn(),
-      checkCallbackConfirmed: jest.fn()
+      // По умолчанию звонок подтверждён: токен в БД есть и провайдер подтверждает.
+      checkCallbackConfirmed: jest.fn().mockResolvedValue(true)
     }
 
     mailService = {
@@ -77,7 +78,7 @@ describe('UserService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: FileService, useValue: fileService },
         { provide: ConfigService, useValue: configService },
-        { provide: ZvonokService, useValue: zvonokService },
+        { provide: PhoneConfirmationService, useValue: phoneConfirmationService },
         { provide: MailService, useValue: mailService },
         { provide: SecurityEventsService, useValue: securityEventsService }
       ]
@@ -168,14 +169,22 @@ describe('UserService', () => {
 
     it('при свободном номере запрашивает звонок и сохраняет токен PHONE_CHANGE', async () => {
       prisma.userPhone.findUnique.mockResolvedValue(null)
-      zvonokService.requestCallbackConfirmation.mockResolvedValue({ callId: 'call-1', number: '+7 930 555-86-07' })
+      phoneConfirmationService.requestCallbackConfirmation.mockResolvedValue({
+        callId: 'call-1',
+        number: '+7 930 555-86-07'
+      })
 
       const result = await service.requestPhoneChange('user-1', '+79991234567')
 
       expect(prisma.token.deleteMany).toHaveBeenCalledWith({ where: { userId: 'user-1', type: 'PHONE_CHANGE' } })
       expect(prisma.token.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ token: 'call-1', type: 'PHONE_CHANGE', userId: 'user-1', phone: '79991234567' })
+          data: expect.objectContaining({
+            token: 'call-1',
+            type: 'PHONE_CHANGE',
+            userId: 'user-1',
+            phone: '79991234567'
+          })
         })
       )
       expect(result).toEqual({ success: true, callNumber: '+7 930 555-86-07' })
@@ -192,7 +201,11 @@ describe('UserService', () => {
     })
 
     it('удаляет токен и сообщает об истечении при просрочке', async () => {
-      prisma.token.findFirst.mockResolvedValue({ id: 'token-1', phone: '79991234567', expiresIn: new Date(Date.now() - 1) })
+      prisma.token.findFirst.mockResolvedValue({
+        id: 'token-1',
+        phone: '79991234567',
+        expiresIn: new Date(Date.now() - 1)
+      })
 
       await expect(service.checkPhoneCallbackStatus('user-1')).rejects.toThrow(
         'Время ожидания звонка истекло. Запросите новый код.'
@@ -207,7 +220,7 @@ describe('UserService', () => {
         phone: '79991234567',
         expiresIn: new Date(Date.now() + 60_000)
       })
-      zvonokService.checkCallbackConfirmed.mockResolvedValue(true)
+      phoneConfirmationService.checkCallbackConfirmed.mockResolvedValue(true)
 
       const result = await service.checkPhoneCallbackStatus('user-1')
 
@@ -274,6 +287,32 @@ describe('UserService', () => {
       })
       expect(prisma.userPhone.create).not.toHaveBeenCalled()
       expect(result).toEqual({ success: true, message: 'Основной номер изменен' })
+    })
+  })
+
+  describe('confirmPhoneChange / confirmAddPhone: звонок перепроверяется у провайдера', () => {
+    const pending = {
+      id: 'token-1',
+      token: 'sr:201737-542',
+      phone: '79991234567',
+      expiresIn: new Date(Date.now() + 60_000)
+    }
+
+    it('confirmPhoneChange не меняет номер, пока провайдер не подтвердил звонок', async () => {
+      prisma.token.findFirst.mockResolvedValue(pending)
+      phoneConfirmationService.checkCallbackConfirmed.mockResolvedValue(false)
+
+      await expect(service.confirmPhoneChange('user-1', 'sr:201737-542')).rejects.toThrow('Звонок не получен')
+      expect(phoneConfirmationService.checkCallbackConfirmed).toHaveBeenCalledWith('79991234567', 'sr:201737-542')
+      expect(prisma.userPhone.create).not.toHaveBeenCalled()
+    })
+
+    it('confirmAddPhone не добавляет номер, пока провайдер не подтвердил звонок', async () => {
+      prisma.token.findFirst.mockResolvedValue(pending)
+      phoneConfirmationService.checkCallbackConfirmed.mockResolvedValue(false)
+
+      await expect(service.confirmAddPhone('user-1', 'sr:201737-542')).rejects.toThrow('Звонок не получен')
+      expect(prisma.userPhone.create).not.toHaveBeenCalled()
     })
   })
 

@@ -3,10 +3,11 @@ import { PasswordRecoveryService } from './password-recovery.service'
 import { PasswordRecoveryController } from './password-recovery.controller'
 import { UserService } from '@/user/user.service'
 import { MailService } from '@/libs/mail/mail.service'
-import { ZvonokService } from '@/libs/zvonok/zvonok.service'
+import { PhoneConfirmationModule } from '@/libs/phone-confirmation/phone-confirmation.module'
 
 @Module({
+  imports: [PhoneConfirmationModule],
   controllers: [PasswordRecoveryController],
-  providers: [PasswordRecoveryService, UserService, MailService, ZvonokService]
+  providers: [PasswordRecoveryService, UserService, MailService]
 })
 export class PasswordRecoveryModule {}

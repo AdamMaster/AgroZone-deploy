@@ -9,7 +9,7 @@ import { ConfigService } from '@nestjs/config'
 import { ProviderService } from './provider/provider.service'
 import { EmailConfirmationService } from './email-confirmation/email-confirmation.service'
 import { TwoFactorAuthService } from './two-factor-auth/two-factor-auth.service'
-import { ZvonokService } from '@/libs/zvonok/zvonok.service'
+import { PhoneConfirmationService } from '@/libs/phone-confirmation/phone-confirmation.service'
 import { SupportGuestsService } from '@/support/support-guests.service'
 import { SecurityEventsService } from '@/security-events/security-events.service'
 import { AuthMethod, SecurityEventActor, SecurityEventType, TokenType, UserRole } from '@/generated/prisma/enums'
@@ -25,7 +25,7 @@ describe('AuthService', () => {
   let providerService: any
   let emailConfirmationService: any
   let twoFactorAuthService: any
-  let zvonokService: any
+  let phoneConfirmationService: any
   let supportGuestsService: any
   let securityEventsService: any
   let configService: any
@@ -79,7 +79,11 @@ describe('AuthService', () => {
     providerService = { findByService: jest.fn() }
     emailConfirmationService = { sendVerificationToken: jest.fn().mockResolvedValue(true) }
     twoFactorAuthService = { sendTwoFactorToken: jest.fn().mockResolvedValue(true), validateTwoFactorToken: jest.fn() }
-    zvonokService = { requestCallbackConfirmation: jest.fn(), checkCallbackConfirmed: jest.fn() }
+    phoneConfirmationService = {
+      requestCallbackConfirmation: jest.fn(),
+      // По умолчанию звонок подтверждён: токен в БД есть и провайдер подтверждает.
+      checkCallbackConfirmed: jest.fn().mockResolvedValue(true)
+    }
     supportGuestsService = { mergeIntoUser: jest.fn().mockResolvedValue(undefined) }
     securityEventsService = {
       record: jest.fn().mockResolvedValue(undefined),
@@ -100,7 +104,7 @@ describe('AuthService', () => {
         { provide: ProviderService, useValue: providerService },
         { provide: EmailConfirmationService, useValue: emailConfirmationService },
         { provide: TwoFactorAuthService, useValue: twoFactorAuthService },
-        { provide: ZvonokService, useValue: zvonokService },
+        { provide: PhoneConfirmationService, useValue: phoneConfirmationService },
         { provide: SupportGuestsService, useValue: supportGuestsService },
         { provide: SecurityEventsService, useValue: securityEventsService }
       ]
@@ -117,9 +121,7 @@ describe('AuthService', () => {
     it('отклоняет регистрацию, если номер уже занят', async () => {
       userService.findByPhone.mockResolvedValue(baseUser())
 
-      await expect(service.registerSmsStart({ phone: '+7 (999) 123-45-67' } as any)).rejects.toThrow(
-        ConflictException
-      )
+      await expect(service.registerSmsStart({ phone: '+7 (999) 123-45-67' } as any)).rejects.toThrow(ConflictException)
       await expect(service.registerSmsStart({ phone: '+7 (999) 123-45-67' } as any)).rejects.toThrow(
         'Пользователь с таким номером телефона уже зарегистрирован.'
       )
@@ -127,11 +129,15 @@ describe('AuthService', () => {
 
     it('запрашивает звонок для подтверждения, если номер свободен', async () => {
       userService.findByPhone.mockResolvedValue(null)
-      zvonokService.requestCallbackConfirmation.mockResolvedValue({ callId: 'call-123', number: '+7 930 555-86-07' })
+      phoneConfirmationService.requestCallbackConfirmation.mockResolvedValue({
+        callId: 'call-123',
+        number: '+7 930 555-86-07'
+      })
 
-      const result = await service.registerSmsStart({ phone: '+7 (999) 123-45-67' } as any)
+      const result = await service.registerSmsStart({ phone: '+7 (999) 123-45-67' } as any, '203.0.113.5')
 
-      expect(zvonokService.requestCallbackConfirmation).toHaveBeenCalledWith('79991234567')
+      // IP пользователя уходит дальше — по нему sms.ru определяет «за границей ли».
+      expect(phoneConfirmationService.requestCallbackConfirmation).toHaveBeenCalledWith('79991234567', '203.0.113.5')
       expect(prisma.token.deleteMany).toHaveBeenCalledWith({
         where: { phone: '79991234567', type: TokenType.SMS_VERIFICATION }
       })
@@ -150,6 +156,33 @@ describe('AuthService', () => {
       userService.findByPhone.mockResolvedValue(null)
 
       await expect(service.registerSmsStart({ phone: '123' } as any)).rejects.toThrow(BadRequestException)
+    })
+  })
+
+  describe('verifySms / checkRegisterCode: звонок перепроверяется у провайдера', () => {
+    const dto = { phone: '+7 (999) 123-45-67', code: 'sr:201737-542' } as any
+    const token = { id: 'token-1', token: 'sr:201737-542', expiresIn: new Date(Date.now() + 60_000) }
+
+    it('verifySms не открывает сессию, пока звонок не подтверждён', async () => {
+      prisma.token.findFirst.mockResolvedValue(token)
+      phoneConfirmationService.checkCallbackConfirmed.mockResolvedValue(false)
+
+      await expect(service.verifySms(createReq(), dto)).rejects.toThrow('Звонок не получен')
+      expect(userService.findByPhone).not.toHaveBeenCalled()
+      expect(prisma.token.delete).not.toHaveBeenCalled()
+    })
+
+    it('checkRegisterCode не отвечает success, пока звонок не подтверждён', async () => {
+      prisma.token.findFirst.mockResolvedValue(token)
+      phoneConfirmationService.checkCallbackConfirmed.mockResolvedValue(false)
+
+      await expect(service.checkRegisterCode(dto)).rejects.toThrow('Звонок не получен')
+    })
+
+    it('checkRegisterCode отвечает success, когда звонок подтверждён', async () => {
+      prisma.token.findFirst.mockResolvedValue(token)
+
+      await expect(service.checkRegisterCode(dto)).resolves.toEqual({ success: true })
     })
   })
 
@@ -179,6 +212,20 @@ describe('AuthService', () => {
         'Срок действия кода истек. Запросите новый.'
       )
       expect(prisma.token.delete).toHaveBeenCalledWith({ where: { id: 'token-1' } })
+    })
+
+    it('не создаёт аккаунт, если токен есть, но провайдер звонок не подтвердил', async () => {
+      prisma.token.findFirst.mockResolvedValue({
+        id: 'token-1',
+        token: 'sr:201737-542',
+        expiresIn: new Date(Date.now() + 60_000)
+      })
+      phoneConfirmationService.checkCallbackConfirmed.mockResolvedValue(false)
+
+      await expect(service.registerSmsComplete(createReq(), dto)).rejects.toThrow('Звонок не получен')
+      expect(phoneConfirmationService.checkCallbackConfirmed).toHaveBeenCalledWith('79991234567', 'sr:201737-542')
+      expect(userService.create).not.toHaveBeenCalled()
+      expect(prisma.token.delete).not.toHaveBeenCalled()
     })
 
     it('создаёт аккаунт и открывает сессию после успешного звонка', async () => {
@@ -218,7 +265,11 @@ describe('AuthService', () => {
     })
 
     it('удаляет токен и сообщает об истечении времени ожидания звонка', async () => {
-      prisma.token.findFirst.mockResolvedValue({ id: 'token-1', token: 'call-123', expiresIn: new Date(Date.now() - 1) })
+      prisma.token.findFirst.mockResolvedValue({
+        id: 'token-1',
+        token: 'call-123',
+        expiresIn: new Date(Date.now() - 1)
+      })
 
       await expect(service.checkSmsCallbackStatus('+7 (999) 123-45-67')).rejects.toThrow(
         'Время ожидания звонка истекло. Запросите новый код.'
@@ -232,7 +283,7 @@ describe('AuthService', () => {
         token: 'call-123',
         expiresIn: new Date(Date.now() + 60_000)
       })
-      zvonokService.checkCallbackConfirmed.mockResolvedValue(false)
+      phoneConfirmationService.checkCallbackConfirmed.mockResolvedValue(false)
 
       const result = await service.checkSmsCallbackStatus('+7 (999) 123-45-67')
 
@@ -245,7 +296,7 @@ describe('AuthService', () => {
         token: 'call-123',
         expiresIn: new Date(Date.now() + 60_000)
       })
-      zvonokService.checkCallbackConfirmed.mockResolvedValue(true)
+      phoneConfirmationService.checkCallbackConfirmed.mockResolvedValue(true)
 
       const result = await service.checkSmsCallbackStatus('+7 (999) 123-45-67')
 
@@ -283,26 +334,26 @@ describe('AuthService', () => {
     it('выбрасывает NotFoundException, если пользователь не найден', async () => {
       userService.findByPhone.mockResolvedValue(null)
 
-      await expect(
-        service.login(createReq(), { login: '+79991234567', password: 'secret1' } as any)
-      ).rejects.toThrow('Пользователь не найден. Пожалуйста, проверьте введенные данные.')
+      await expect(service.login(createReq(), { login: '+79991234567', password: 'secret1' } as any)).rejects.toThrow(
+        'Пользователь не найден. Пожалуйста, проверьте введенные данные.'
+      )
     })
 
     it('выбрасывает NotFoundException, если у аккаунта вообще нет пароля (например, только OAuth)', async () => {
       userService.findByPhone.mockResolvedValue(baseUser({ password: null }))
 
-      await expect(
-        service.login(createReq(), { login: '+79991234567', password: 'secret1' } as any)
-      ).rejects.toThrow(NotFoundException)
+      await expect(service.login(createReq(), { login: '+79991234567', password: 'secret1' } as any)).rejects.toThrow(
+        NotFoundException
+      )
     })
 
     it('выбрасывает UnauthorizedException при неверном пароле', async () => {
       userService.findByPhone.mockResolvedValue(baseUser())
       mockedVerify.mockResolvedValue(false)
 
-      await expect(
-        service.login(createReq(), { login: '+79991234567', password: 'wrong' } as any)
-      ).rejects.toThrow('Неверный пароль. Пожалуйста, попробуйте еще раз, или восстановите пароль, если забыли его.')
+      await expect(service.login(createReq(), { login: '+79991234567', password: 'wrong' } as any)).rejects.toThrow(
+        'Неверный пароль. Пожалуйста, попробуйте еще раз, или восстановите пароль, если забыли его.'
+      )
     })
 
     it('успешный вход паролем проверяет вход с нового устройства в журнале безопасности', async () => {
@@ -319,9 +370,7 @@ describe('AuthService', () => {
       userService.findByPhone.mockResolvedValue(baseUser())
       mockedVerify.mockResolvedValue(false)
 
-      await expect(
-        service.login(createReq(), { login: '+79991234567', password: 'wrong' } as any)
-      ).rejects.toThrow()
+      await expect(service.login(createReq(), { login: '+79991234567', password: 'wrong' } as any)).rejects.toThrow()
 
       expect(securityEventsService.recordLoginIfNew).not.toHaveBeenCalled()
     })
@@ -516,7 +565,11 @@ describe('AuthService', () => {
       expect(userService.create).toHaveBeenCalled()
       expect(prisma.account.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ userId: 'brand-new-user', provider: 'yandex', providerAccountId: 'yandex-oauth-id-1' })
+          data: expect.objectContaining({
+            userId: 'brand-new-user',
+            provider: 'yandex',
+            providerAccountId: 'yandex-oauth-id-1'
+          })
         })
       )
       expect(result).toEqual({ isNewUser: true })

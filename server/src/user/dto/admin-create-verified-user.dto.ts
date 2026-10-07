@@ -1,7 +1,7 @@
 import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator'
 
 // Создание аккаунта продавцу вручную администратором, минуя подтверждение
-// звонком через Zvonok — см. UserService.createVerifiedByAdmin. Реальный
+// звонком — см. UserService.createVerifiedByAdmin. Реальный
 // сценарий: продавец согласился, что аккаунт заводит администратор
 // (например, по телефону/на встрече), не хочет проходить звонок сам.
 export class AdminCreateVerifiedUserDto {

@@ -5,9 +5,10 @@ import { IsPasswordsMatchingConstraint } from 'src/libs/common/decorators/is-pas
 export class SmsCompleteDto extends SmsRegisterDto {
   // Раньше тут был четырёхзначный код, который пользователь вводил сам
   // (flashcall/tellcode). Теперь подтверждение по факту звонка на
-  // проверочный номер, а сюда фронт подставляет call_id от zvonok
-  // (см. AuthService.checkSmsCallbackStatus) — это куда более длинное
-  // число, поэтому длину больше не ограничиваем четырьмя цифрами.
+  // проверочный номер, а сюда фронт подставляет id проверки от провайдера
+  // (sms.ru / Zvonok, см. AuthService.checkSmsCallbackStatus) — это куда
+  // более длинное значение, поэтому длину больше не ограничиваем четырьмя
+  // цифрами.
   @IsString({ message: 'Код должен быть строкой.' })
   @IsNotEmpty({ message: 'Код обязателен.' })
   @Length(1, 32, { message: 'Некорректный код подтверждения.' })

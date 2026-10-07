@@ -18,7 +18,7 @@ import { FileService } from '../file/file.service'
 import { AD_LIMITS } from '@/ads/constants/ads.constants'
 import { isPremiumActive } from '@/premium/utils/is-premium-active.util'
 import { normalizePhone } from '@/libs/common/utils/phone.util'
-import { ZvonokService } from '@/libs/zvonok/zvonok.service'
+import { PhoneConfirmationService } from '@/libs/phone-confirmation/phone-confirmation.service'
 import { PERSONAL_DATA_CONSENT_DOCUMENT_VERSION } from '@/libs/common/constants/legal.constants'
 import { AdminCreateVerifiedUserDto } from './dto/admin-create-verified-user.dto'
 import { AdminSearchUsersQueryDto } from './dto/admin-search-users-query.dto'
@@ -35,7 +35,7 @@ export class UserService {
     private readonly prismaService: PrismaService,
     private readonly fileService: FileService,
     private readonly configService: ConfigService,
-    private readonly zvonokService: ZvonokService,
+    private readonly phoneConfirmationService: PhoneConfirmationService,
     private readonly mailService: MailService,
     private readonly securityEventsService: SecurityEventsService
   ) {}
@@ -765,7 +765,7 @@ export class UserService {
     return updated
   }
 
-  async requestPhoneChange(userId: string, newPhone: string) {
+  async requestPhoneChange(userId: string, newPhone: string, ip?: string) {
     newPhone = normalizePhone(newPhone)
 
     const exists = await this.prismaService.userPhone.findUnique({
@@ -782,10 +782,11 @@ export class UserService {
       throw new BadRequestException('Этот номер уже используется другим аккаунтом')
     }
 
-    // "Звонок на проверочный номер" — см. комментарий в ZvonokService и в
-    // AuthService.sendSmsCode. В token сохраняем call_id, а не код: сверять
-    // нечего, подтверждение идёт по факту звонка (см. checkPhoneCallbackStatus).
-    const { callId, number } = await this.zvonokService.requestCallbackConfirmation(newPhone)
+    // "Звонок на проверочный номер" — см. комментарий в PhoneConfirmationService
+    // и в AuthService.sendSmsCode. В token сохраняем id проверки у провайдера,
+    // а не код: сверять нечего, подтверждение идёт по факту звонка (см.
+    // checkPhoneCallbackStatus).
+    const { callId, number } = await this.phoneConfirmationService.requestCallbackConfirmation(newPhone, ip)
 
     await this.prismaService.token.deleteMany({ where: { userId, type: 'PHONE_CHANGE' } })
     await this.prismaService.token.create({
@@ -802,10 +803,10 @@ export class UserService {
   }
 
   // Опрашивается с фронта, пока пользователь не позвонит на выданный
-  // номер. Как только zvonok подтвердит звонок — отдаём call_id (в поле
-  // code), фронт подставляет его в уже существующие confirmPhoneChange/
-  // confirmAddPhone, которые ищут токен по этому значению — их менять не
-  // пришлось (см. комментарий в AuthService.checkSmsCallbackStatus).
+  // номер. Как только провайдер подтвердит звонок — отдаём id проверки (в поле
+  // code), фронт подставляет его в confirmPhoneChange/confirmAddPhone, которые
+  // ищут токен по этому значению и заново проверяют звонок у провайдера (см.
+  // комментарий в AuthService.checkSmsCallbackStatus).
   async checkPhoneCallbackStatus(userId: string) {
     const tokenRecord = await this.prismaService.token.findFirst({
       where: { userId, type: TokenType.PHONE_CHANGE }
@@ -824,9 +825,18 @@ export class UserService {
       throw new BadRequestException('Номер телефона отсутствует')
     }
 
-    const confirmed = await this.zvonokService.checkCallbackConfirmed(tokenRecord.phone, tokenRecord.token)
+    const confirmed = await this.phoneConfirmationService.checkCallbackConfirmed(tokenRecord.phone, tokenRecord.token)
 
     return confirmed ? { confirmed: true, code: tokenRecord.token } : { confirmed: false }
+  }
+
+  // См. AuthService.assertCallConfirmed: токен в БД звонка не доказывает.
+  private async assertCallConfirmed(phone: string, token: string) {
+    const confirmed = await this.phoneConfirmationService.checkCallbackConfirmed(phone, token)
+
+    if (!confirmed) {
+      throw new BadRequestException('Звонок не получен. Позвоните на указанный номер и попробуйте снова.')
+    }
   }
 
   async confirmPhoneChange(userId: string, smsCode: string) {
@@ -845,6 +855,8 @@ export class UserService {
     if (!tokenRecord.phone) {
       throw new BadRequestException('Номер телефона отсутствует')
     }
+
+    await this.assertCallConfirmed(tokenRecord.phone, tokenRecord.token)
 
     const phone = tokenRecord.phone
 
@@ -954,6 +966,8 @@ export class UserService {
     if (!tokenRecord.phone) {
       throw new BadRequestException('Номер телефона отсутствует')
     }
+
+    await this.assertCallConfirmed(tokenRecord.phone, tokenRecord.token)
 
     const phone = normalizePhone(tokenRecord.phone)
 
