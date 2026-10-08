@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer'
-import { IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator'
+import { IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator'
 import { PriceUnit } from '@/generated/prisma/client'
 import { UserType } from '@/generated/prisma/enums'
 
@@ -23,6 +23,7 @@ export class FindAdsQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(10000)
   page?: number
 
   @IsOptional()
@@ -33,6 +34,7 @@ export class FindAdsQueryDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   search?: string
 
   // Единица цены, в рамках которой действует диапазон minPrice/maxPrice.
@@ -85,6 +87,7 @@ export class FindAdsQueryDto {
   // игнорируются неизвестные/нефильтруемые/устаревшие ключи).
   @IsOptional()
   @IsString()
+  @MaxLength(4000)
   features?: string
 
   // Фильтр по самозаявленному типу продавца (частное лицо / ИП / компания)

@@ -15,7 +15,7 @@ export function useResetPasswordMutation() {
 
     onSuccess() {
       toast.success('Проверьте почту', {
-        description: 'На вашу почту была отправлена ссылка для подтверждения.'
+        description: 'Если аккаунт с таким адресом существует, мы отправили на него ссылку для сброса пароля.'
       })
     },
 

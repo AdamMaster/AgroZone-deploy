@@ -7,6 +7,7 @@ import { PrismaService } from '@/prisma/prisma.service'
 import { UserService } from '@/user/user.service'
 import { MailService } from '@/libs/mail/mail.service'
 import { SecurityEventsService } from '@/security-events/security-events.service'
+import { RateLimitService } from '@/libs/rate-limit/rate-limit.service'
 import { SecurityEventType, TokenType } from '@/generated/prisma/enums'
 
 jest.mock('argon2')
@@ -19,6 +20,7 @@ describe('PasswordRecoveryService', () => {
   let userService: any
   let mailService: any
   let securityEventsService: any
+  let rateLimitService: any
 
   const validToken = (overrides: Record<string, unknown> = {}) => ({
     id: 'token-1',
@@ -43,6 +45,7 @@ describe('PasswordRecoveryService', () => {
     userService = { findByEmail: jest.fn() }
     mailService = { sendPasswordResetEmail: jest.fn().mockResolvedValue(true) }
     securityEventsService = { record: jest.fn().mockResolvedValue(undefined) }
+    rateLimitService = { hit: jest.fn().mockResolvedValue({ allowed: true, count: 1 }) }
 
     mockedHash.mockReset()
     mockedHash.mockResolvedValue('hashed-new-password' as any)
@@ -53,11 +56,50 @@ describe('PasswordRecoveryService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: UserService, useValue: userService },
         { provide: MailService, useValue: mailService },
-        { provide: SecurityEventsService, useValue: securityEventsService }
+        { provide: SecurityEventsService, useValue: securityEventsService },
+        { provide: RateLimitService, useValue: rateLimitService }
       ]
     }).compile()
 
     service = module.get(PasswordRecoveryService)
+  })
+
+  describe('resetPassword', () => {
+    const user = { id: 'user-1', email: 'user@example.com' }
+
+    beforeEach(() => {
+      prisma.token.findFirst.mockResolvedValue(null)
+      prisma.token.create.mockResolvedValue({ email: user.email, token: 'new-token' })
+    })
+
+    it('для существующего адреса отправляет письмо и возвращает true', async () => {
+      userService.findByEmail.mockResolvedValue(user)
+
+      await expect(service.resetPassword({ email: user.email })).resolves.toBe(true)
+      expect(mailService.sendPasswordResetEmail).toHaveBeenCalledWith(user.email, 'new-token')
+    })
+
+    it('для несуществующего адреса отвечает так же (true) и письмо не шлёт', async () => {
+      userService.findByEmail.mockResolvedValue(null)
+
+      await expect(service.resetPassword({ email: 'nobody@example.com' })).resolves.toBe(true)
+      expect(mailService.sendPasswordResetEmail).not.toHaveBeenCalled()
+    })
+
+    it('при превышении лимита на адрес отвечает true, но ничего не делает', async () => {
+      rateLimitService.hit.mockResolvedValue({ allowed: false, count: 4 })
+
+      await expect(service.resetPassword({ email: user.email })).resolves.toBe(true)
+      expect(userService.findByEmail).not.toHaveBeenCalled()
+      expect(mailService.sendPasswordResetEmail).not.toHaveBeenCalled()
+    })
+
+    it('ключ лимита не зависит от регистра и пробелов в адресе', async () => {
+      userService.findByEmail.mockResolvedValue(null)
+
+      await service.resetPassword({ email: '  User@Example.com ' })
+      expect(rateLimitService.hit).toHaveBeenCalledWith('password-reset:user@example.com', 3, 3600)
+    })
   })
 
   describe('newPassword', () => {

@@ -1,7 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '@/prisma/prisma.service'
 import { FileService } from '../file/file.service'
-import { ConfigService } from '@nestjs/config'
 import 'multer'
 import { AD_LIMITS, AD_STATUSES_BLOCKING_OWNER_REMOVAL } from './constants/ads.constants'
 import { isPremiumActive } from '@/premium/utils/is-premium-active.util'
@@ -121,7 +120,6 @@ export class AdsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fileService: FileService,
-    private readonly configService: ConfigService,
     private readonly adStateMachine: AdStateMachineService,
     private readonly categoriesService: CategoriesService,
     private readonly userService: UserService,
@@ -1321,19 +1319,6 @@ export class AdsService {
         }
       })
     )
-  }
-
-  async getAddressFromCoords(lat: number, lon: number): Promise<string> {
-    const apiKey = this.configService.getOrThrow<string>('YANDEX_MAPS_API_KEY')
-    const url = `https://geocode-maps.yandex.ru/1.x/?apikey=${apiKey}&geocode=${lon},${lat}&format=json&results=1`
-
-    const response = await fetch(url)
-    const data = await response.json()
-
-    const address =
-      data.response.GeoObjectCollection.featureMember[0]?.GeoObject?.metaDataProperty?.GeocoderMetaData?.text
-
-    return address || 'Адрес не найден'
   }
 
   private getExpirationDateFrom(date: Date, days = 30) {

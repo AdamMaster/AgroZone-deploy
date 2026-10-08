@@ -1,4 +1,6 @@
-import { Controller, Get, Param, Query } from '@nestjs/common'
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common'
+import { Throttle } from '@nestjs/throttler'
+import { PublicThrottlerGuard } from '@/libs/common/guards/public-throttler.guard'
 import { CategoriesService } from './categories.service'
 import { CategoryMetaDto } from './dto/category-meta.dto'
 import { SearchCategoriesDto } from './dto/search-categories.dto'
@@ -12,6 +14,9 @@ export class CategoriesController {
     return this.categoriesService.findAll()
   }
 
+  // Считает эмбеддинг запроса на CPU сервера — самый дорогой публичный роут, лимит строже.
+  @UseGuards(PublicThrottlerGuard)
+  @Throttle({ default: { limit: 40, ttl: 60 * 1000 } })
   @Get('search-suggest')
   searchSuggest(@Query() query: SearchCategoriesDto) {
     return this.categoriesService.searchBySemantic(query.q ?? '')

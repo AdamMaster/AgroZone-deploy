@@ -1,4 +1,4 @@
-import { IsString, MinLength } from 'class-validator'
+import { IsString, MaxLength, MinLength } from 'class-validator'
 
 // fullPath — тот же путь, что клиент строит из сегментов URL каталога
 // (slugPath = slug.join('/'), см. getSlugPath/buildCategoryMap на клиенте)
@@ -8,5 +8,6 @@ import { IsString, MinLength } from 'class-validator'
 export class CategoryMetaDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(300)
   fullPath!: string
 }

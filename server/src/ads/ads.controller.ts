@@ -17,6 +17,9 @@ import {
 } from '@nestjs/common'
 import { Throttle } from '@nestjs/throttler'
 import { AdsService } from './ads.service'
+import { GeocodeService } from './geocode.service'
+import { GeocodeQueryDto } from './dto/geocode-query.dto'
+import { PublicThrottlerGuard } from '@/libs/common/guards/public-throttler.guard'
 import { CreateAdDto } from './dto/create-ad.dto'
 import { AuthGuard } from '../auth/guards/auth.guard'
 import { Request } from 'express'
@@ -47,7 +50,10 @@ const AD_PHONE_THROTTLE = { default: { limit: 20, ttl: 60000 } }
 
 @Controller('ads')
 export class AdsController {
-  constructor(private readonly adsService: AdsService) {}
+  constructor(
+    private readonly adsService: AdsService,
+    private readonly geocodeService: GeocodeService
+  ) {}
 
   @Post(':id/favorite')
   @UseGuards(AuthGuard)
@@ -152,9 +158,14 @@ export class AdsController {
     return this.adsService.findOneForModeration(id)
   }
 
+  // Публичный роут в платный Яндекс-геокодер: без лимита по IP кто угодно
+  // мог бы в цикле выжечь квоту/деньги по ключу (см. GeocodeService —
+  // результат кэшируется, но уникальные точки всё равно уходят наружу).
+  @UseGuards(PublicThrottlerGuard)
+  @Throttle({ default: { limit: 20, ttl: 60 * 1000 } })
   @Get('geocode')
-  async getAddress(@Query('lat') lat: number, @Query('lon') lon: number) {
-    return await this.adsService.getAddressFromCoords(lat, lon)
+  async getAddress(@Query() query: GeocodeQueryDto) {
+    return await this.geocodeService.getAddressFromCoords(query.lat, query.lon)
   }
 
   // Регистрируем до @Get(':id') — иначе Nest примет 'locations' за id.

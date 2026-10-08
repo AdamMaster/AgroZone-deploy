@@ -12,6 +12,8 @@ import { AdViewsRollupWorker } from './workers/ad-views-rollup.worker'
 import { CategoriesModule } from '@/categories/categories.module'
 import { AuthModule } from '@/auth/auth.module'
 import { NotificationsModule } from '@/notifications/notifications.module'
+import { RedisModule } from '@/redis/redis.module'
+import { GeocodeService } from './geocode.service'
 
 @Module({
   imports: [
@@ -22,11 +24,13 @@ import { NotificationsModule } from '@/notifications/notifications.module'
     }),
     CategoriesModule,
     AuthModule,
-    NotificationsModule
+    NotificationsModule,
+    RedisModule
   ],
   controllers: [AdsController],
   providers: [
     AdsService,
+    GeocodeService,
     PrismaService,
     AdStateMachineService,
     AdsExpirationWorker,
