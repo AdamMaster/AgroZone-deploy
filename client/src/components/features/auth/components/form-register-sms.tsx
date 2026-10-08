@@ -13,7 +13,7 @@ import { Button, Checkbox, Field, FieldError, FieldGroup, Input, InputGroup, Loa
 
 import { useYandexCaptcha } from '@/shared/hooks/use-yandex-captcha'
 
-import { formatPhoneNumber, isSafeReturnPath } from '@/shared/utils'
+import { formatPhoneNumber, isSafeReturnPath, phoneToApi } from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
 
@@ -86,8 +86,8 @@ export const FormRegisterSms = ({ returnTo, initialPhone }: RegisterSmsFormProps
     try {
       const recaptchaToken = await executeCaptcha()
 
-      // Очищаем номер: "+7 (930) 408-79-71" -> "79304087971"
-      const cleanPhone = data.phone.replace(/\D/g, '')
+      // Очищаем номер: "+7 (930) 408-79-71" -> "+79304087971", "+375 29 123-45-67" -> "+375291234567"
+      const cleanPhone = phoneToApi(data.phone)
       const cleanedData = { phone: cleanPhone }
 
       registerSmsStart(
@@ -169,7 +169,7 @@ export const FormRegisterSms = ({ returnTo, initialPhone }: RegisterSmsFormProps
                   value={value}
                   type='tel'
                   placeholder='+7 (999) 999-99-99'
-                  maxLength={18}
+                  maxLength={24}
                   onChange={e => {
                     const formatted = formatPhoneNumber(e.target.value)
                     onChange(formatted)

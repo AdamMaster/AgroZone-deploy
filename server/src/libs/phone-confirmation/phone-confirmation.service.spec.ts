@@ -8,7 +8,7 @@ describe('PhoneConfirmationService', () => {
   let service: PhoneConfirmationService
 
   beforeEach(() => {
-    config = { SMSRU_API_ID: 'key', ZVONOK_PUBLIC_KEY: 'zv-key' }
+    config = { SMSRU_API_ID: 'key', ZVONOK_PUBLIC_KEY: 'zv-key', PHONE_ALLOWED_COUNTRIES: 'RU,BY,KZ' }
     smsRu = { requestCallbackConfirmation: jest.fn(), checkCallbackConfirmed: jest.fn() }
     zvonok = { requestCallbackConfirmation: jest.fn(), checkCallbackConfirmed: jest.fn() }
 
@@ -36,6 +36,58 @@ describe('PhoneConfirmationService', () => {
       config.PHONE_CONFIRM_PROVIDER = 'twilio'
 
       expect(service.getPrimaryProvider()).toBe('smsru')
+    })
+  })
+
+  describe('допустимые страны (PHONE_ALLOWED_COUNTRIES)', () => {
+    it('принимает российский, белорусский и казахстанский номера', async () => {
+      smsRu.requestCallbackConfirmation.mockResolvedValue({ callId: '1', number: '+7 (800) 500-8275' })
+
+      await expect(service.requestCallbackConfirmation('79991234567')).resolves.toBeDefined()
+      await expect(service.requestCallbackConfirmation('375291234567')).resolves.toBeDefined()
+      await expect(service.requestCallbackConfirmation('77012345678')).resolves.toBeDefined()
+    })
+
+    it('номер из страны вне списка отклоняется до обращения к провайдеру', async () => {
+      await expect(service.requestCallbackConfirmation('420601123456')).rejects.toThrow(
+        'Подтверждение номеров этой страны пока недоступно'
+      )
+      expect(smsRu.requestCallbackConfirmation).not.toHaveBeenCalled()
+      expect(zvonok.requestCallbackConfirmation).not.toHaveBeenCalled()
+    })
+
+    it('без PHONE_ALLOWED_COUNTRIES принимаются номера любых стран', async () => {
+      config.PHONE_ALLOWED_COUNTRIES = undefined
+      smsRu.requestCallbackConfirmation.mockResolvedValue({ callId: '1', number: '+7 (800) 500-8275' })
+
+      await expect(service.requestCallbackConfirmation('79991234567')).resolves.toBeDefined()
+      await expect(service.requestCallbackConfirmation('375291234567')).resolves.toBeDefined()
+      await expect(service.requestCallbackConfirmation('420601123456')).resolves.toBeDefined()
+    })
+
+    it('но заведомо некорректный номер отклоняется и без списка стран', async () => {
+      config.PHONE_ALLOWED_COUNTRIES = undefined
+
+      await expect(service.requestCallbackConfirmation('7999123')).rejects.toThrow(BadRequestException)
+    })
+
+    it('страну можно добавить в .env без правки кода', async () => {
+      config.PHONE_ALLOWED_COUNTRIES = 'RU,CZ'
+      smsRu.requestCallbackConfirmation.mockResolvedValue({ callId: '1', number: '+7 (800) 500-8275' })
+
+      await expect(service.requestCallbackConfirmation('420601123456')).resolves.toBeDefined()
+    })
+
+    it('некорректная длина номера отклоняется', async () => {
+      await expect(service.requestCallbackConfirmation('7999123')).rejects.toThrow('Номер телефона указан неверно')
+      expect(smsRu.requestCallbackConfirmation).not.toHaveBeenCalled()
+    })
+
+    it('казахстанский номер резервом через «Звонок» не проверяется', async () => {
+      smsRu.requestCallbackConfirmation.mockRejectedValue(new Error('network'))
+
+      await expect(service.requestCallbackConfirmation('77012345678')).rejects.toThrow('network')
+      expect(zvonok.requestCallbackConfirmation).not.toHaveBeenCalled()
     })
   })
 

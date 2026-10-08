@@ -1,5 +1,6 @@
 import { Transform } from 'class-transformer'
-import { IsArray, IsEnum, IsNotEmpty, IsNumber, IsObject, IsOptional, IsString, Matches } from 'class-validator'
+import { IsArray, IsEnum, IsNotEmpty, IsNumber, IsObject, IsOptional, IsString } from 'class-validator'
+import { IsPhoneNumberString } from '@/libs/common/decorators/is-phone-number-string.decorator'
 import { PriceUnit, Prisma } from '@/generated/prisma/client'
 
 export class UpdateAdDto {
@@ -70,9 +71,7 @@ export class UpdateAdDto {
 
   @IsOptional()
   @IsString({ message: 'Номер телефона должен быть строкой.' })
-  @Matches(/^\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}$/, {
-    message: 'Некорректный формат телефона'
-  })
+  @IsPhoneNumberString()
   phone?: string
 
   @IsOptional()

@@ -1,11 +1,13 @@
 import { z } from 'zod'
 
+import { isValidPhone } from '@/shared/utils/format-phone-numbers'
+
 export const RegisterSmsPhoneSchema = z.object({
   phone: z
     .string()
     .min(10, 'Номер телефона указан не полностью')
-    .max(18, 'Номер телефона слишком длинный')
-    .regex(/^\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}$/, 'Некорректный формат телефона')
+    .max(24, 'Номер телефона слишком длинный')
+    .refine(isValidPhone, 'Номер телефона указан не полностью')
 })
 export const RegisterSmsCodeSchema = z.object({
   code: z.string().length(4, 'Код должен быть из 4 цифр')

@@ -1,11 +1,13 @@
 import { z } from 'zod'
 
+import { isValidPhone } from '@/shared/utils/format-phone-numbers'
+
 export const AdminCreateUserSchema = z.object({
   phone: z
     .string()
     .min(10, 'Номер телефона указан не полностью')
-    .max(18, 'Номер телефона слишком длинный')
-    .regex(/^\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}$/, 'Некорректный формат телефона'),
+    .max(24, 'Номер телефона слишком длинный')
+    .refine(isValidPhone, 'Некорректный формат телефона'),
   password: z.string().min(6, 'Минимум 6 символов'),
   displayName: z.string().optional(),
   // Необязательно: не у всех продавцов, заведённых вручную, есть email —

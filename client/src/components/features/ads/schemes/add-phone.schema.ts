@@ -1,7 +1,9 @@
 import { z } from 'zod'
 
+import { isValidPhone } from '@/shared/utils/format-phone-numbers'
+
 export const AddPhoneSchema = z.object({
-  phone: z.string().min(18, 'Введите номер телефона')
+  phone: z.string().min(1, 'Введите номер телефона').refine(isValidPhone, 'Номер телефона указан не полностью')
 })
 
 export type TypeAddPhoneSchema = z.infer<typeof AddPhoneSchema>

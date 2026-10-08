@@ -7,7 +7,7 @@ import { Controller, useForm } from 'react-hook-form'
 
 import { Button, Field, FieldError, FieldGroup, Heading, Input, InputGroup } from '@/components/ui'
 
-import { formatPhoneNumber, generatePassword } from '@/shared/utils'
+import { formatPhoneNumber, generatePassword, phoneToApi } from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
 
@@ -32,7 +32,7 @@ export const CreateUserForm = () => {
   const onSubmit = (data: TypeAdminCreateUserSchema) => {
     // Телефон на сервер уходит очищенным от маски — так же, как в обычной
     // регистрации (см. onFormPhoneSubmit в FormRegisterSms).
-    const cleanPhone = data.phone.replace(/\D/g, '')
+    const cleanPhone = phoneToApi(data.phone)
 
     createVerifiedUser({
       phone: cleanPhone,
@@ -152,7 +152,7 @@ export const CreateUserForm = () => {
                   value={value}
                   type='tel'
                   placeholder='+7 (999) 999-99-99'
-                  maxLength={18}
+                  maxLength={24}
                   onChange={e => onChange(formatPhoneNumber(e.target.value))}
                   className={fieldClassName}
                 />

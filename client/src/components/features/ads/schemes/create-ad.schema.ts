@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { isValidPhone } from '@/shared/utils/format-phone-numbers'
+
 export const CreateAdSchema = z.object({
   title: z.string().min(3, 'Название должно быть не менее 3 символов'),
   description: z.string().min(10, 'Описание должно быть не менее 10 символов'),
@@ -21,8 +23,8 @@ export const CreateAdSchema = z.object({
   phone: z
     .string()
     .min(10, 'Номер телефона указан не полностью')
-    .max(18, 'Номер телефона слишком длинный')
-    .regex(/^\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}$/, 'Некорректный формат телефона'),
+    .max(24, 'Номер телефона слишком длинный')
+    .refine(isValidPhone, 'Некорректный формат телефона'),
 
   categoryId: z.string().min(1, 'Выберите категорию'),
   categoryFeatures: z.record(z.string(), z.any()).optional().default({})

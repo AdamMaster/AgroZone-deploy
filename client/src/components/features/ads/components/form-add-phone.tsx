@@ -19,7 +19,7 @@ import {
   SelectValue
 } from '@/components/ui'
 
-import { formatPhoneNumber } from '@/shared/utils'
+import { formatPhoneNumber, phoneToApi } from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
 
@@ -105,7 +105,7 @@ export const FormAddPhone = ({ onSuccessComplete, phones = [], mode = 'ad' }: Fo
   }
 
   const onPhoneSubmit = (data: TypeAddPhoneSchema) => {
-    const cleanPhone = data.phone.replace(/\D/g, '')
+    const cleanPhone = phoneToApi(data.phone)
 
     requestPhone(cleanPhone, {
       onSuccess: response => {
@@ -184,7 +184,7 @@ export const FormAddPhone = ({ onSuccessComplete, phones = [], mode = 'ad' }: Fo
                   value={value}
                   type='tel'
                   placeholder='+7 (999) 999-99-99'
-                  maxLength={18}
+                  maxLength={24}
                   onChange={e => {
                     onChange(formatPhoneNumber(e.target.value))
                   }}

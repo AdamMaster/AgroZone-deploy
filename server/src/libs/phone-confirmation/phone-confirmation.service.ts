@@ -1,5 +1,6 @@
-import { HttpException, Injectable, Logger } from '@nestjs/common'
+import { BadRequestException, HttpException, Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { getPhoneCountry, isPossiblePhone, parseAllowedCountries } from '@/libs/common/utils/phone.util'
 import { SmsRuService } from '@/libs/smsru/smsru.service'
 import { ZvonokService } from '@/libs/zvonok/zvonok.service'
 
@@ -37,6 +38,8 @@ export class PhoneConfirmationService {
   // ip — адрес пользователя (не сервера): sms.ru по нему решает, какой номер
   // выдать звонящему из-за границы. «Звонок» его не использует.
   async requestCallbackConfirmation(phone: string, ip?: string): Promise<{ callId: string; number: string }> {
+    this.assertPhoneAllowed(phone)
+
     if (this.getPrimaryProvider() === 'zvonok') {
       return this.requestViaZvonok(phone)
     }
@@ -79,7 +82,35 @@ export class PhoneConfirmationService {
     return { callId: `${PREFIX.zvonok}${callId}`, number }
   }
 
+  // Номер должен быть корректным по длине и коду страны. Если задан
+  // PHONE_ALLOWED_COUNTRIES, дополнительно требуем, чтобы он был из одной из
+  // перечисленных стран (по умолчанию ограничения нет). Проверяем до обращения
+  // к провайдеру, чтобы не тратить запросы на заведомо неподходящие номера.
+  private assertPhoneAllowed(phone: string): void {
+    if (!isPossiblePhone(phone)) {
+      throw new BadRequestException('Номер телефона указан неверно. Проверьте номер и попробуйте снова.')
+    }
+
+    const allowed = parseAllowedCountries(this.configService.get<string>('PHONE_ALLOWED_COUNTRIES'))
+
+    if (!allowed) return
+
+    const country = getPhoneCountry(phone)
+
+    // Россия и Казахстан делят код +7: если страну по цифрам определить не
+    // удалось, номер на «7» считаем российским (как раньше).
+    const effectiveCountry = country ?? (phone.startsWith('7') ? 'RU' : undefined)
+
+    if (!effectiveCountry || !allowed.includes(effectiveCountry)) {
+      throw new BadRequestException(
+        'Подтверждение номеров этой страны пока недоступно. Попробуйте номер другой страны или напишите в поддержку.'
+      )
+    }
+  }
+
+  // «Звонок» умеет только Россию: казахстанский номер тоже начинается на «7»,
+  // но резервом его проверять бессмысленно.
   private canFallbackToZvonok(phone: string): boolean {
-    return phone.startsWith('7') && Boolean(this.configService.get<string>('ZVONOK_PUBLIC_KEY'))
+    return getPhoneCountry(phone) === 'RU' && Boolean(this.configService.get<string>('ZVONOK_PUBLIC_KEY'))
   }
 }
