@@ -207,7 +207,7 @@ export class UserController {
     )
     file: Express.Multer.File
   ) {
-    const uploadResult = await this.fileService.uploadFile(file, 'avatars')
+    const uploadResult = await this.fileService.uploadAvatar(file)
 
     return this.userService.updateAvatar(userId, uploadResult.url)
   }

@@ -3,6 +3,12 @@ import { ConfigService } from '@nestjs/config'
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import 'multer'
 import { extractS3Key } from './utils/s3-keys.util'
+import {
+  AVATAR_IMAGE_OPTIONS,
+  PHOTO_IMAGE_OPTIONS,
+  ProcessImageOptions,
+  processImage
+} from './utils/image-processing.util'
 
 @Injectable()
 export class FileService {
@@ -27,10 +33,41 @@ export class FileService {
     })
   }
 
+  // Фото (объявления, аватары, фиды дилеров): файл проверяется по содержимому
+  // и перекодируется в чистый JPEG — см. processImage. В бакет попадает только
+  // результат, а не то, что прислал клиент: расширение и ContentType берутся
+  // из него, а не из имени файла и mimetype запроса. Не-картинку отклоняет
+  // BadRequestException.
+  async uploadImage(
+    file: Express.Multer.File,
+    folder: string = 'ads',
+    options: Pick<ProcessImageOptions, 'maxDimension' | 'quality'> = PHOTO_IMAGE_OPTIONS
+  ) {
+    const processed = await processImage(file.buffer, { ...options, fileName: file.originalname })
+
+    return this.putObject(folder, processed.buffer, processed.mimetype, processed.extension)
+  }
+
+  // Аватар — то же, что uploadImage, но с меньшим максимальным размером.
+  uploadAvatar(file: Express.Multer.File) {
+    return this.uploadImage(file, 'avatars', AVATAR_IMAGE_OPTIONS)
+  }
+
+  // Документы (презентации): тип файла к этому моменту уже проверен
+  // контроллером по содержимому (FileTypeValidator). Для картинок используй
+  // uploadImage — этот метод хранит файл как есть.
   async uploadFile(file: Express.Multer.File, folder: string = 'ads') {
-    const fileExtension = file.originalname.split('.').pop()
+    // Расширение приходит из имени файла клиента: оставляем только буквы и
+    // цифры, чтобы в ключ объекта не попало ничего лишнего (слэши, точки).
+    const rawExtension = file.originalname.split('.').pop() ?? ''
+    const extension = /^[a-z0-9]{1,8}$/i.test(rawExtension) ? rawExtension.toLowerCase() : 'bin'
+
+    return this.putObject(folder, file.buffer, file.mimetype, extension)
+  }
+
+  private async putObject(folder: string, body: Buffer, contentType: string, extension: string) {
     // Сохраняем структуру папок внутри бакета с помощью косой черты
-    const fileName = `${folder}/${Date.now()}-${Math.round(Math.random() * 1e9)}.${fileExtension}`
+    const fileName = `${folder}/${Date.now()}-${Math.round(Math.random() * 1e9)}.${extension}`
     const bucketName = this.configService.getOrThrow<string>('S3_BUCKET_NAME')
 
     try {
@@ -38,8 +75,8 @@ export class FileService {
         new PutObjectCommand({
           Bucket: bucketName,
           Key: fileName,
-          Body: file.buffer,
-          ContentType: file.mimetype
+          Body: body,
+          ContentType: contentType
         })
       )
     } catch (error) {

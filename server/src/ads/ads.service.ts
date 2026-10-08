@@ -1238,7 +1238,7 @@ export class AdsService {
   // Загружает файлы всё-или-ничего: если хотя бы одна загрузка упала, уже
   // загруженные файлы удаляются, иначе они остались бы в S3 без ссылки из БД.
   private async uploadImages(files: Express.Multer.File[]): Promise<string[]> {
-    const results = await Promise.allSettled(files.map(file => this.fileService.uploadFile(file, 'ads')))
+    const results = await Promise.allSettled(files.map(file => this.fileService.uploadImage(file, 'ads')))
     const uploaded = results.flatMap(result => (result.status === 'fulfilled' ? [result.value.url] : []))
     const failed = results.find((result): result is PromiseRejectedResult => result.status === 'rejected')
 

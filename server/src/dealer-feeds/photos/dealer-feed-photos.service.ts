@@ -24,9 +24,9 @@ export interface DealerFeedImageSyncResult {
 // Скачивает фото дилера по прямой ссылке и перезаливает в собственный S3
 // (см. обсуждение с владельцем: не отдаём хотлинк на чужой сервер —
 // ненадёжно и может быть заблокировано хотлинк-защитой). Переиспользует
-// FileService.uploadFile — тот же код, что грузит фото обычных
-// объявлений, значит совершенно та же обработка ошибок S3 и тот же
-// формат итоговой ссылки.
+// FileService.uploadImage — тот же код, что грузит фото обычных
+// объявлений: та же проверка содержимого и перекодирование в JPEG, та же
+// обработка ошибок S3 и тот же формат итоговой ссылки.
 @Injectable()
 export class DealerFeedPhotosService {
   private readonly logger = new Logger(DealerFeedPhotosService.name)
@@ -144,7 +144,7 @@ export class DealerFeedPhotosService {
     } as Express.Multer.File
 
     try {
-      const uploaded = await this.fileService.uploadFile(fakeFile, 'ads')
+      const uploaded = await this.fileService.uploadImage(fakeFile, 'ads')
       return uploaded.url
     } catch (error) {
       this.logger.warn(`Не удалось перезалить фото ${sourceUrl} в S3: ${(error as Error).message}`)

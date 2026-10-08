@@ -45,7 +45,7 @@ describe('AdsService', () => {
     }
 
     fileService = {
-      uploadFile: jest.fn(),
+      uploadImage: jest.fn(),
       deleteFileByUrl: jest.fn().mockResolvedValue(undefined)
     }
     userService = { findById: jest.fn() }
@@ -291,7 +291,7 @@ describe('AdsService', () => {
       prisma.ad.findFirst.mockResolvedValue(existingAd)
       prisma.ad.update.mockImplementation(({ data }: any) => Promise.resolve({ id: 'ad-1', ...data }))
       prisma.ad.create.mockImplementation(({ data }: any) => Promise.resolve({ id: 'ad-new', ...data }))
-      fileService.uploadFile.mockResolvedValue({ url: NEW_URL, fileId: 'ads/new.jpg' })
+      fileService.uploadImage.mockResolvedValue({ url: NEW_URL, fileId: 'ads/new.jpg' })
     })
 
     describe('update', () => {
@@ -341,7 +341,7 @@ describe('AdsService', () => {
           service.update('ad-1', { phone: 'abc', existingImages: [] } as any, 'user-1', [file])
         ).rejects.toThrow(BadRequestException)
 
-        expect(fileService.uploadFile).not.toHaveBeenCalled()
+        expect(fileService.uploadImage).not.toHaveBeenCalled()
         expect(fileService.deleteFileByUrl).not.toHaveBeenCalled()
         expect(prisma.ad.update).not.toHaveBeenCalled()
       })
@@ -366,7 +366,7 @@ describe('AdsService', () => {
       })
 
       it('если одна из загрузок упала — удаляет уже загруженные файлы и не пишет в БД', async () => {
-        fileService.uploadFile
+        fileService.uploadImage
           .mockResolvedValueOnce({ url: NEW_URL, fileId: 'ads/new.jpg' })
           .mockRejectedValueOnce(new Error('upload failed'))
 
@@ -432,7 +432,7 @@ describe('AdsService', () => {
 
         await expect(service.create({ ...dto, unit: 'HOUR' }, 'user-1', [file])).rejects.toThrow(BadRequestException)
 
-        expect(fileService.uploadFile).not.toHaveBeenCalled()
+        expect(fileService.uploadImage).not.toHaveBeenCalled()
       })
     })
 
