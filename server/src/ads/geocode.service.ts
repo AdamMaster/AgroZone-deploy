@@ -37,8 +37,18 @@ export class GeocodeService {
   }
 
   private async fetchAddress(lat: number, lon: number): Promise<string> {
+    const apiKey = this.configService.get<string>('YANDEX_MAPS_API_KEY')
+
+    // Без ключа раньше getOrThrow кидал голую ошибку -> 500 без объяснений.
+    // Теперь причина видна в логе, а клиент получает понятный 503 (фильтр
+    // радиуса при этом продолжает работать по координатам, см. RadiusFilter).
+    if (!apiKey) {
+      this.logger.error('Не задан YANDEX_MAPS_API_KEY — геокодер адресов не работает')
+      throw new ServiceUnavailableException('Сервис определения адреса временно недоступен')
+    }
+
     const params = new URLSearchParams({
-      apikey: this.configService.getOrThrow<string>('YANDEX_MAPS_API_KEY'),
+      apikey: apiKey,
       geocode: `${lon},${lat}`,
       format: 'json',
       results: '1'

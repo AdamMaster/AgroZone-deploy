@@ -20,7 +20,7 @@ describe('GeocodeService', () => {
 
   beforeEach(() => {
     redis = { get: jest.fn().mockResolvedValue(null), set: jest.fn().mockResolvedValue(undefined) }
-    service = new GeocodeService({ getOrThrow: () => 'key' } as any, redis as any)
+    service = new GeocodeService({ get: () => 'key' } as any, redis as any)
     fetchMock.mockReset()
     global.fetch = fetchMock as any
   })
@@ -52,6 +52,13 @@ describe('GeocodeService', () => {
 
     await expect(service.getAddressFromCoords(1, 1)).rejects.toBeInstanceOf(ServiceUnavailableException)
     await expect(service.getAddressFromCoords(1, 1)).rejects.toBeInstanceOf(ServiceUnavailableException)
+  })
+
+  it('503, а не 500, если ключ геокодера не задан', async () => {
+    service = new GeocodeService({ get: () => undefined } as any, redis as any)
+
+    await expect(service.getAddressFromCoords(1, 1)).rejects.toBeInstanceOf(ServiceUnavailableException)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('сбой Redis не ломает ответ', async () => {

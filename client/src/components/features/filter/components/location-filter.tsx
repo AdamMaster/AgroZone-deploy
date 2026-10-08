@@ -84,7 +84,7 @@ export const LocationFilter = ({ value, onChange }: LocationFilterProps) => {
       <div className='flex items-center justify-between'>
         {/* <Label htmlFor={inputId}>Локация</Label> */}
         {hasValue && (
-          <button type='button' onClick={handleClear} className='text-secondary text-xs hover:underline'>
+          <button type='button' onClick={handleClear} className='text-xs text-gray-500 hover:text-gray-900'>
             Сбросить
           </button>
         )}

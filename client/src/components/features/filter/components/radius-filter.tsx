@@ -137,7 +137,7 @@ export const RadiusFilter = ({ value, onChange }: RadiusFilterProps) => {
               </SelectContent>
             </Select>
           </div>
-          <button type='button' onClick={handleClear} className='text-secondary text-xs hover:underline'>
+          <button type='button' onClick={handleClear} className='text-xs text-gray-500 hover:text-gray-900'>
             Сбросить
           </button>
         </div>
