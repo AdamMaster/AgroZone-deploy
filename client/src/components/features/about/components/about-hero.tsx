@@ -44,7 +44,7 @@ export const AboutHero = () => {
               агропромышленная площадка объявлений
             </Heading>
 
-            <p className='mt-6 max-w-xl text-lg leading-snug text-gray-200'>От поля до сделки — в одном месте</p>
+            <p className='mt-6 max-w-xl text-lg leading-snug text-gray-200'>Купи. Продай. Вырасти</p>
 
             <div className='mt-8 flex flex-wrap gap-3'>
               <Button render={<Link href='/ads/create' />} size='lg'>
