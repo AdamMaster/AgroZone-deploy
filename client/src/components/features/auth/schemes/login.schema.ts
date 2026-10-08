@@ -9,10 +9,22 @@ import { z } from 'zod'
 // именно это и произошло при смене основного номера на аккаунте.
 const phoneRegex = /^(\+7|7|8)?[\s\-]?\(?[0-9]{3}\)?[\s\-]?[0-9]{3}[\s\-]?[0-9]{2}[\s\-]?[0-9]{2}$/
 
-// Иностранный номер — только с «+» и кодом страны ("+375 29 123-45-67"):
-// без плюса нельзя понять, это код страны или российский номер на «8».
-const isInternationalPhone = (value: string) =>
-  value.trim().startsWith('+') && Boolean(parsePhoneNumberFromString(value.trim())?.isValid())
+// Иностранный номер: "+375 29 123-45-67" или просто "375291234567". Российские
+// номера (в том числе на «8») проверяет регулярка выше, поэтому сюда они
+// попадают только если не подошли ей, и цифры без плюса можно считать кодом
+// страны с номером. Только символы, допустимые в телефоне, — иначе почта
+// с цифрами тоже превратилась бы в «номер».
+const PHONE_CHARS = /^[\d\s()+-]+$/
+
+const isInternationalPhone = (value: string) => {
+  const trimmed = value.trim()
+
+  if (!PHONE_CHARS.test(trimmed)) return false
+
+  const candidate = trimmed.startsWith('+') ? trimmed : `+${trimmed}`
+
+  return Boolean(parsePhoneNumberFromString(candidate)?.isValid())
+}
 
 export const LoginSchema = z.object({
   login: z
