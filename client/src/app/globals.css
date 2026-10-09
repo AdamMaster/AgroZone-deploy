@@ -115,7 +115,7 @@ body.yarl__no_scroll {
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  --text-base: 15px;
+  --text-base: 16px;
   --color-light: #fff;
 }
 
@@ -243,4 +243,19 @@ button {
 
 .yarl__container {
   background: rgba(0, 0, 0, 1);
+}
+
+/*
+ * iOS Safari автоматически приближает страницу при фокусе на поле, если
+ * шрифт в нём меньше 16px, и после потери фокуса масштаб не возвращает.
+ * --text-base у нас 15px, а на планшетах (md:text-sm) шрифт ещё меньше,
+ * поэтому на устройствах с тач-экраном принудительно ставим 16px.
+ */
+@media (pointer: coarse) {
+
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
 }

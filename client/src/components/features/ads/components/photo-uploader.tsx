@@ -221,7 +221,7 @@ export const PhotoUploader = ({ control, name, maxFiles, isPremium, onProcessing
     <div>
       <Label className='flex flex-col items-start sm:block'>
         Фотографии{' '}
-        <span className='text-xs font-normal text-gray-500 sm:text-base'>
+        <span className='text-xs font-normal text-gray-500 sm:text-sm'>
           (Объявления с фотографиями получают больше просмотров и откликов. Перетащите, чтобы изменить порядок.)
         </span>
       </Label>
@@ -240,7 +240,11 @@ export const PhotoUploader = ({ control, name, maxFiles, isPremium, onProcessing
                 aria-label={isProcessing ? 'Обрабатываем фото' : 'Добавить фото'}
                 className='hover:border-primary flex aspect-square flex-col items-center justify-center rounded-lg border-2 border-dashed text-sm text-gray-500 transition-colors disabled:cursor-wait disabled:hover:border-current'
               >
-                {isProcessing ? <Loader2 className='animate-spin text-gray-900' /> : <ImagePlus className='text-gray-900' />}
+                {isProcessing ? (
+                  <Loader2 className='animate-spin text-gray-900' />
+                ) : (
+                  <ImagePlus className='text-gray-900' />
+                )}
               </button>
             )}
 

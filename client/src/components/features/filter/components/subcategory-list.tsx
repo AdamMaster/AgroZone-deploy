@@ -68,7 +68,7 @@ export const SubcategoryList = ({
               <CommandGroup>
                 {categories.map(child => (
                   <CommandItem
-                    className='flex cursor-pointer gap-2 px-3.5 py-1.5 text-sm hover:bg-gray-50'
+                    className='flex cursor-pointer gap-2 px-3.5 py-2 text-base hover:bg-gray-50'
                     key={child.id}
                     value={child.name}
                     onSelect={() => handleSelect(child.fullPath)}

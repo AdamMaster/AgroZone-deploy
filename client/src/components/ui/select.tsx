@@ -24,7 +24,7 @@ function SelectTrigger({ className, children, ...props }: SelectPrimitive.Trigge
     <SelectPrimitive.Trigger
       data-slot='select-trigger'
       className={cn(
-        "flex h-11 w-fit items-center justify-between gap-1.5 rounded-lg border bg-gray-50 py-2 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors outline-none select-none hover:bg-gray-100 data-disabled:cursor-not-allowed data-disabled:opacity-50 data-[placeholder]:text-gray-500 sm:h-12 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "flex h-11 w-fit items-center justify-between gap-1.5 rounded-lg border bg-gray-50 py-2 pr-2 pl-2.5 whitespace-nowrap transition-colors outline-none select-none hover:bg-gray-100 data-disabled:cursor-not-allowed data-disabled:opacity-50 data-[placeholder]:text-gray-500 sm:h-12 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       {...props}
@@ -86,7 +86,7 @@ function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Prop
     <SelectPrimitive.Item
       data-slot='select-item'
       className={cn(
-        "focus:bg-accent focus:text-accent-foreground data-highlighted:bg-accent data-highlighted:text-accent-foreground relative flex w-full cursor-default items-center gap-1.5 rounded-lg py-1 pr-8 pl-1.5 text-sm outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "focus:bg-accent focus:text-accent-foreground data-highlighted:bg-accent data-highlighted:text-accent-foreground relative flex w-full cursor-default items-center gap-1.5 rounded-lg py-1 pr-8 pl-1.5 outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       {...props}

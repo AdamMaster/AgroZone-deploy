@@ -103,7 +103,7 @@ export const SearchBar = ({ className }: SearchBarProps) => {
             aria-label='Поиск по объявлениям'
             onChange={e => handleInputChange(e.target.value)}
             onClick={() => onClickInput()}
-            className='h-10 w-full rounded-[10px] border-0 bg-transparent pl-3 transition-none focus-visible:border-transparent md:h-12 md:bg-white md:pl-4 md:pl-5 md:text-[15px]! md:transition-colors!'
+            className='h-10 w-full rounded-[10px] border-0 bg-transparent pl-3 transition-none focus-visible:border-transparent md:h-12 md:bg-white md:pl-4 md:pl-5 md:transition-colors!'
             autoComplete='off'
           />
 
@@ -153,7 +153,7 @@ export const SearchBar = ({ className }: SearchBarProps) => {
 
                     router.push(item.url)
                   }}
-                  className='flex cursor-pointer items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-gray-50'
+                  className='flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50'
                 >
                   {item.type !== 'category' && <Search className='size-4 shrink-0' />}
 
