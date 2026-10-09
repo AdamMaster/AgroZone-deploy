@@ -86,7 +86,7 @@ function CommandInput({ className, ...props }: React.ComponentProps<typeof Comma
             // зумит страницу при фокусе на текстовом поле мельче 16px (см.
             // обсуждение с пользователем — отсюда "сайт сам увеличился" на
             // айфоне друга после тапа по выбору региона/категории).
-            'h-full w-full text-base outline-hidden disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
+            'h-full w-full text-base outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
             className
           )}
           {...props}
