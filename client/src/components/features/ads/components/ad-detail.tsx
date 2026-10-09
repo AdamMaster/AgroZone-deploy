@@ -75,6 +75,8 @@ const isTouchDevice = () => typeof window !== 'undefined' && window.matchMedia('
 // свайпом), кнопки масштаба тоже (увеличение щипком работает и без них).
 const MOBILE_LIGHTBOX_RENDER = { buttonPrev: () => null, buttonNext: () => null, buttonZoom: () => null }
 const MOBILE_LIGHTBOX_TOOLBAR = { buttons: ['close' as const] }
+// На телефоне фото во всю ширину экрана: убираем внутренние отступы слайда
+const MOBILE_LIGHTBOX_CAROUSEL = { padding: 0 }
 
 // Виден только владельцу объявления (см. `isOwner &&` ниже) — recharts
 // незачем грузить всем остальным посетителям страницы.
@@ -682,6 +684,7 @@ export const AdDetail = ({
             animation={isTouchDevice() ? undefined : { swipe: 0 }}
             render={isTouchDevice() ? MOBILE_LIGHTBOX_RENDER : undefined}
             toolbar={isTouchDevice() ? MOBILE_LIGHTBOX_TOOLBAR : undefined}
+            carousel={isTouchDevice() ? MOBILE_LIGHTBOX_CAROUSEL : undefined}
             styles={{ slide: { maxWidth: 1280, margin: '0 auto' } }}
           />
         )}
