@@ -10,10 +10,14 @@ import { MailService } from '@/libs/mail/mail.service'
 import { TwoFactorAuthService } from './two-factor-auth/two-factor-auth.service'
 import { PhoneConfirmationModule } from '@/libs/phone-confirmation/phone-confirmation.module'
 import { SupportModule } from '@/support/support.module'
+import { RedisModule } from '@/redis/redis.module'
+import { MobileOAuthService } from './mobile-oauth/mobile-oauth.service'
 
 @Module({
   imports: [
     PhoneConfirmationModule,
+    // Хранилище state/ticket входа через соцсеть из приложения (MobileOAuthService).
+    RedisModule,
     ProviderModule.registerAsync({
       imports: [ConfigModule],
       useFactory: getProvidersConfig,
@@ -28,7 +32,7 @@ import { SupportModule } from '@/support/support.module'
     forwardRef(() => SupportModule)
   ],
   controllers: [AuthController],
-  providers: [AuthService, UserService, MailService, TwoFactorAuthService],
+  providers: [AuthService, UserService, MailService, TwoFactorAuthService, MobileOAuthService],
   exports: [AuthService]
 })
 export class AuthModule {}

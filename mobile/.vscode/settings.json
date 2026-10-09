@@ -1,0 +1,14 @@
+{
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit"
+  },
+  "tailwindCSS.classAttributes": [
+    "className",
+    "contentContainerClassName",
+    "columnWrapperClassName",
+    "colorClassName",
+    "tintColorClassName",
+    "placeholderTextColorClassName"
+  ],
+  "tailwindCSS.classFunctions": ["useResolveClassNames"]
+}

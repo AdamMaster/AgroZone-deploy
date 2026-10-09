@@ -12,6 +12,7 @@ import session from 'express-session'
 import { RedisStore } from 'connect-redis'
 import { createClient } from 'redis'
 import compression from 'compression'
+import { createSessionTokenMiddleware } from './session/session-token'
 import { SessionMiddlewareHolder } from './session/session-middleware.holder'
 import { SupportIoAdapter } from './support/support-io.adapter'
 import { requestContextMiddleware } from './security-events/request-context'
@@ -48,6 +49,12 @@ async function bootstrap() {
   redisClient.on('error', err => console.error('❌ Redis error:', err))
 
   app.use(compression())
+
+  // Мобильное приложение присылает ключ сессии в Authorization вместо
+  // cookie — превращаем его в cookie сессии до cookie-parser и
+  // express-session, дальше всё работает как для сайта (см.
+  // session/session-token.ts).
+  app.use(createSessionTokenMiddleware(config.getOrThrow<string>('SESSION_NAME')))
 
   app.use(cookieParser(config.getOrThrow<string>('COOKIES_SECRET')))
 

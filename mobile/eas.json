@@ -1,0 +1,27 @@
+{
+  "cli": {
+    "version": ">= 24.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.agro-zone.ru",
+        "EXPO_PUBLIC_SITE_URL": "https://agro-zone.ru",
+        "EXPO_PUBLIC_YANDEX_CAPTCHA_SITEKEY": "ysc1_vbVTfLezUVdrTjvvfhR9XSqWpyX2nSVuSdZxdwW1567558d5"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.agro-zone.ru",
+        "EXPO_PUBLIC_SITE_URL": "https://agro-zone.ru",
+        "EXPO_PUBLIC_YANDEX_CAPTCHA_SITEKEY": "ysc1_vbVTfLezUVdrTjvvfhR9XSqWpyX2nSVuSdZxdwW1567558d5"
+      }
+    }
+  }
+}

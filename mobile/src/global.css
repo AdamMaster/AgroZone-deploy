@@ -1,0 +1,46 @@
+@import 'tailwindcss';
+@import 'uniwind';
+
+/*
+ * Дизайн-токены приложения. Значения — те же, что у сайта
+ * (client/src/app/globals.css), только переведены из oklch в hex: в нативе
+ * цвета превращаются в обычные значения стилей на этапе сборки, и hex
+ * гарантированно одинаково выглядит на iOS и Android. Если меняете цвет
+ * бренда — меняйте в обоих местах, чтобы сайт и приложение не разъехались.
+ *
+ * Светлая и тёмная темы переключаются автоматически по настройке телефона
+ * (Uniwind по умолчанию следует системной теме).
+ */
+@layer theme {
+  :root {
+    @variant light {
+      --color-background: #ffffff;
+      --color-foreground: #0a0a0a;
+      --color-card: #ffffff;
+      --color-muted: #f5f5f5;
+      --color-muted-foreground: #737373;
+      --color-primary: #40a500;
+      --color-secondary: #1a365d;
+      --color-destructive: #e7000b;
+      --color-border: #e5e5e5;
+      --color-skeleton: #f0f0f0;
+      --color-price-highlight: #fee685;
+      --color-price-highlight-foreground: #0a0a0a;
+    }
+
+    @variant dark {
+      --color-background: #262626;
+      --color-foreground: #fafafa;
+      --color-card: #333333;
+      --color-muted: #333333;
+      --color-muted-foreground: #a1a1a1;
+      --color-primary: #40a500;
+      --color-secondary: #0056ad;
+      --color-destructive: #ff6467;
+      --color-border: #3d3d3d;
+      --color-skeleton: #3a3a3a;
+      --color-price-highlight: #fee685;
+      --color-price-highlight-foreground: #171717;
+    }
+  }
+}

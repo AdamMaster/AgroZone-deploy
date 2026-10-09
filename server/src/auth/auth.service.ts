@@ -27,6 +27,7 @@ import { PhoneConfirmationService } from '@/libs/phone-confirmation/phone-confir
 import { getClientIp } from '@/libs/common/utils/request-ip.util'
 import { SupportGuestsService } from '@/support/support-guests.service'
 import { LoginMethod, SecurityEventsService } from '@/security-events/security-events.service'
+import { SessionTokenService } from '@/session/session-token.service'
 
 @Injectable()
 export class AuthService {
@@ -39,7 +40,8 @@ export class AuthService {
     private readonly twoFactorAuthService: TwoFactorAuthService,
     private readonly phoneConfirmationService: PhoneConfirmationService,
     private readonly supportGuestsService: SupportGuestsService,
-    private readonly securityEventsService: SecurityEventsService
+    private readonly securityEventsService: SecurityEventsService,
+    private readonly sessionTokenService: SessionTokenService
   ) {}
 
   // Токен из БД сам по себе звонка не доказывает: он создаётся ещё на старте
@@ -357,7 +359,23 @@ export class AuthService {
     }
   }
 
+  // Вход через соцсеть на сайте: найти/создать пользователя и сразу открыть
+  // сессию в этом же запросе (браузер пришёл на колбэк со своей cookie).
   async extractProfileFromCode(req: Request, provider: string, code: string) {
+    const { user, isNewUser } = await this.resolveOAuthUser(req, provider, code)
+
+    await this.saveSession(req, user, 'oauth')
+
+    return { isNewUser }
+  }
+
+  // Вход через соцсеть в мобильном приложении: колбэк провайдера приходит
+  // из системного браузера, а сессию нужно открыть в приложении — поэтому
+  // здесь только находим/создаём пользователя, а сессию откроет
+  // completeMobileOAuth уже в запросе самого приложения (см.
+  // MobileOAuthService). Так сессия не остаётся заодно в cookie браузера, а
+  // журнал безопасности видит IP и устройство приложения.
+  async resolveOAuthUser(req: Request, provider: string, code: string): Promise<{ user: User; isNewUser: boolean }> {
     const providerInstance = this.providerService.findByService(provider)
     const profile = await providerInstance?.findUserByCode(code)
 
@@ -399,7 +417,6 @@ export class AuthService {
           metadata: { provider: profile?.provider ?? '' }
         })
       }
-      await this.saveSession(req, user, 'oauth')
       // isNewUser — контроллер использует его, чтобы отправить фронт с
       // ?newUser=1 (см. AuthController.callback) для цели "registration" в
       // Яндекс.Метрике (F15 в ROADMAP.md). У OAuth нет отдельного шага
@@ -407,7 +424,7 @@ export class AuthService {
       // пользователя, поэтому единственный надёжный признак "это новый
       // аккаунт" — то, что мы сами только что создали его ниже, а не нашли
       // существующий.
-      return { isNewUser: false }
+      return { user, isNewUser: false }
     }
 
     const providerKey = (profile?.provider?.toUpperCase() ?? '') as keyof typeof AuthMethod
@@ -443,8 +460,21 @@ export class AuthService {
       })
     }
 
-    await this.saveSession(req, user, 'oauth')
-    return { isNewUser: true }
+    return { user, isNewUser: true }
+  }
+
+  // Вторая половина входа через соцсеть в приложении (см. resolveOAuthUser):
+  // одноразовый код уже проверен MobileOAuthService, тут только открываем
+  // сессию. Аккаунт за время между колбэком и обменом кода могли удалить —
+  // такого пользователя не впускаем.
+  async completeMobileOAuth(req: Request, userId: string) {
+    const user = await this.userService.findById(userId)
+
+    if (user.deletedAt) {
+      throw new UnauthorizedException('Аккаунт удалён')
+    }
+
+    return this.saveSession(req, user, 'oauth')
   }
 
   async login(req: Request, dto: LoginDto) {
@@ -515,7 +545,6 @@ export class AuthService {
   // проверки в каждом методе отдельно.
   async saveSession(req: Request, user: User, loginMethod: LoginMethod = 'password') {
     const role = await this.ensureAdminRole(user)
-    const sessionUser = role === user.role ? user : { ...user, role }
 
     // "Долг" в ROADMAP.md — склейка гостя поддержки с аккаунтом. Если в
     // ЭТОЙ ЖЕ сессии до входа/регистрации посетитель уже писал в чат
@@ -562,7 +591,16 @@ export class AuthService {
     // должен попадать в журнал как вошедший.
     await this.securityEventsService.recordLoginIfNew(user.id, loginMethod)
 
-    return { user: sessionUser }
+    // Профиль — в том же безопасном виде, что и GET /users/profile: без
+    // хэша пароля и OAuth-токенов. Раньше сюда уходила сырая запись из базы
+    // целиком (вместе с хэшем пароля) — сайт её не читал, но в ответ она
+    // попадала. Роль после ensureAdminRole уже записана в базу, поэтому
+    // профиль, прочитанный заново, её учитывает.
+    const profile = await this.userService.getProfileForClient(user.id)
+    // Ключ сессии — только для мобильного приложения (см. SessionTokenService).
+    const sessionToken = this.sessionTokenService.issueFor(req)
+
+    return sessionToken ? { user: profile, sessionToken } : { user: profile }
   }
 
   // Автоповышение до ADMIN по списку почт из переменной окружения

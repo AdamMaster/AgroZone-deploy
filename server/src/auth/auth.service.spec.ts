@@ -12,6 +12,7 @@ import { TwoFactorAuthService } from './two-factor-auth/two-factor-auth.service'
 import { PhoneConfirmationService } from '@/libs/phone-confirmation/phone-confirmation.service'
 import { SupportGuestsService } from '@/support/support-guests.service'
 import { SecurityEventsService } from '@/security-events/security-events.service'
+import { SessionTokenService } from '@/session/session-token.service'
 import { AuthMethod, SecurityEventActor, SecurityEventType, TokenType, UserRole } from '@/generated/prisma/enums'
 
 jest.mock('argon2')
@@ -29,6 +30,7 @@ describe('AuthService', () => {
   let supportGuestsService: any
   let securityEventsService: any
   let configService: any
+  let sessionTokenService: any
 
   const createReq = () =>
     ({
@@ -73,7 +75,10 @@ describe('AuthService', () => {
       findByEmail: jest.fn(),
       findByPhone: jest.fn(),
       findById: jest.fn(),
-      create: jest.fn()
+      create: jest.fn(),
+      // saveSession отдаёт профиль в безопасном виде (без хэша пароля) —
+      // так же, как GET /users/profile.
+      getProfileForClient: jest.fn((id: string) => Promise.resolve({ id, hasPassword: true }))
     }
 
     providerService = { findByService: jest.fn() }
@@ -92,6 +97,8 @@ describe('AuthService', () => {
     // ADMIN_EMAILS пуст по умолчанию — ensureAdminRole() внутри saveSession()
     // не должен трогать prisma.user.update ни в одном из "обычных" тестов.
     configService = { get: jest.fn().mockReturnValue(''), getOrThrow: jest.fn() }
+    // По умолчанию запрос — с сайта: ключ сессии не выдаётся.
+    sessionTokenService = { issueFor: jest.fn().mockReturnValue(undefined) }
 
     mockedVerify.mockReset()
 
@@ -106,7 +113,8 @@ describe('AuthService', () => {
         { provide: TwoFactorAuthService, useValue: twoFactorAuthService },
         { provide: PhoneConfirmationService, useValue: phoneConfirmationService },
         { provide: SupportGuestsService, useValue: supportGuestsService },
-        { provide: SecurityEventsService, useValue: securityEventsService }
+        { provide: SecurityEventsService, useValue: securityEventsService },
+        { provide: SessionTokenService, useValue: sessionTokenService }
       ]
     }).compile()
 
@@ -636,6 +644,94 @@ describe('AuthService', () => {
         type: SecurityEventType.OAUTH_LINKED,
         metadata: { provider: 'yandex' }
       })
+    })
+  })
+
+  describe('saveSession: ответ на вход', () => {
+    it('отдаёт профиль из getProfileForClient, а не сырую запись с хэшем пароля', async () => {
+      const req = createReq()
+      const user = baseUser()
+      mockedVerify.mockResolvedValue(true)
+      userService.findByPhone.mockResolvedValue(user)
+
+      const result: any = await service.login(req, { login: '+79991234567', password: 'secret1' } as any)
+
+      expect(userService.getProfileForClient).toHaveBeenCalledWith(user.id)
+      expect(result.user).toEqual({ id: user.id, hasPassword: true })
+      expect(JSON.stringify(result)).not.toContain('hashed-password')
+    })
+
+    it('сайту ключ сессии не отдаётся', async () => {
+      const req = createReq()
+      mockedVerify.mockResolvedValue(true)
+      userService.findByPhone.mockResolvedValue(baseUser())
+
+      const result: any = await service.login(req, { login: '+79991234567', password: 'secret1' } as any)
+
+      expect(result).not.toHaveProperty('sessionToken')
+    })
+
+    it('приложению отдаётся ключ сессии, выданный SessionTokenService после сохранения сессии', async () => {
+      const req = createReq()
+      mockedVerify.mockResolvedValue(true)
+      userService.findByPhone.mockResolvedValue(baseUser())
+      sessionTokenService.issueFor.mockImplementation(() => {
+        // Ключ запрашивается уже после req.session.save().
+        expect(req.session.save).toHaveBeenCalled()
+        return 's:session-id.signature'
+      })
+
+      const result: any = await service.login(req, { login: '+79991234567', password: 'secret1' } as any)
+
+      expect(result.sessionToken).toBe('s:session-id.signature')
+    })
+  })
+
+  describe('вход через соцсеть из мобильного приложения', () => {
+    const yandexProfile = {
+      id: 'yandex-1',
+      provider: 'yandex',
+      email: 'user@yandex.ru',
+      name: 'Иван',
+      picture: '',
+      access_token: 'at',
+      refresh_token: null,
+      expires_at: 0
+    }
+
+    beforeEach(() => {
+      providerService.findByService.mockReturnValue({ findUserByCode: jest.fn().mockResolvedValue(yandexProfile) })
+    })
+
+    it('resolveOAuthUser находит пользователя, но не открывает сессию в запросе браузера', async () => {
+      const req = createReq()
+      const user = baseUser({ id: 'existing-user' })
+      prisma.account.findUnique.mockResolvedValue({ userId: 'existing-user' })
+      userService.findById.mockResolvedValue(user)
+
+      const result = await service.resolveOAuthUser(req, 'yandex', 'code')
+
+      expect(result).toEqual({ user, isNewUser: false })
+      expect(req.session.save).not.toHaveBeenCalled()
+      expect(req.session.userId).toBeUndefined()
+    })
+
+    it('completeMobileOAuth открывает сессию в запросе приложения', async () => {
+      const req = createReq()
+      userService.findById.mockResolvedValue(baseUser({ id: 'existing-user', deletedAt: null }))
+
+      await service.completeMobileOAuth(req, 'existing-user')
+
+      expect(req.session.userId).toBe('existing-user')
+      expect(securityEventsService.recordLoginIfNew).toHaveBeenCalledWith('existing-user', 'oauth')
+    })
+
+    it('completeMobileOAuth не впускает аккаунт, удалённый после колбэка', async () => {
+      const req = createReq()
+      userService.findById.mockResolvedValue(baseUser({ id: 'deleted-user', deletedAt: new Date() }))
+
+      await expect(service.completeMobileOAuth(req, 'deleted-user')).rejects.toBeInstanceOf(UnauthorizedException)
+      expect(req.session.userId).toBeUndefined()
     })
   })
 })

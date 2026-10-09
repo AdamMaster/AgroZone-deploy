@@ -6,7 +6,9 @@ import {
   Controller,
   Get,
   HttpCode,
+  HttpException,
   HttpStatus,
+  Logger,
   Param,
   Post,
   Query,
@@ -27,6 +29,10 @@ import { SmsRegisterDto } from './dto/sms-register.dto'
 import { SmsCompleteDto } from './dto/sms-complete.dto'
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
 import { randomBytes } from 'crypto'
+import { OAuthConnectQueryDto } from './dto/oauth-connect-query.dto'
+import { MobileOAuthExchangeDto } from './dto/mobile-oauth-exchange.dto'
+import { MobileOAuthService, appendQuery } from './mobile-oauth/mobile-oauth.service'
+import { isTokenTransportRequest } from '@/session/session-token'
 
 // Более мягкий лимит для запроса самого кода (SMS/email) — раз в 30 секунд
 // не даёт спамить провайдера SMS/почты, но не мешает нормальному пользователю.
@@ -42,10 +48,13 @@ const POLL_STATUS_THROTTLE = { default: { limit: 30, ttl: 60000 } }
 
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name)
+
   constructor(
     private readonly authService: AuthService,
     private readonly providerService: ProviderService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly mobileOAuthService: MobileOAuthService
   ) {}
 
   @UseGuards(ThrottlerGuard)
@@ -119,11 +128,23 @@ export class AuthController {
 
   @UseGuards(AuthProviderGuard)
   @Get('/oauth/connect/:provider')
-  async connect(@Param('provider') provider: string, @Req() req: Request) {
+  async connect(@Param('provider') provider: string, @Req() req: Request, @Query() query: OAuthConnectQueryDto) {
     const providerInstance = this.providerService.findByService(provider)
 
     if (!providerInstance) {
       throw new BadRequestException(`Провайдер "${provider}" не найден.`)
+    }
+
+    // Мобильное приложение: state и отпечаток секрета приложения — в Redis,
+    // а не в сессии (см. MobileOAuthService).
+    if (query.redirectUri !== undefined || query.codeChallenge !== undefined) {
+      if (!query.redirectUri || !query.codeChallenge) {
+        throw new BadRequestException('Для входа из приложения нужны redirectUri и codeChallenge.')
+      }
+
+      const state = await this.mobileOAuthService.createAuthRequest(query.redirectUri, query.codeChallenge)
+
+      return { url: providerInstance.getAuthUrl(state) }
     }
 
     // Защита от OAuth login CSRF: генерируем одноразовое значение,
@@ -145,6 +166,41 @@ export class AuthController {
     @Query('state') state: string,
     @Param('provider') provider: string
   ) {
+    // Вход из мобильного приложения (state выдан MobileOAuthService) —
+    // возвращаем пользователя в приложение, а не на сайт. Ошибки тоже
+    // отдаём приложению параметром: в системном браузере JSON-ответ с
+    // ошибкой выглядел бы как сломанная страница, а приложение покажет
+    // нормальное сообщение.
+    const mobileRequest = await this.mobileOAuthService.consumeAuthRequest(state)
+
+    if (mobileRequest) {
+      if (!code) {
+        return res.redirect(appendQuery(mobileRequest.redirectUri, { error: 'Вход отменён.' }))
+      }
+
+      try {
+        const { user, isNewUser } = await this.authService.resolveOAuthUser(req, provider, code)
+        const ticket = await this.mobileOAuthService.issueTicket({
+          userId: user.id,
+          isNewUser,
+          codeChallenge: mobileRequest.codeChallenge
+        })
+
+        return res.redirect(appendQuery(mobileRequest.redirectUri, { ticket }))
+      } catch (error) {
+        // Текст показываем только у «наших» ошибок (HttpException с
+        // сообщением для пользователя) — внутренние детали (сбой базы и т.п.)
+        // в адрес возврата не уходят.
+        if (!(error instanceof HttpException)) {
+          this.logger.error('Mobile OAuth callback failed', error instanceof Error ? error.stack : String(error))
+        }
+
+        const message = error instanceof HttpException ? error.message : 'Не удалось войти. Попробуйте ещё раз.'
+
+        return res.redirect(appendQuery(mobileRequest.redirectUri, { error: message }))
+      }
+    }
+
     if (!code) {
       throw new BadRequestException('Не был предоставлен код авторизации.')
     }
@@ -173,6 +229,26 @@ export class AuthController {
     const redirectPath = isNewUser ? '/profile/settings/general?newUser=1' : '/profile/settings/general'
 
     return res.redirect(`${this.configService.getOrThrow<string>('ALLOWED_ORIGIN')}${redirectPath}`)
+  }
+
+  // Вторая половина входа через соцсеть из приложения: одноразовый ticket из
+  // редиректа + исходный секрет приложения → сессия и её ключ. Лимит как у
+  // проверки кодов — это тоже место, где возможен перебор.
+  @UseGuards(ThrottlerGuard)
+  @Throttle(VERIFY_CODE_THROTTLE)
+  @Post('oauth/mobile/exchange')
+  @HttpCode(HttpStatus.OK)
+  async exchangeMobileOAuthTicket(@Req() req: Request, @Body() dto: MobileOAuthExchangeDto) {
+    // Ключ сессии отдаётся только с X-Auth-Transport: token. Без него обмен
+    // открыл бы сессию, ключ от которой никто не получит, — сразу отказываем.
+    if (!isTokenTransportRequest(req)) {
+      throw new BadRequestException('Ручка доступна только мобильному приложению.')
+    }
+
+    const { userId, isNewUser } = await this.mobileOAuthService.redeemTicket(dto.ticket, dto.codeVerifier)
+    const session = await this.authService.completeMobileOAuth(req, userId)
+
+    return { ...session, isNewUser }
   }
 
   @Post('logout')
