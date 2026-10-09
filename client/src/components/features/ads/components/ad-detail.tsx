@@ -64,6 +64,18 @@ import 'yet-another-react-lightbox/styles.css'
 // объявления, если посетитель ни разу не кликнул по галерее.
 const Lightbox = dynamic(() => import('yet-another-react-lightbox'), { ssr: false })
 
+// На компьютере листание фото в лайбоксе мгновенное (без анимации), на телефоне
+// - обычный плавный свайп пальцем. Анимацию отключали одной настройкой
+// animation.swipe = 0 для всех, из-за чего на телефоне слайд дёргался за
+// пальцем и после отпускания прыгал на место рывком. Различаем по основному
+// указателю: pointer: coarse - палец (телефон/планшет), иначе мышь.
+const isTouchDevice = () => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
+
+// На телефоне в лайбоксе оставляем только крестик: стрелки не нужны (листаем
+// свайпом), кнопки масштаба тоже (увеличение щипком работает и без них).
+const MOBILE_LIGHTBOX_RENDER = { buttonPrev: () => null, buttonNext: () => null, buttonZoom: () => null }
+const MOBILE_LIGHTBOX_TOOLBAR = { buttons: ['close' as const] }
+
 // Виден только владельцу объявления (см. `isOwner &&` ниже) — recharts
 // незачем грузить всем остальным посетителям страницы.
 const AdViewsStats = dynamic(() => import('./ad-views-stats').then(mod => mod.AdViewsStats), {
@@ -667,7 +679,9 @@ export const AdDetail = ({
             slides={slides}
             plugins={[Zoom]}
             on={{ view: ({ index }) => setActiveImage(index) }}
-            animation={{ swipe: 0 }}
+            animation={isTouchDevice() ? undefined : { swipe: 0 }}
+            render={isTouchDevice() ? MOBILE_LIGHTBOX_RENDER : undefined}
+            toolbar={isTouchDevice() ? MOBILE_LIGHTBOX_TOOLBAR : undefined}
             styles={{ slide: { maxWidth: 1280, margin: '0 auto' } }}
           />
         )}
