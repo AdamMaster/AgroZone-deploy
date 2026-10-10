@@ -113,6 +113,15 @@ describe('createPhotoVariants', () => {
     expect(medium).toMatchObject({ format: 'webp', width: 800, height: 600 })
   })
 
+  it('поворачивает по EXIF старое фото, загруженное до перекодирования', async () => {
+    // Ориентация 6 — «повернуть на 90° по часовой»: 400×200 на экране — 200×400.
+    const original = await solidImage(400, 200).jpeg().withMetadata({ orientation: 6 }).toBuffer()
+
+    const variants = await createPhotoVariants(original, [400])
+
+    expect(await sharp(variants.get(400)).metadata()).toMatchObject({ width: 200, height: 400 })
+  })
+
   it('не растягивает фото меньше размера копии', async () => {
     const original = await solidImage(600, 300).jpeg().toBuffer()
 

@@ -103,10 +103,9 @@ export async function processImage(buffer: Buffer, options: ProcessImageOptions)
   }
 }
 
-// Уменьшенные копии уже обработанного фото (см. photo-variants.util.ts).
-// Делаются из результата processImage — он уже повёрнут по EXIF, без
-// метаданных и без прозрачности, — поэтому здесь только уменьшение и
-// перекодирование в WebP. Под тем же ограничителем параллельности, что и
+// Уменьшенные копии фото объявления (см. photo-variants.util.ts): новые
+// делаются из результата processImage, старые — из исходного файла,
+// загруженного до перекодирования (поэтому поворот по EXIF и здесь). Под тем же ограничителем параллельности, что и
 // processImage: sharp грузит процессор, и десяток одновременных загрузок
 // не должен класть сервер.
 export async function createPhotoVariants(
@@ -121,7 +120,10 @@ export async function createPhotoVariants(
         async size =>
           [
             size,
-            await sharp(processed)
+            await sharp(processed, { limitInputPixels: MAX_INPUT_PIXELS })
+              // Фото, загруженные до перекодирования, не повёрнуты по EXIF
+              // — у обработанных rotate() ничего не меняет.
+              .rotate()
               .resize({ width: size, height: size, fit: 'inside', withoutEnlargement: true })
               .webp({ quality: PHOTO_VARIANT_QUALITY })
               .toBuffer()
