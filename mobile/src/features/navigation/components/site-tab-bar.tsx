@@ -5,7 +5,9 @@ import { useUniwind } from 'uniwind'
 
 import { useRequestSignIn } from '@/features/auth/hooks/use-request-sign-in'
 import { useAuthStore } from '@/features/auth/store/auth-store'
+import { useUnreadNotificationsCount } from '@/features/notifications/hooks/use-notifications'
 
+import { CountBadge } from '@/shared/components/count-badge'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
 import {
   ChatCircleFillIcon,
@@ -22,8 +24,13 @@ interface TabItem {
   routeName: string
   label: string
   icon: ComponentType<{ size: number; color: string }>
-  href: Href
+  href: Extract<Href, string>
   requiresAuth: boolean
+  // Вкладка со своими разделами (Профиль: безопасность, уведомления…)
+  // подсвечена во всех них, как /profile/settings/* на сайте.
+  hasSections?: boolean
+  // Счётчик непрочитанных уведомлений на значке — как на сайте.
+  showsUnreadCount?: boolean
 }
 
 // Те же вкладки, порядок, подписи и иконки, что у MobileTabBar сайта.
@@ -32,7 +39,15 @@ const TABS: readonly TabItem[] = [
   { routeName: '(favorites)', label: 'Избранное', icon: HeartFillIcon, href: '/favorites', requiresAuth: true },
   { routeName: '(my-ads)', label: 'Объявления', icon: StackFillIcon, href: '/my-ads', requiresAuth: true },
   { routeName: 'messages', label: 'Сообщения', icon: ChatCircleFillIcon, href: '/messages', requiresAuth: true },
-  { routeName: 'profile', label: 'Профиль', icon: UserFillIcon, href: '/profile', requiresAuth: true }
+  {
+    routeName: '(profile)',
+    label: 'Профиль',
+    icon: UserFillIcon,
+    href: '/profile',
+    requiresAuth: true,
+    hasSections: true,
+    showsUnreadCount: true
+  }
 ]
 
 const ICON_SIZE = 20
@@ -51,6 +66,8 @@ export function SiteTabBar({ state, navigation, insets }: TabBarProps) {
   const primaryColor = useThemeColor('--color-primary')
   const activeColor = theme === 'dark' ? primaryColor : activeTextColor
 
+  const unreadCount = useUnreadNotificationsCount()
+
   const focusedRouteName = state.routes[state.index]?.name
 
   return (
@@ -63,7 +80,8 @@ export function SiteTabBar({ state, navigation, insets }: TabBarProps) {
       {TABS.map(tab => {
         // Как на сайте: вкладка подсвечена только на своём разделе, а не в
         // каталоге или объявлении, открытых из него.
-        const isActive = focusedRouteName === tab.routeName && pathname === tab.href
+        const isOnTabSection = pathname === tab.href || (!!tab.hasSections && pathname.startsWith(`${tab.href}/`))
+        const isActive = focusedRouteName === tab.routeName && isOnTabSection
         const color = isActive ? activeColor : inactiveColor
         const Icon = tab.icon
 
@@ -95,7 +113,10 @@ export function SiteTabBar({ state, navigation, insets }: TabBarProps) {
             onPress={onPress}
             className='h-14 flex-1 items-center justify-center gap-0.5'
           >
-            <Icon size={ICON_SIZE} color={color} />
+            <View>
+              <Icon size={ICON_SIZE} color={color} />
+              {tab.showsUnreadCount && <CountBadge count={unreadCount} />}
+            </View>
             <Text className='text-[11px] font-medium' style={{ color }}>
               {tab.label}
             </Text>

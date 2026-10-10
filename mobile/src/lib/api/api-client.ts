@@ -30,6 +30,9 @@ interface RequestOptions {
   // 'text' — ручка отдаёт голую строку, а не JSON (например, адрес по
   // координатам, GET /ads/geocode: Nest отправляет строку как text/html).
   responseType?: 'json' | 'text'
+  // Свой предел ожидания — для загрузки файлов: документ в 15 МБ по
+  // мобильной сети дольше обычных 15 секунд.
+  timeoutMs?: number
 }
 
 // Просит сервер отдавать ключ сессии в теле ответа на вход (см.
@@ -66,9 +69,12 @@ export function buildQueryString(params: QueryParams): string {
 }
 
 async function request<T>(method: HttpMethod, path: string, options: RequestOptions = {}): Promise<T> {
-  const { params, body: requestBody, headers, signal, expectBody = true, responseType = 'json' } = options
+  const { params, body: requestBody, headers, signal, expectBody = true, responseType = 'json', timeoutMs } = options
+  // Файлы (фото профиля, документ) уходят multipart/form-data: заголовок с
+  // границей частей fetch ставит сам, задавать его вручную нельзя.
+  const isMultipart = requestBody instanceof FormData
   const url = `${API_URL}${path}${params ? buildQueryString(params) : ''}`
-  const requestSignal = createRequestSignal(signal)
+  const requestSignal = createRequestSignal(signal, timeoutMs)
   const sessionToken = sessionTokenStorage.get()
 
   let response: Response
@@ -83,10 +89,10 @@ async function request<T>(method: HttpMethod, path: string, options: RequestOpti
         Accept: 'application/json',
         ...AUTH_TRANSPORT_HEADERS,
         ...(sessionToken && { Authorization: `Bearer ${sessionToken}` }),
-        ...(requestBody !== undefined && { 'Content-Type': 'application/json' }),
+        ...(requestBody !== undefined && !isMultipart && { 'Content-Type': 'application/json' }),
         ...headers
       },
-      body: requestBody !== undefined ? JSON.stringify(requestBody) : undefined,
+      body: isMultipart ? requestBody : requestBody !== undefined ? JSON.stringify(requestBody) : undefined,
       signal: requestSignal.signal
     })
 

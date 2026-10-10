@@ -7,12 +7,13 @@ import { AppProviders } from '@/providers/app-providers'
 import { useNavigationTheme } from '@/providers/use-navigation-theme'
 
 import { useAuthStore } from '@/features/auth/store/auth-store'
+import { themeHydrated } from '@/features/theme/store/theme-store'
 
 import '@/global.css'
 
-// Сплэш держим, пока не прочитан ключ сессии из защищённого хранилища:
-// иначе приложение на долю секунды показало бы гостевой интерфейс уже
-// вошедшему пользователю.
+// Сплэш держим, пока не прочитаны ключ сессии из защищённого хранилища и
+// выбранная тема: иначе приложение на долю секунды показало бы гостевой
+// интерфейс уже вошедшему пользователю или мелькнуло бы не той темой.
 void SplashScreen.preventAutoHideAsync()
 
 function RootNavigator() {
@@ -24,7 +25,7 @@ function RootNavigator() {
   const isSignedIn = status === 'signedIn'
 
   useEffect(() => {
-    void restore().finally(() => SplashScreen.hideAsync())
+    void Promise.all([restore(), themeHydrated]).finally(() => SplashScreen.hideAsync())
   }, [restore])
 
   // Гость нажал вкладку, требующую входа, вошёл — открываем эту вкладку
@@ -38,8 +39,8 @@ function RootNavigator() {
 
   if (status === 'restoring') return null
 
-  // Stack.Protected: экраны входа доступны только гостю, удаление аккаунта —
-  // только вошедшему. Когда статус меняется (вошёл, вышел, сессия истекла),
+  // Stack.Protected: экраны входа доступны только гостю, настройки аккаунта
+  // (пароль, почта, телефон, удаление) — только вошедшему. Когда статус меняется (вошёл, вышел, сессия истекла),
   // роутер сам убирает недоступные экраны.
   return (
     <Stack screenOptions={{ headerShown: false }}>
@@ -53,6 +54,12 @@ function RootNavigator() {
       </Stack.Protected>
 
       <Stack.Protected guard={isSignedIn}>
+        <Stack.Screen name='change-password' options={{ headerShown: true, presentation: 'modal' }} />
+        <Stack.Screen name='change-email' options={{ headerShown: true, presentation: 'modal' }} />
+        <Stack.Screen
+          name='change-phone'
+          options={{ headerShown: true, title: 'Изменить номер', presentation: 'modal' }}
+        />
         <Stack.Screen
           name='delete-account'
           options={{ headerShown: true, title: 'Удаление аккаунта', presentation: 'modal' }}

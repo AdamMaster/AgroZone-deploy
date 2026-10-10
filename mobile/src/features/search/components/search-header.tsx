@@ -76,14 +76,14 @@ export function SearchHeader({
 
   return (
     <View className='py-3'>
-      <View className='flex-row items-center rounded-lg bg-gray-100 p-[2px]'>
+      <View className='flex-row items-center rounded-lg bg-gray-100 p-[2px] dark:bg-neutral-700'>
         <Pressable
           accessibilityRole='search'
           accessibilityLabel='Поиск по объявлениям'
           onPress={() => setIsSearchOpen(true)}
           className='h-10 flex-1 justify-center pl-3'
         >
-          <Text className={`text-[15px] ${query ? 'text-gray-950' : 'text-gray-500'}`} numberOfLines={1}>
+          <Text className={`text-base ${query ? 'text-gray-950' : 'text-gray-500'}`} numberOfLines={1}>
             {query || 'Поиск по объявлениям'}
           </Text>
         </Pressable>

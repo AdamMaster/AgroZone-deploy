@@ -8,11 +8,23 @@ interface BottomSheetProps {
   onClose: () => void
   // Панель закрылась полностью (только iOS) — см. ActionSheet.
   onDismiss?: () => void
+  // auto — по содержимому, не выше 60% экрана (выбор варианта, меню
+  // действий); tall — почти во весь экран, как Drawer сайта с h-full
+  // (меню профиля): до верха остаётся 6rem.
+  size?: 'auto' | 'tall'
 }
+
+const TALL_SHEET_TOP_GAP = 96
 
 // Панель снизу экрана поверх затемнения — основа для выбора варианта и
 // меню действий. Длинное содержимое прокручивается.
-export function BottomSheet({ visible, onClose, onDismiss, children }: PropsWithChildren<BottomSheetProps>) {
+export function BottomSheet({
+  visible,
+  onClose,
+  onDismiss,
+  size = 'auto',
+  children
+}: PropsWithChildren<BottomSheetProps>) {
   const { bottom } = useModalInsets()
   const { height } = useWindowDimensions()
 
@@ -23,7 +35,11 @@ export function BottomSheet({ visible, onClose, onDismiss, children }: PropsWith
         className='rounded-t-2xl bg-background'
         // flexGrow: 0 стилем, а не классом: у ScrollView свой flexGrow: 1 по
         // умолчанию, и панель растягивалась бы на пол-экрана при паре пунктов.
-        style={{ flexGrow: 0, maxHeight: height * 0.6 }}
+        style={
+          size === 'tall'
+            ? { flexGrow: 0, height: height - TALL_SHEET_TOP_GAP }
+            : { flexGrow: 0, maxHeight: height * 0.6 }
+        }
         contentContainerStyle={{ paddingTop: 8, paddingBottom: bottom + 8 }}
       >
         {children}

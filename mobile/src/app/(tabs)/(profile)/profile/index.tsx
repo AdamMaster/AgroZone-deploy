@@ -1,13 +1,13 @@
 import { RequireSignIn } from '@/features/auth/components/require-sign-in'
-import { ProfileOverview } from '@/features/profile/components/profile-overview'
+import { ProfileGeneralScreen } from '@/features/profile/components/profile-general-screen'
 
 import { TabScreen } from '@/shared/components/tab-screen'
 
-export default function ProfileRoute() {
+export default function ProfileGeneralRoute() {
   return (
     <RequireSignIn>
       <TabScreen>
-        <ProfileOverview />
+        <ProfileGeneralScreen />
       </TabScreen>
     </RequireSignIn>
   )

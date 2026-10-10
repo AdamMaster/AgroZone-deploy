@@ -49,6 +49,14 @@
           "locationAlwaysPermission": false,
           "motionUsagePermission": false
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "AgroZone использует фото из галереи, чтобы вы могли поставить фото профиля.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

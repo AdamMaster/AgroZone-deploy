@@ -1,3 +1,13 @@
+import type { SellerType } from '@/shared/constants/seller-types'
+
+// Номер телефона аккаунта.
+export interface UserPhone {
+  id: string
+  phone: string
+  isPrimary: boolean
+  isVerified: boolean
+}
+
 // Профиль текущего пользователя — ответ GET /users/profile и поле user в
 // ответах на вход (UserService.getProfileForClient на сервере). Описаны
 // только поля, которые использует приложение.
@@ -7,11 +17,25 @@ export interface UserProfile {
   email: string | null
   picture: string | null
   primaryPhone: string | null
+  phones: UserPhone[]
   // Есть ли у аккаунта пароль: без него (вход только через Яндекс) удаление
-  // аккаунта не спрашивает пароль.
+  // аккаунта не спрашивает пароль, а смена почты недоступна.
   hasPassword: boolean
+  role: 'REGULAR' | 'PREMIUM' | 'ADMIN'
+  // Подтверждён ли аккаунт — без этого нельзя включить двухфакторную защиту.
+  isVerified: boolean
+  isTwoFactorEnabled: boolean
+  type: SellerType
+  // ИП/компания, подтверждённые по ИНН через DaData.
+  businessInn: string | null
+  businessName: string | null
+  businessVerifiedAt: string | null
   // До какого момента действует премиум (null — нет премиума).
   premiumUntil: string | null
+  // Документ о компании в публичном профиле (прайс, каталог).
+  presentationUrl: string | null
+  presentationFileName: string | null
+  presentationFileSize: number | null
 }
 
 // Успешный вход/регистрация. sessionToken сервер присылает только

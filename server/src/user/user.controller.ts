@@ -173,11 +173,16 @@ export class UserController {
     return this.securityEventsService.findForUser(userId, query)
   }
 
+  // Все ручки, меняющие профиль, отвечают профилем в том же виде, что
+  // GET /users/profile (getProfileForClient), а не записью из базы: в ней
+  // хэш пароля и OAuth-токены аккаунтов, которым нечего делать на клиенте.
   @Authorization()
   @HttpCode(HttpStatus.OK)
   @Patch('profile')
   async updateProfile(@Authorized('id') userId: string, @Body() dto: UpdateUserDto) {
-    return this.userService.update(userId, dto)
+    await this.userService.update(userId, dto)
+
+    return this.userService.getProfileForClient(userId)
   }
 
   // Подтверждение ИП/компании по ИНН через DaData — см.
@@ -188,7 +193,9 @@ export class UserController {
   @HttpCode(HttpStatus.OK)
   @Post('profile/business-verification')
   async verifyBusiness(@Authorized('id') userId: string, @Body() dto: VerifyBusinessDto) {
-    return this.userService.verifyBusiness(userId, dto.inn)
+    await this.userService.verifyBusiness(userId, dto.inn)
+
+    return this.userService.getProfileForClient(userId)
   }
 
   @Authorization()
@@ -209,7 +216,9 @@ export class UserController {
   ) {
     const uploadResult = await this.fileService.uploadAvatar(file)
 
-    return this.userService.updateAvatar(userId, uploadResult.url)
+    await this.userService.updateAvatar(userId, uploadResult.url)
+
+    return this.userService.getProfileForClient(userId)
   }
 
   // Документ-презентация компании в профиле продавца (прайс-лист/каталог/
@@ -243,28 +252,36 @@ export class UserController {
   ) {
     const uploadResult = await this.fileService.uploadFile(file, 'presentations')
 
-    return this.userService.updatePresentation(userId, uploadResult, file.originalname, file.size)
+    await this.userService.updatePresentation(userId, uploadResult, file.originalname, file.size)
+
+    return this.userService.getProfileForClient(userId)
   }
 
   @Authorization()
   @HttpCode(HttpStatus.OK)
   @Delete('profile/presentation')
   async removePresentation(@Authorized('id') userId: string) {
-    return this.userService.removePresentation(userId)
+    await this.userService.removePresentation(userId)
+
+    return this.userService.getProfileForClient(userId)
   }
 
   @Authorization()
   @HttpCode(HttpStatus.OK)
   @Patch('profile/password')
   async updatePassword(@Authorized('id') userId: string, @Body() dto: PasswordChangeDto) {
-    return this.userService.updatePassword(userId, dto)
+    await this.userService.updatePassword(userId, dto)
+
+    return this.userService.getProfileForClient(userId)
   }
 
   @Patch('2fa')
   @HttpCode(HttpStatus.OK)
   @Authorization() // Твой декоратор для защиты роута
   async toggleTwoFactor(@Authorized('id') userId: string) {
-    return this.userService.toggleTwoFactor(userId)
+    await this.userService.toggleTwoFactor(userId)
+
+    return this.userService.getProfileForClient(userId)
   }
 
   @Authorization()

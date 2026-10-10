@@ -1,17 +1,26 @@
-import { useQuery } from '@tanstack/react-query'
+import { type QueryKey, useQuery } from '@tanstack/react-query'
 import * as Linking from 'expo-linking'
 import { useEffect } from 'react'
 import { Pressable, Text, View } from 'react-native'
 
-import { Button } from '@/shared/components/button'
-import { FormError } from '@/shared/components/form-error'
 import { formatPhoneForDisplay } from '@/shared/utils/phone'
 
-import { authApi } from '../api/auth.api'
+import { Button } from './button'
+import { FormError } from './form-error'
 
-interface RegisterCallStepProps {
+export interface CallConfirmationStatus {
+  confirmed: boolean
+  // Когда звонок подтверждён — код, который нужно передать серверу
+  // следующим шагом (id проверки у провайдера звонков).
+  code?: string
+}
+
+interface CallConfirmationStepProps {
   phone: string
   callNumber: string
+  // Ключ опроса — у регистрации и у смены номера свои ручки статуса.
+  statusQueryKey: QueryKey
+  fetchStatus: (signal: AbortSignal) => Promise<CallConfirmationStatus>
   onConfirmed: (code: string) => void
   onChangePhone: () => void
 }
@@ -19,14 +28,24 @@ interface RegisterCallStepProps {
 // Как часто спрашивать сервер «позвонили или нет» — как на сайте.
 const CALL_STATUS_POLL_INTERVAL_MS = 4000
 
-export function RegisterCallStep({ phone, callNumber, onConfirmed, onChangePhone }: RegisterCallStepProps) {
+// Подтверждение номера звонком — общий шаг регистрации и смены телефона,
+// как на сайте: пользователь звонит на показанный номер, звонок
+// сбрасывается сам, приложение узнаёт о нём опросом сервера.
+export function CallConfirmationStep({
+  phone,
+  callNumber,
+  statusQueryKey,
+  fetchStatus,
+  onConfirmed,
+  onChangePhone
+}: CallConfirmationStepProps) {
   // Опрос идёт, только пока приложение на экране: пока пользователь звонит,
   // приложение в фоне, а при возврате react-query сразу перепроверяет
   // статус (см. use-react-query-native-managers.ts). Ошибка (время ожидания
   // истекло) — конечное состояние, повторять опрос бессмысленно.
   const { data, error } = useQuery({
-    queryKey: ['auth', 'register-call-status', phone],
-    queryFn: ({ signal }) => authApi.registerCallStatus(phone, signal),
+    queryKey: statusQueryKey,
+    queryFn: ({ signal }) => fetchStatus(signal),
     refetchInterval: query => (query.state.data?.confirmed || query.state.error ? false : CALL_STATUS_POLL_INTERVAL_MS),
     retry: false,
     gcTime: 0

@@ -31,3 +31,22 @@ export const formatShortIsoDate = (isoDate: string): string => {
   const [, month, day] = isoDate.split('-')
   return `${day}.${month}`
 }
+
+const dateTimeFormatter = new Intl.DateTimeFormat('ru-RU', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit'
+})
+
+// «12 октября 2026 г. в 14:05» — когда произошло событие безопасности.
+export const formatDateTime = (value: string): string => dateTimeFormatter.format(new Date(value))
+
+// «14:05», если сегодня, иначе «12 октября» — дата уведомления, как
+// formatNotificationDate сайта.
+export function formatTimeOrDayMonth(value: string): string {
+  const date = new Date(value)
+
+  return date.toDateString() === new Date().toDateString() ? timeFormatter.format(date) : formatDayMonth(value)
+}

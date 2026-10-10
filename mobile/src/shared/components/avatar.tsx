@@ -16,7 +16,8 @@ interface AvatarProps {
 const SIZE_CLASSES = {
   sm: { container: 'size-8', text: 'text-sm' },
   md: { container: 'size-12', text: 'text-lg' },
-  lg: { container: 'size-20', text: 'text-3xl' }
+  // Фото в «Личных данных» профиля — size-15, как на сайте.
+  lg: { container: 'size-15', text: 'text-2xl' }
 } as const
 
 // Фото профиля или, если его нет, первая буква имени на цветном фоне.

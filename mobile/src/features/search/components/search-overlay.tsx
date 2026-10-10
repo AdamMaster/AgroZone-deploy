@@ -57,7 +57,7 @@ export function SearchOverlay({
           onLayout={event => setPanelHeight(event.nativeEvent.layout.height)}
         >
           <View className='flex-row items-center'>
-            <View className='flex-1 flex-row items-center rounded-lg bg-white p-[2px] dark:bg-neutral-700'>
+            <View className='flex-1 flex-row items-center rounded-lg bg-gray-100 p-[2px] dark:bg-neutral-700'>
               <TextInput
                 value={query}
                 onChangeText={setQuery}
@@ -69,7 +69,7 @@ export function SearchOverlay({
                 returnKeyType='search'
                 enterKeyHint='search'
                 onSubmitEditing={() => onSubmit(query.trim())}
-                className='h-10 flex-1 rounded-[10px] pl-3 text-[15px] text-gray-950'
+                className='flex h-10 flex-1 rounded-[10px] pt-0 pb-0 pl-3 text-base text-gray-950'
               />
               {query.length > 0 && (
                 <Pressable

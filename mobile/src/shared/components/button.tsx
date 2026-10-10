@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { ActivityIndicator, Pressable, type PressableProps, Text, View } from 'react-native'
 
-type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'destructive' | 'destructive-soft'
+type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'destructive' | 'destructive-soft' | 'premium'
 
 interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> {
   title: string
@@ -31,7 +31,9 @@ const VARIANT_CLASSES: Record<ButtonVariant, { container: string; text: string; 
     container: 'bg-destructive/10 dark:bg-destructive/20',
     text: 'text-destructive',
     spinner: 'accent-destructive'
-  }
+  },
+  // Оранжевая — «Оформить премиум», как на сайте.
+  premium: { container: 'bg-orange-400', text: 'text-white', spinner: 'accent-white' }
 }
 
 // Основная кнопка приложения. Высота 48 — удобная зона нажатия для пальца

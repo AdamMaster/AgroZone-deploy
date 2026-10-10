@@ -4,8 +4,8 @@ import { useCallback } from 'react'
 import type { AdDetailView } from './use-ad-detail'
 
 // Вкладки со своим стеком, внутри которых открывается объявление
-// (app/(tabs)/(home,favorites,my-ads)).
-const TAB_STACKS = ['(home)', '(favorites)', '(my-ads)'] as const
+// (app/(tabs)/(home,favorites,my-ads,profile)).
+const TAB_STACKS = ['(home)', '(favorites)', '(my-ads)', '(profile)'] as const
 type TabStack = (typeof TAB_STACKS)[number]
 
 // Открыть объявление в текущей вкладке: из «Избранного» — внутри

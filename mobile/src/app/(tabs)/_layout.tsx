@@ -9,7 +9,7 @@ export default function TabsLayout() {
       <Tabs.Screen name='(favorites)' />
       <Tabs.Screen name='(my-ads)' />
       <Tabs.Screen name='messages' />
-      <Tabs.Screen name='profile' />
+      <Tabs.Screen name='(profile)' />
     </Tabs>
   )
 }
