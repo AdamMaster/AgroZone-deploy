@@ -71,13 +71,6 @@ export function LoginForm() {
     <View className='gap-5'>
       {captchaModal}
 
-      {!isTwoFactorStep && (
-        <>
-          <YandexSignInButton onError={setFormError} />
-          <AuthDivider />
-        </>
-      )}
-
       <FormError message={formError} />
 
       {isTwoFactorStep ? (
@@ -151,6 +144,14 @@ export function LoginForm() {
       )}
 
       <Button title={isTwoFactorStep ? 'Подтвердить' : 'Войти'} isLoading={isPending} onPress={onSubmit} />
+
+      {/* Основной способ — телефон и пароль, поэтому Яндекс под формой, а не над ней. */}
+      {!isTwoFactorStep && (
+        <>
+          <AuthDivider />
+          <YandexSignInButton onError={setFormError} />
+        </>
+      )}
 
       {!isTwoFactorStep && (
         <View className='flex-row justify-center gap-1'>

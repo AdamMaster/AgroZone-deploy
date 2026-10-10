@@ -1,3 +1,4 @@
+import type { Href } from 'expo-router'
 import { create } from 'zustand'
 
 import { setSessionRejectedHandler } from '@/lib/api/api-client'
@@ -18,6 +19,11 @@ const ADS_QUERY_KEY = ['ads'] as const
 
 interface AuthState {
   status: AuthStatus
+  // Куда вернуть пользователя после входа — как returnTo у окна входа на
+  // сайте: гость нажал «Избранное», вошёл и попал в «Избранное», а не на
+  // главную. Обрабатывает корневой навигатор (app/_layout.tsx).
+  redirectAfterSignIn: Href | null
+  setRedirectAfterSignIn: (href: Href | null) => void
   restore: () => Promise<void>
   signIn: (session: AuthSession) => Promise<void>
   signOut: () => Promise<void>
@@ -34,6 +40,11 @@ function resetUserDependentQueries() {
 
 export const useAuthStore = create<AuthState>()((set, get) => ({
   status: 'restoring',
+  redirectAfterSignIn: null,
+
+  setRedirectAfterSignIn(href) {
+    set({ redirectAfterSignIn: href })
+  },
 
   // Ключ есть — считаем пользователя вошедшим сразу, не дожидаясь сервера:
   // приложение открывается мгновенно и без интернета. Если сессия на
@@ -80,7 +91,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 
   async clearLocalSession() {
     await sessionTokenStorage.clear()
-    set({ status: 'signedOut' })
+    set({ status: 'signedOut', redirectAfterSignIn: null })
     resetUserDependentQueries()
   }
 }))

@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Modal, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Button } from '@/shared/components/button'
+import { StyledSafeAreaView } from '@/shared/components/styled'
 
 import { CaptchaWebView } from './captcha-webview'
 
@@ -31,7 +31,7 @@ export function CaptchaModal({ visible, onToken, onCancel }: CaptchaModalProps) 
       onRequestClose={onCancel}
       onShow={retry}
     >
-      <SafeAreaView className='flex-1 bg-background' edges={['top', 'bottom']}>
+      <StyledSafeAreaView className='flex-1 bg-background' edges={['top', 'bottom']}>
         <View className='gap-1 px-5 pt-4 pb-2'>
           <Text className='text-lg font-semibold text-foreground'>Проверка безопасности</Text>
           <Text className='text-sm text-muted-foreground'>Подтвердите, что вы не робот</Text>
@@ -53,7 +53,7 @@ export function CaptchaModal({ visible, onToken, onCancel }: CaptchaModalProps) 
         <View className='px-5 pb-4'>
           <Button title='Отмена' variant='outline' onPress={onCancel} />
         </View>
-      </SafeAreaView>
+      </StyledSafeAreaView>
     </Modal>
   )
 }

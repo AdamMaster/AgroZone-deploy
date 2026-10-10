@@ -34,3 +34,7 @@ export const YANDEX_CAPTCHA_SITEKEY = requireValue(
   'EXPO_PUBLIC_YANDEX_CAPTCHA_SITEKEY',
   process.env.EXPO_PUBLIC_YANDEX_CAPTCHA_SITEKEY
 )
+
+// Публичный ключ подсказок адресов DaData — тот же, что
+// NEXT_PUBLIC_DADATA_KEY у сайта (ключ для браузера, секрета в нём нет).
+export const DADATA_API_KEY = requireValue('EXPO_PUBLIC_DADATA_KEY', process.env.EXPO_PUBLIC_DADATA_KEY)

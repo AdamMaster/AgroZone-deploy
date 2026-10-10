@@ -9,12 +9,13 @@ import {
   extractServerMessage,
   getStatusErrorMessage
 } from './api-error'
+import { createRequestSignal } from './request-signal'
 
 export type QueryParamValue = string | number | boolean | null | undefined
 
 export type QueryParams = Record<string, QueryParamValue | readonly QueryParamValue[]>
 
-type HttpMethod = 'GET' | 'POST'
+type HttpMethod = 'GET' | 'POST' | 'DELETE'
 
 interface RequestOptions {
   params?: QueryParams
@@ -26,12 +27,10 @@ interface RequestOptions {
   // false — ручка ничего не возвращает (например, выход): пустой ответ
   // тогда не ошибка формата.
   expectBody?: boolean
+  // 'text' — ручка отдаёт голую строку, а не JSON (например, адрес по
+  // координатам, GET /ads/geocode: Nest отправляет строку как text/html).
+  responseType?: 'json' | 'text'
 }
-
-// Мобильная сеть бывает очень медленной, но запрос, который висит дольше
-// этого, пользователь уже воспринимает как зависание — лучше честно показать
-// ошибку с кнопкой «Повторить».
-const REQUEST_TIMEOUT_MS = 15_000
 
 // Просит сервер отдавать ключ сессии в теле ответа на вход (см.
 // server/src/session/session-token.ts) — у приложения нет cookie.
@@ -66,39 +65,8 @@ export function buildQueryString(params: QueryParams): string {
   return query ? `?${query}` : ''
 }
 
-// Связывает внешний сигнал отмены с внутренним таймаутом в один
-// AbortController. AbortSignal.any/AbortSignal.timeout в Hermes есть не во
-// всех версиях, поэтому собираем вручную. Возвращает функцию очистки —
-// её обязательно вызвать, иначе таймер и подписка переживут запрос.
-function createRequestSignal(external?: AbortSignal) {
-  const controller = new AbortController()
-  let timedOut = false
-
-  const timer = setTimeout(() => {
-    timedOut = true
-    controller.abort()
-  }, REQUEST_TIMEOUT_MS)
-
-  const onExternalAbort = () => controller.abort()
-
-  if (external?.aborted) {
-    controller.abort()
-  } else {
-    external?.addEventListener('abort', onExternalAbort)
-  }
-
-  return {
-    signal: controller.signal,
-    isTimedOut: () => timedOut,
-    cleanup: () => {
-      clearTimeout(timer)
-      external?.removeEventListener('abort', onExternalAbort)
-    }
-  }
-}
-
 async function request<T>(method: HttpMethod, path: string, options: RequestOptions = {}): Promise<T> {
-  const { params, body: requestBody, headers, signal, expectBody = true } = options
+  const { params, body: requestBody, headers, signal, expectBody = true, responseType = 'json' } = options
   const url = `${API_URL}${path}${params ? buildQueryString(params) : ''}`
   const requestSignal = createRequestSignal(signal)
   const sessionToken = sessionTokenStorage.get()
@@ -126,7 +94,13 @@ async function request<T>(method: HttpMethod, path: string, options: RequestOpti
 
     // Тело может оказаться HTML-страницей ошибки nginx или битым JSON —
     // падать на разборе нельзя, иначе потеряется настоящий статус ответа.
-    body = isJson ? await response.json().catch(() => undefined) : undefined
+    // Ошибки сервер отдаёт JSON-ом всегда, поэтому текст читаем только из
+    // успешного ответа.
+    if (isJson) {
+      body = await response.json().catch(() => undefined)
+    } else if (responseType === 'text' && response.ok) {
+      body = await response.text().catch(() => undefined)
+    }
 
     // Отмена во время чтения тела гасится .catch выше — не выдаём её за
     // «неожиданный формат ответа», а уходим в общую обработку отмены ниже.
@@ -163,5 +137,6 @@ async function request<T>(method: HttpMethod, path: string, options: RequestOpti
 export const apiClient = {
   get: <T>(path: string, options?: Omit<RequestOptions, 'body'>) => request<T>('GET', path, options),
   post: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, 'body'>) =>
-    request<T>('POST', path, { ...options, body: body ?? {} })
+    request<T>('POST', path, { ...options, body: body ?? {} }),
+  delete: <T>(path: string, options?: Omit<RequestOptions, 'body'>) => request<T>('DELETE', path, options)
 }

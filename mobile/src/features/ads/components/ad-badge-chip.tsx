@@ -11,7 +11,7 @@ export function AdBadgeChip({ badge }: AdBadgeChipProps) {
   const styles = AD_BADGE_STYLES[badge]
 
   return (
-    <View className={`rounded-full px-2.5 py-1 ${styles.container}`}>
+    <View className={`rounded-2xl px-2.5 py-1 ${styles.container}`}>
       <Text className={`text-xs font-medium ${styles.text}`}>{AD_BADGE_LABELS[badge]}</Text>
     </View>
   )

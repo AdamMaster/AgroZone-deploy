@@ -44,11 +44,12 @@ export function RegisterFlow() {
   }
 
   return (
+    // Основной способ — регистрация по телефону, поэтому Яндекс под формой.
     <View className='gap-5'>
-      <YandexSignInButton onError={setYandexError} />
-      <FormError message={yandexError} />
-      <AuthDivider />
       <RegisterPhoneStep onCallRequested={params => setStep({ name: 'call', ...params })} />
+      <AuthDivider />
+      <FormError message={yandexError} />
+      <YandexSignInButton onError={setYandexError} />
     </View>
   )
 }

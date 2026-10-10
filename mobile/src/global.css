@@ -26,6 +26,22 @@
       --color-skeleton: #f0f0f0;
       --color-price-highlight: #fee685;
       --color-price-highlight-foreground: #0a0a0a;
+      /* Серая шкала — та же, что у сайта: в светлой теме стандартная из
+         Tailwind, в тёмной сайт переопределяет её (client/src/app/globals.css,
+         блок .dark), поэтому классы вида bg-gray-100 / text-gray-500
+         выглядят одинаково на сайте и в приложении в обеих темах. */
+      --color-gray-50: #f9fafb;
+      --color-gray-100: #f3f4f6;
+      --color-gray-200: #e5e7eb;
+      --color-gray-300: #d1d5dc;
+      --color-gray-400: #99a1af;
+      --color-gray-500: #6a7282;
+      --color-gray-600: #4a5565;
+      --color-gray-700: #364153;
+      --color-gray-800: #1e2939;
+      --color-gray-900: #101828;
+      --color-gray-950: #030712;
+      --color-light: #ffffff;
     }
 
     @variant dark {
@@ -41,6 +57,18 @@
       --color-skeleton: #3a3a3a;
       --color-price-highlight: #fee685;
       --color-price-highlight-foreground: #171717;
+      --color-gray-50: #212121;
+      --color-gray-100: #404040;
+      --color-gray-200: #585858;
+      --color-gray-300: #737373;
+      --color-gray-400: #a3a3a3;
+      --color-gray-500: #d4d4d4;
+      --color-gray-600: #d4d4d4;
+      --color-gray-700: #e5e5e5;
+      --color-gray-800: #f5f5f5;
+      --color-gray-900: #ffffff;
+      --color-gray-950: #ffffff;
+      --color-light: #212121;
     }
   }
 }

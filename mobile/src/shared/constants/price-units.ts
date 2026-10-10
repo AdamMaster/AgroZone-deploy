@@ -15,3 +15,24 @@ export const PRICE_UNITS_SHORT: Readonly<Record<string, string>> = {
   HA: 'га',
   HOUR: 'час'
 }
+
+// Полные подписи единиц — для выбора единицы цены в фильтре (PRICE_UNITS
+// сайта). Винительный падеж («за тонну»); ITEM — «Целиком»: цена всего лота
+// без разбивки на единицы.
+export const PRICE_UNITS: Readonly<Record<string, string>> = {
+  ITEM: 'Целиком',
+  TON: 'Тонну',
+  KG: 'Килограмм',
+  LITER: 'Литр',
+  M3: 'м³',
+  BAG: 'Мешок',
+  HEAD: 'Голову',
+  DOSE: 'Дозу',
+  RUNNING_METER: 'Погонный метр',
+  HA: 'Гектар',
+  HOUR: 'Час'
+}
+
+// Единица «цена целиком» — у неё нет суффикса «/т», и она же подставляется,
+// когда у категории единицы не заданы.
+export const WHOLE_PRICE_UNIT = 'ITEM'

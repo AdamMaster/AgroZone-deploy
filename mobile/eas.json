@@ -12,7 +12,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.agro-zone.ru",
         "EXPO_PUBLIC_SITE_URL": "https://agro-zone.ru",
-        "EXPO_PUBLIC_YANDEX_CAPTCHA_SITEKEY": "ysc1_vbVTfLezUVdrTjvvfhR9XSqWpyX2nSVuSdZxdwW1567558d5"
+        "EXPO_PUBLIC_YANDEX_CAPTCHA_SITEKEY": "ysc1_vbVTfLezUVdrTjvvfhR9XSqWpyX2nSVuSdZxdwW1567558d5",
+        "EXPO_PUBLIC_DADATA_KEY": "711379c9b85d74e336ec484c00a144a50cbad692"
       }
     },
     "production": {
@@ -20,7 +21,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.agro-zone.ru",
         "EXPO_PUBLIC_SITE_URL": "https://agro-zone.ru",
-        "EXPO_PUBLIC_YANDEX_CAPTCHA_SITEKEY": "ysc1_vbVTfLezUVdrTjvvfhR9XSqWpyX2nSVuSdZxdwW1567558d5"
+        "EXPO_PUBLIC_YANDEX_CAPTCHA_SITEKEY": "ysc1_vbVTfLezUVdrTjvvfhR9XSqWpyX2nSVuSdZxdwW1567558d5",
+        "EXPO_PUBLIC_DADATA_KEY": "711379c9b85d74e336ec484c00a144a50cbad692"
       }
     }
   }

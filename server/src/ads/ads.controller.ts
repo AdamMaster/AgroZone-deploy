@@ -174,6 +174,13 @@ export class AdsController {
     return this.adsService.getAvailableLocations()
   }
 
+  // Регистрируем до @Get('my/:id') — иначе Nest примет 'status-counts' за id.
+  @Get('my/status-counts')
+  @UseGuards(AuthGuard)
+  getMyAdsStatusCounts(@CurrentUser('id') userId: string) {
+    return this.adsService.getMyAdsStatusCounts(userId)
+  }
+
   @Get('my/:id')
   @UseGuards(AuthGuard)
   findOneForOwner(@Param('id') id: string, @CurrentUser('id') userId: string) {

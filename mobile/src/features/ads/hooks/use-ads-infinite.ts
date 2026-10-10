@@ -1,21 +1,38 @@
 import { type InfiniteData, useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 
+import { uniqueById } from '@/shared/utils/unique-by-id'
+
 import { adsApi } from '../api/ads.api'
-import type { AdListItem, AdsListResponse } from '../types/ad.types'
+import type { AdsFilters, AdsListResponse } from '../types/ad.types'
 
 // Тот же размер страницы, что в каталоге сайта (CATALOG_PAGE_SIZE). Сервер
 // всё равно режет limit до 50.
-const FEED_PAGE_SIZE = 20
+const PAGE_SIZE = 20
 
-export const adsFeedQueryKey = ['ads', 'feed'] as const
+// Все выдачи объявлений лежат под этим префиксом — по нему избранное
+// обновляет отметку «в избранном» сразу во всех лентах и каталогах.
+export const adsListQueryKeyPrefix = ['ads', 'list'] as const
 
-export function useAdsFeed() {
+export const adsListQueryKey = (filters: AdsFilters) => [...adsListQueryKeyPrefix, filters] as const
+
+export type AdsListData = InfiniteData<AdsListResponse, number>
+
+// Бесконечная выдача объявлений — лента главной и каталог (с категорией,
+// поиском, сортировкой).
+//
+// filters должен быть стабильным объектом (константа или useMemo у
+// вызывающего): от него зависит ключ запроса. enabled: false — условия ещё
+// не готовы (например, каталог ждёт дерево категорий, чтобы узнать id).
+export function useAdsInfinite(filters: AdsFilters, { enabled = true }: { enabled?: boolean } = {}) {
+  const queryKey = useMemo(() => adsListQueryKey(filters), [filters])
+
   const query = useInfiniteQuery({
-    queryKey: adsFeedQueryKey,
-    queryFn: ({ pageParam, signal }) => adsApi.fetchAds({ page: pageParam, limit: FEED_PAGE_SIZE, signal }),
+    queryKey,
+    queryFn: ({ pageParam, signal }) => adsApi.fetchAds({ page: pageParam, limit: PAGE_SIZE, signal, filters }),
     initialPageParam: 1,
-    getNextPageParam: lastPage => (lastPage.page * lastPage.limit < lastPage.total ? lastPage.page + 1 : undefined)
+    getNextPageParam: lastPage => (lastPage.page * lastPage.limit < lastPage.total ? lastPage.page + 1 : undefined),
+    enabled
   })
 
   const queryClient = useQueryClient()
@@ -34,7 +51,7 @@ export function useAdsFeed() {
 
   const refresh = useCallback(async () => {
     setIsRefreshing(true)
-    queryClient.setQueryData<InfiniteData<AdsListResponse, number>>(adsFeedQueryKey, data =>
+    queryClient.setQueryData<AdsListData>(queryKey, data =>
       data ? { pages: data.pages.slice(0, 1), pageParams: data.pageParams.slice(0, 1) } : data
     )
 
@@ -43,33 +60,16 @@ export function useAdsFeed() {
     } finally {
       setIsRefreshing(false)
     }
-  }, [queryClient, refetch])
+  }, [queryClient, refetch, queryKey])
 
-  // Пагинация на сервере — по смещению (page/limit). Если между загрузкой
-  // страниц кто-то опубликовал объявление, выдача сдвигается, и последнее
-  // объявление предыдущей страницы приходит ещё раз первым на следующей.
-  // Дубли убираем: в списке ключ элемента — id, повтор ключа ломает
-  // переиспользование ячеек FlashList.
-  const ads = useMemo(() => {
-    const seen = new Set<string>()
-    const result: AdListItem[] = []
-
-    for (const page of query.data?.pages ?? []) {
-      for (const ad of page.items) {
-        if (seen.has(ad.id)) continue
-        seen.add(ad.id)
-        result.push(ad)
-      }
-    }
-
-    return result
-  }, [query.data])
+  const ads = useMemo(() => uniqueById(query.data?.pages.map(page => page.items) ?? []), [query.data])
 
   // Возвращаем поля явно, а не `...query`: react-query отслеживает, какие
   // поля результата прочитал компонент, и перерисовывает его только при их
   // изменении. Спред читает все поля сразу и выключает эту оптимизацию.
   return {
     ads,
+    total: query.data?.pages[0]?.total ?? 0,
     refresh,
     error: query.error,
     isPending: query.isPending,

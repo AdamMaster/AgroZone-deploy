@@ -725,7 +725,7 @@ export class AdsService {
     const ads = await this.prisma.ad.findMany({
       where: {
         userId,
-        ...(query.status ? { status: query.status } : {})
+        ...(query.status?.length ? { status: { in: query.status } } : {})
       },
       orderBy: { createdAt: 'desc' },
       include: { category: true },
@@ -739,6 +739,27 @@ export class AdsService {
       ...ad,
       isExpired: ad.expiresAt ? ad.expiresAt <= now : false
     }))
+  }
+
+  // Число объявлений пользователя по каждому статусу — для вкладок «Моих
+  // объявлений» со счётчиками. Отдельным лёгким запросом, а не подсчётом на
+  // клиенте: список отдаётся постранично, и у продавца с сотнями объявлений
+  // (фиды дилеров) клиент не видит их все сразу. Статусы без объявлений —
+  // нулём, чтобы клиенту не гадать, отсутствие ключа это ноль или ошибка.
+  async getMyAdsStatusCounts(userId: string): Promise<Record<AdStatus, number>> {
+    const groups = await this.prisma.ad.groupBy({
+      by: ['status'],
+      where: { userId },
+      _count: { _all: true }
+    })
+
+    const counts = Object.fromEntries(Object.values(AdStatus).map(status => [status, 0])) as Record<AdStatus, number>
+
+    for (const group of groups) {
+      counts[group.status] = group._count._all
+    }
+
+    return counts
   }
 
   // Объявления конкретного пользователя для карточки в админке

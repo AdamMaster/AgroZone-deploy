@@ -12,7 +12,13 @@ const priceFormatter = new Intl.NumberFormat('ru-RU')
 export function formatPrice(price: number | null | undefined): string {
   if (!price) return NO_PRICE_LABEL
 
-  return `${priceFormatter.format(price)} ₽`
+  return formatRubles(price)
+}
+
+// Сумма в рублях без правила «ноль — договорная»: для границ диапазона цены
+// в фильтре, где «от 0 ₽» — осмысленное значение.
+export function formatRubles(amount: number): string {
+  return `${priceFormatter.format(amount)} ₽`
 }
 
 export function formatPriceWithUnit(price: number | null | undefined, unit?: string | null): string {

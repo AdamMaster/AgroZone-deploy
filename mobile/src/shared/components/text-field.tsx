@@ -1,10 +1,13 @@
 import { forwardRef, useState } from 'react'
 import { Pressable, Text, TextInput, type TextInputProps, View } from 'react-native'
 
+import { useThemeColor } from '@/shared/hooks/use-theme-color'
+import { Eye, EyeOff } from '@/shared/icons/lucide'
+
 interface TextFieldProps extends Omit<TextInputProps, 'style' | 'secureTextEntry'> {
   label: string
   error?: string
-  // Поле пароля: скрывает ввод и показывает кнопку «Показать».
+  // Поле пароля: скрывает ввод, справа — глазик, как PasswordToggle сайта.
   isPassword?: boolean
 }
 
@@ -15,6 +18,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
   ref
 ) {
   const [isSecure, setIsSecure] = useState(isPassword)
+  const toggleIconColor = useThemeColor('--color-muted-foreground')
 
   return (
     <View className='gap-1.5'>
@@ -35,10 +39,11 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
             accessibilityRole='button'
             accessibilityLabel={isSecure ? 'Показать пароль' : 'Скрыть пароль'}
             onPress={() => setIsSecure(value => !value)}
-            className='h-full justify-center px-4'
+            className='h-full justify-center px-3.5'
             hitSlop={8}
           >
-            <Text className='text-sm font-medium text-primary'>{isSecure ? 'Показать' : 'Скрыть'}</Text>
+            {/* Как на сайте: пароль скрыт — перечёркнутый глаз, виден — открытый. */}
+            {isSecure ? <EyeOff size={16} color={toggleIconColor} /> : <Eye size={16} color={toggleIconColor} />}
           </Pressable>
         )}
       </View>

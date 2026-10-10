@@ -40,7 +40,16 @@
         }
       ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "AgroZone использует ваше местоположение, чтобы показать объявления рядом с вами.",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "motionUsagePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

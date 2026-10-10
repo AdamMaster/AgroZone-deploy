@@ -34,7 +34,9 @@ describe('AdsService', () => {
         findFirst: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
-        delete: jest.fn()
+        delete: jest.fn(),
+        findMany: jest.fn(),
+        groupBy: jest.fn()
       },
       category: {
         findUnique: jest.fn()
@@ -595,6 +597,44 @@ describe('AdsService', () => {
       prisma.ad.findFirst.mockResolvedValue(null)
 
       await expect(service.findOneForOwner('ad-1', 'someone-else')).rejects.toThrow(NotFoundException)
+    })
+  })
+
+  describe('findMyAds', () => {
+    it('фильтрует по нескольким статусам сразу', async () => {
+      prisma.ad.findMany.mockResolvedValue([])
+
+      await service.findMyAds('user-1', { page: 2, limit: 10, status: ['PUBLISHED', 'PENDING'] } as any)
+
+      expect(prisma.ad.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: 'user-1', status: { in: ['PUBLISHED', 'PENDING'] } },
+          skip: 10,
+          take: 10
+        })
+      )
+    })
+
+    it('без статуса отдаёт объявления во всех статусах', async () => {
+      prisma.ad.findMany.mockResolvedValue([])
+
+      await service.findMyAds('user-1', {} as any)
+
+      expect(prisma.ad.findMany.mock.calls[0][0].where).toEqual({ userId: 'user-1' })
+    })
+  })
+
+  describe('getMyAdsStatusCounts', () => {
+    it('считает объявления по статусам, отсутствующие статусы — нулём', async () => {
+      prisma.ad.groupBy.mockResolvedValue([
+        { status: 'PUBLISHED', _count: { _all: 3 } },
+        { status: 'DRAFT', _count: { _all: 1 } }
+      ])
+
+      const counts = await service.getMyAdsStatusCounts('user-1')
+
+      expect(prisma.ad.groupBy).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'user-1' } }))
+      expect(counts).toEqual({ DRAFT: 1, PENDING: 0, PUBLISHED: 3, REJECTED: 0, ARCHIVED: 0, EXPIRED: 0 })
     })
   })
 })

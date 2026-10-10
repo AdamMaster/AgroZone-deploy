@@ -48,7 +48,7 @@ export function ProfileOverview() {
   }
 
   return (
-    <ScrollView contentContainerClassName='gap-8 p-5' contentInsetAdjustmentBehavior='automatic'>
+    <ScrollView contentContainerClassName='gap-8 p-5'>
       <View className='items-center gap-3'>
         <Avatar name={profile.displayName} pictureUrl={profile.picture} size='lg' />
         <Text className='text-center text-xl font-semibold text-foreground'>{profile.displayName || 'Без имени'}</Text>
