@@ -1,3 +1,5 @@
+import { photoVariantKeys } from './photo-variants.util'
+
 // Папки бакета, в которые приложение само загружает файлы (см. вызовы
 // FileService.uploadFile). Всё, что лежит вне этих папок, приложению не
 // принадлежит — например, ручные загрузки через панель Selectel, — и
@@ -49,18 +51,23 @@ export const isUploadFolderKey = (key: string) => S3_UPLOAD_FOLDERS.some(folder 
 // Объекты бакета, на которые не ссылается ни одна запись в БД.
 // olderThan защищает от гонки: файл мог быть загружен прямо сейчас, а
 // запись в БД с его ссылкой ещё не сохранена — такие свежие объекты в
-// «осиротевшие» не попадают.
+// «осиротевшие» не попадают. Уменьшенные копии фото (photo-variants.util)
+// в БД не записаны, но принадлежат оригиналу: пока он нужен, нужны и они.
 export const findOrphanedObjects = (
   objects: S3ObjectInfo[],
   referencedKeys: ReadonlySet<string>,
   olderThan: Date
-): S3ObjectInfo[] =>
-  objects.filter(
+): S3ObjectInfo[] => {
+  const referencedVariantKeys = new Set([...referencedKeys].flatMap(photoVariantKeys))
+
+  return objects.filter(
     object =>
       isUploadFolderKey(object.key) &&
       !referencedKeys.has(object.key) &&
+      !referencedVariantKeys.has(object.key) &&
       object.lastModified.getTime() < olderThan.getTime()
   )
+}
 
 // Обратная проверка: ссылки в БД, объекта для которых в бакете нет
 // (например, файл когда-то удалили, а ссылка осталась). Учитываются только

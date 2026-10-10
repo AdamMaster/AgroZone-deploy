@@ -1,7 +1,7 @@
 import { memo } from 'react'
 import { Pressable, Text, View } from 'react-native'
 
-import { StyledImage } from '@/shared/components/styled'
+import { AdPhoto } from '@/shared/components/ad-photo'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
 import { ImageIcon } from '@/shared/icons/lucide'
 import { isFutureDate } from '@/shared/utils/date'
@@ -38,8 +38,9 @@ export const AdCard = memo(function AdCard({ ad, onOpen, onToggleFavorite, isFav
     <Pressable accessibilityRole='link' accessibilityLabel={ad.title} onPress={() => onOpen(ad)} className='gap-2'>
       <View className='aspect-square items-center justify-center overflow-hidden rounded-lg bg-gray-100'>
         {coverUrl ? (
-          <StyledImage
-            source={{ uri: coverUrl }}
+          <AdPhoto
+            url={coverUrl}
+            size={800}
             className='size-full'
             contentFit='cover'
             // Без recyclingKey переиспользованная FlashList ячейка на долю

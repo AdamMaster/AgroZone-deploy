@@ -87,4 +87,19 @@ describe('s3-keys.util', () => {
       expect(missing).toEqual(['ads/gone.jpg'])
     })
   })
+
+  describe('уменьшенные копии фото', () => {
+    it('копии фото, на которое ссылается БД, не считаются осиротевшими', () => {
+      const old = new Date('2026-01-01T00:00:00Z')
+      const objects = [
+        { key: 'ads/1-1.jpg', size: 10, lastModified: old },
+        { key: 'ads/1-1_800.webp', size: 5, lastModified: old },
+        { key: 'ads/2-2_800.webp', size: 5, lastModified: old }
+      ]
+
+      const orphans = findOrphanedObjects(objects, new Set(['ads/1-1.jpg']), new Date('2026-06-01T00:00:00Z'))
+
+      expect(orphans.map(object => object.key)).toEqual(['ads/2-2_800.webp'])
+    })
+  })
 })

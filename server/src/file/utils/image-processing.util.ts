@@ -1,6 +1,8 @@
 import { BadRequestException } from '@nestjs/common'
 import sharp from 'sharp'
 
+import { PHOTO_VARIANT_QUALITY, type PhotoVariantSize } from './photo-variants.util'
+
 // Форматы, которые принимаем на входе. Определяются по содержимому файла
 // (sharp читает сигнатуру/заголовок), а не по имени и не по mimetype из
 // запроса — их присылает клиент, и подделать их ничего не стоит.
@@ -96,6 +98,38 @@ export async function processImage(buffer: Buffer, options: ProcessImageOptions)
     // Повреждённый файл, слишком большое разрешение или не картинка вовсе —
     // для пользователя это одно и то же: загрузить этот файл нельзя.
     throw notImageError
+  } finally {
+    release()
+  }
+}
+
+// Уменьшенные копии уже обработанного фото (см. photo-variants.util.ts).
+// Делаются из результата processImage — он уже повёрнут по EXIF, без
+// метаданных и без прозрачности, — поэтому здесь только уменьшение и
+// перекодирование в WebP. Под тем же ограничителем параллельности, что и
+// processImage: sharp грузит процессор, и десяток одновременных загрузок
+// не должен класть сервер.
+export async function createPhotoVariants(
+  processed: Buffer,
+  sizes: readonly PhotoVariantSize[]
+): Promise<Map<PhotoVariantSize, Buffer>> {
+  await acquire()
+
+  try {
+    const entries = await Promise.all(
+      sizes.map(
+        async size =>
+          [
+            size,
+            await sharp(processed)
+              .resize({ width: size, height: size, fit: 'inside', withoutEnlargement: true })
+              .webp({ quality: PHOTO_VARIANT_QUALITY })
+              .toBuffer()
+          ] as const
+      )
+    )
+
+    return new Map(entries)
   } finally {
     release()
   }

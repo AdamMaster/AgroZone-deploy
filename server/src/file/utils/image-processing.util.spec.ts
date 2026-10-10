@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common'
 import sharp from 'sharp'
-import { processImage } from './image-processing.util'
+import { createPhotoVariants, processImage } from './image-processing.util'
 
 const options = { maxDimension: 2000, quality: 82 }
 
@@ -98,4 +98,26 @@ describe('processImage', () => {
 
     await expect(processImage(huge, options)).rejects.toThrow(BadRequestException)
   }, 30_000)
+})
+
+describe('createPhotoVariants', () => {
+  it('делает WebP-копии нужных размеров по большей стороне', async () => {
+    const original = await solidImage(2000, 1500).jpeg().toBuffer()
+
+    const variants = await createPhotoVariants(original, [400, 800])
+
+    const small = await sharp(variants.get(400)).metadata()
+    const medium = await sharp(variants.get(800)).metadata()
+
+    expect(small).toMatchObject({ format: 'webp', width: 400, height: 300 })
+    expect(medium).toMatchObject({ format: 'webp', width: 800, height: 600 })
+  })
+
+  it('не растягивает фото меньше размера копии', async () => {
+    const original = await solidImage(600, 300).jpeg().toBuffer()
+
+    const variants = await createPhotoVariants(original, [800])
+
+    expect(await sharp(variants.get(800)).metadata()).toMatchObject({ width: 600, height: 300 })
+  })
 })

@@ -6,8 +6,11 @@ const mockSend = jest.fn()
 
 jest.mock('@aws-sdk/client-s3', () => ({
   S3Client: jest.fn().mockImplementation(() => ({ send: mockSend })),
-  PutObjectCommand: jest.fn().mockImplementation(input => ({ input })),
-  DeleteObjectCommand: jest.fn().mockImplementation(input => ({ input }))
+  PutObjectCommand: jest.fn().mockImplementation(input => ({ type: 'put', input })),
+  DeleteObjectCommand: jest.fn().mockImplementation(input => ({ type: 'delete', input })),
+  DeleteObjectsCommand: jest.fn().mockImplementation(input => ({ type: 'delete-many', input })),
+  GetObjectCommand: jest.fn().mockImplementation(input => ({ type: 'get', input })),
+  HeadObjectCommand: jest.fn().mockImplementation(input => ({ type: 'head', input }))
 }))
 
 const config: Record<string, string> = {
@@ -90,6 +93,102 @@ describe('FileService', () => {
       await service.uploadFile(multerFile(Buffer.from('x'), 'a.b/../c', 'application/pdf'), 'presentations')
 
       expect(sentCommand().Key).toMatch(/^presentations\/\d+-\d+\.bin$/)
+    })
+  })
+
+  describe('фото объявлений с уменьшенными копиями', () => {
+    const photo = () =>
+      sharp({ create: { width: 2400, height: 1800, channels: 3, background: '#2a8a3c' } })
+        .jpeg()
+        .toBuffer()
+
+    const commands = (type: string) =>
+      mockSend.mock.calls.map(([command]) => command).filter(command => command.type === type)
+
+    it('uploadAdPhoto кладёт оригинал JPEG и WebP-копии рядом с ним', async () => {
+      const result = await service.uploadAdPhoto(multerFile(await photo(), 'field.jpg', 'image/jpeg'))
+      const puts = commands('put').map(command => command.input)
+      const original = puts.find(input => input.Key === result.fileId)!
+
+      expect(result.fileId).toMatch(/^ads\/\d+-\d+\.jpg$/)
+      expect(original.ContentType).toBe('image/jpeg')
+      expect((await sharp(original.Body).metadata()).width).toBe(2000)
+
+      const base = result.fileId.replace(/\.jpg$/, '')
+      const variants = puts.filter(input => input !== original)
+
+      expect(variants.map(input => input.Key).sort()).toEqual(
+        [`${base}_1280.webp`, `${base}_400.webp`, `${base}_800.webp`].sort()
+      )
+      for (const input of variants) {
+        expect(input.ContentType).toBe('image/webp')
+        expect((await sharp(input.Body).metadata()).format).toBe('webp')
+      }
+    })
+
+    it('если одна из загрузок упала — уже загруженное удаляется, ошибка уходит наверх', async () => {
+      mockSend.mockImplementation(command =>
+        command.type === 'put' && command.input.Key.endsWith('_800.webp')
+          ? Promise.reject(new Error('S3 down'))
+          : Promise.resolve({})
+      )
+
+      await expect(service.uploadAdPhoto(multerFile(await photo(), 'field.jpg', 'image/jpeg'))).rejects.toThrow()
+
+      const [cleanup] = commands('delete-many')
+      expect(cleanup.input.Delete.Objects).toHaveLength(4)
+    })
+
+    it('удаление фото объявления убирает и копии', async () => {
+      await service.deleteFileByUrl('https://cdn.example.com/ads/1712345678901-1.jpg')
+
+      const [command] = commands('delete-many')
+      expect(command.input.Delete.Objects.map((item: { Key: string }) => item.Key)).toEqual([
+        'ads/1712345678901-1.jpg',
+        'ads/1712345678901-1_400.webp',
+        'ads/1712345678901-1_800.webp',
+        'ads/1712345678901-1_1280.webp'
+      ])
+    })
+
+    it('удаление аватара — как раньше, одним объектом', async () => {
+      await service.deleteFileByUrl('https://cdn.example.com/avatars/1712345678901-1.jpg')
+
+      expect(commands('delete')).toHaveLength(1)
+      expect(commands('delete-many')).toHaveLength(0)
+    })
+
+    describe('ensurePhotoVariants', () => {
+      const url = 'https://cdn.example.com/ads/1712345678901-1.jpg'
+
+      it('копии уже есть — ничего не скачивает', async () => {
+        await expect(service.ensurePhotoVariants(url)).resolves.toBe('exists')
+        expect(commands('get')).toHaveLength(0)
+      })
+
+      it('копий нет — делает их из оригинала, самую большую последней', async () => {
+        const original = await photo()
+        mockSend.mockImplementation(command => {
+          if (command.type === 'head') return Promise.reject(Object.assign(new Error('nf'), { name: 'NotFound' }))
+          if (command.type === 'get') return Promise.resolve({ Body: { transformToByteArray: async () => original } })
+          return Promise.resolve({})
+        })
+
+        await expect(service.ensurePhotoVariants(url)).resolves.toBe('created')
+
+        expect(commands('put').map(command => command.input.Key)).toEqual([
+          'ads/1712345678901-1_400.webp',
+          'ads/1712345678901-1_800.webp',
+          'ads/1712345678901-1_1280.webp'
+        ])
+      })
+
+      it('не фото объявления — пропускает', async () => {
+        await expect(service.ensurePhotoVariants('https://cdn.example.com/avatars/1-2.jpg')).resolves.toBe(
+          'not-applicable'
+        )
+        expect(mockSend).not.toHaveBeenCalled()
+      })
     })
   })
 })

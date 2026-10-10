@@ -25,6 +25,7 @@
     "categories:test-search-quality": "dotenv -e .env -- ts-node scripts/test-search-quality.ts",
     "users:create-verified": "dotenv -e .env -- ts-node scripts/create-verified-user.ts",
     "s3:find-orphans": "dotenv -e .env -- ts-node scripts/find-orphaned-s3-files.ts",
+    "images:generate-variants": "dotenv -e .env -- ts-node scripts/generate-photo-variants.ts",
     "prisma:reset": "dotenv -e .env -- prisma migrate reset --force",
     "prisma:generate": "dotenv -e .env -- prisma generate",
     "prisma:deploy": "dotenv -e .env -- prisma migrate deploy"

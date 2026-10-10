@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native'
 
 import { AD_BADGE_LABELS } from '@/features/ads/constants/ad-badges'
 
-import { StyledImage } from '@/shared/components/styled'
+import { AdPhoto } from '@/shared/components/ad-photo'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
 import { CircleAlert, Crown, ImageIcon, SquarePen } from '@/shared/icons/lucide'
 import { formatDayMonth, formatRelativeDay, isFutureDate } from '@/shared/utils/date'
@@ -62,7 +62,7 @@ export const MyAdCard = memo(function MyAdCard({ ad, isOwnerPremium, onOpen, onE
           className='h-20 w-22 items-center justify-center overflow-hidden rounded-lg bg-slate-100'
         >
           {coverUrl ? (
-            <StyledImage source={{ uri: coverUrl }} className='size-full' contentFit='cover' recyclingKey={ad.id} />
+            <AdPhoto url={coverUrl} size={400} className='size-full' contentFit='cover' recyclingKey={ad.id} />
           ) : (
             <ImageIcon size={32} color={placeholderIconColor} />
           )}

@@ -3,6 +3,8 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
 
+import { photoUrl } from '@/shared/utils/photo-variants'
+
 interface ZoomableImageProps {
   uri: string
   width: number
@@ -21,7 +23,7 @@ const clamp = (value: number, min: number, max: number) => {
   return Math.min(Math.max(value, min), max)
 }
 
-// Фото на весь экран с увеличением щипком и двойным касанием и
+// Фото на весь экран (оригинал — для увеличения нужна вся детализация) с увеличением щипком и двойным касанием и
 // перетаскиванием увеличенного фото — как Zoom у лайтбокса сайта.
 export function ZoomableImage({ uri, width, height, onZoomChange, accessibilityLabel }: ZoomableImageProps) {
   const scale = useSharedValue(1)
@@ -116,6 +118,9 @@ export function ZoomableImage({ uri, width, height, onZoomChange, accessibilityL
       <Animated.View style={[{ width, height }, animatedStyle]}>
         <Image
           source={{ uri }}
+          // Пока грузится оригинал, видна копия из галереи — она уже в кэше.
+          placeholder={{ uri: photoUrl(uri, 1280) }}
+          placeholderContentFit='contain'
           style={{ width, height }}
           contentFit='contain'
           accessibilityLabel={accessibilityLabel}

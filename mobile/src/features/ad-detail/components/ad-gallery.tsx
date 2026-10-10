@@ -12,7 +12,7 @@ import {
 import { AdBadgeChip } from '@/features/ads/components/ad-badge-chip'
 import type { AdBadge } from '@/features/ads/types/ad.types'
 
-import { StyledImage } from '@/shared/components/styled'
+import { AdPhoto } from '@/shared/components/ad-photo'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
 import { ImageIcon } from '@/shared/icons/lucide'
 
@@ -57,8 +57,9 @@ export function AdGallery({ images, title, badge }: AdGalleryProps) {
       onPress={() => setIsLightboxOpen(true)}
       style={{ width, height }}
     >
-      <StyledImage
-        source={{ uri: item }}
+      <AdPhoto
+        url={item}
+        size={1280}
         className='size-full'
         contentFit='cover'
         priority={index === 0 ? 'high' : 'normal'}
@@ -118,7 +119,7 @@ export function AdGallery({ images, title, badge }: AdGalleryProps) {
                 index === activeIndex ? 'border-primary' : 'border-transparent'
               }`}
             >
-              <StyledImage source={{ uri: image }} className='size-full' contentFit='cover' />
+              <AdPhoto url={image} size={400} className='size-full' contentFit='cover' />
             </Pressable>
           ))}
         </ScrollView>
