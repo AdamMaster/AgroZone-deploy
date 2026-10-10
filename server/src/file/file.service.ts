@@ -5,7 +5,6 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   DeleteObjectsCommand,
-  GetObjectCommand,
   HeadObjectCommand
 } from '@aws-sdk/client-s3'
 import 'multer'
@@ -26,6 +25,7 @@ import {
 } from './utils/photo-variants.util'
 
 const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable'
+const DOWNLOAD_TIMEOUT_MS = 30_000
 
 // Итог ensurePhotoVariants: копии уже были, сделаны сейчас или у объекта
 // их не бывает (не фото объявления).
@@ -112,14 +112,7 @@ export class FileService {
 
     if (await this.objectExists(largest)) return 'exists'
 
-    const original = await this.s3Client.send(new GetObjectCommand({ Bucket: this.bucketName, Key: key }))
-
-    if (!original.Body) throw new Error(`Пустой ответ S3 для ${key}`)
-
-    const variants = await createPhotoVariants(
-      Buffer.from(await original.Body.transformToByteArray()),
-      PHOTO_VARIANT_SIZES
-    )
+    const variants = await createPhotoVariants(await this.downloadPublicFile(url), PHOTO_VARIANT_SIZES)
 
     // Самая большая — последней: по ней определяется, что копии готовы, и
     // если скрипт прервут посередине, при следующем запуске фото доделается.
@@ -198,6 +191,18 @@ export class FileService {
     }
 
     return this.toUploadResult(key)
+  }
+
+  // Оригинал скачиваем по публичной ссылке — так же, как его видят
+  // браузеры и приложение. Через S3 API (GetObject) часть старых файлов
+  // хранилище Selectel отдавало с обрывом соединения на каждой попытке,
+  // хотя по публичной ссылке те же файлы отдаются целиком.
+  private async downloadPublicFile(url: string) {
+    const response = await fetch(url, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) })
+
+    if (!response.ok) throw new Error(`Хранилище ответило ${response.status} на ${url}`)
+
+    return Buffer.from(await response.arrayBuffer())
   }
 
   private async objectExists(key: string) {

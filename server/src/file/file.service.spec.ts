@@ -9,7 +9,6 @@ jest.mock('@aws-sdk/client-s3', () => ({
   PutObjectCommand: jest.fn().mockImplementation(input => ({ type: 'put', input })),
   DeleteObjectCommand: jest.fn().mockImplementation(input => ({ type: 'delete', input })),
   DeleteObjectsCommand: jest.fn().mockImplementation(input => ({ type: 'delete-many', input })),
-  GetObjectCommand: jest.fn().mockImplementation(input => ({ type: 'get', input })),
   HeadObjectCommand: jest.fn().mockImplementation(input => ({ type: 'head', input }))
 }))
 
@@ -162,25 +161,47 @@ describe('FileService', () => {
       const url = 'https://cdn.example.com/ads/1712345678901-1.jpg'
 
       it('копии уже есть — ничего не скачивает', async () => {
+        const fetchSpy = jest.spyOn(global, 'fetch')
+
         await expect(service.ensurePhotoVariants(url)).resolves.toBe('exists')
-        expect(commands('get')).toHaveLength(0)
+        expect(fetchSpy).not.toHaveBeenCalled()
+        fetchSpy.mockRestore()
       })
 
       it('копий нет — делает их из оригинала, самую большую последней', async () => {
         const original = await photo()
-        mockSend.mockImplementation(command => {
-          if (command.type === 'head') return Promise.reject(Object.assign(new Error('nf'), { name: 'NotFound' }))
-          if (command.type === 'get') return Promise.resolve({ Body: { transformToByteArray: async () => original } })
-          return Promise.resolve({})
-        })
+        const fetchSpy = jest
+          .spyOn(global, 'fetch')
+          .mockResolvedValue(new Response(new Uint8Array(original), { status: 200 }))
+        mockSend.mockImplementation(command =>
+          command.type === 'head'
+            ? Promise.reject(Object.assign(new Error('nf'), { name: 'NotFound' }))
+            : Promise.resolve({})
+        )
 
         await expect(service.ensurePhotoVariants(url)).resolves.toBe('created')
+        // Оригинал — по публичной ссылке, а не через S3 API.
+        expect(fetchSpy).toHaveBeenCalledWith(url, expect.anything())
+        fetchSpy.mockRestore()
 
         expect(commands('put').map(command => command.input.Key)).toEqual([
           'ads/1712345678901-1_400.webp',
           'ads/1712345678901-1_800.webp',
           'ads/1712345678901-1_1280.webp'
         ])
+      })
+
+      it('оригинал не скачался — ошибка, копии не пишутся', async () => {
+        const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(null, { status: 404 }))
+        mockSend.mockImplementation(command =>
+          command.type === 'head'
+            ? Promise.reject(Object.assign(new Error('nf'), { name: 'NotFound' }))
+            : Promise.resolve({})
+        )
+
+        await expect(service.ensurePhotoVariants(url)).rejects.toThrow('404')
+        expect(commands('put')).toHaveLength(0)
+        fetchSpy.mockRestore()
       })
 
       it('не фото объявления — пропускает', async () => {
