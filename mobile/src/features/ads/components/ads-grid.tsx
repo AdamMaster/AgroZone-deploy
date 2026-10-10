@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Button } from '@/shared/components/button'
 import { ScreenMessage } from '@/shared/components/screen-message'
 
+import { useAdNavigation } from '../hooks/use-ad-navigation'
 import type { useAdsInfinite } from '../hooks/use-ads-infinite'
 import { useToggleFavorite } from '../hooks/use-toggle-favorite'
 import type { AdListItem } from '../types/ad.types'
@@ -47,6 +48,8 @@ interface AdsGridProps {
 export function AdsGrid({ query, header, emptyMessage }: AdsGridProps) {
   const { bottom } = useSafeAreaInsets()
   const { toggleFavorite, isPending: isFavoritePending, pendingAdId } = useToggleFavorite()
+  const { openAd } = useAdNavigation()
+  const handleOpenAd = useCallback((ad: AdListItem) => openAd(ad.id), [openAd])
   const {
     ads,
     error,
@@ -71,6 +74,7 @@ export function AdsGrid({ query, header, emptyMessage }: AdsGridProps) {
     <View style={getCellStyle(index)}>
       <AdCard
         ad={item}
+        onOpen={handleOpenAd}
         onToggleFavorite={handleToggleFavorite}
         isFavoritePending={isFavoritePending && pendingAdId === item.id}
       />

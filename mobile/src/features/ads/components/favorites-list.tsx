@@ -5,6 +5,7 @@ import { ActivityIndicator, RefreshControl, Text, View } from 'react-native'
 import { Heading } from '@/shared/components/heading'
 import { ScreenMessage } from '@/shared/components/screen-message'
 
+import { useAdNavigation } from '../hooks/use-ad-navigation'
 import { useFavoritesInfinite } from '../hooks/use-favorites-infinite'
 import { useToggleFavorite } from '../hooks/use-toggle-favorite'
 import type { FavoriteAd } from '../types/ad.types'
@@ -30,6 +31,8 @@ export function FavoritesList() {
     }
   }
   const { toggleFavorite, isPending: isRemoving, pendingAdId } = useToggleFavorite()
+  const { openAd } = useAdNavigation()
+  const openFavorite = useCallback((ad: FavoriteAd) => openAd(ad.id), [openAd])
 
   const removeFavorite = useCallback(
     (ad: FavoriteAd) => toggleFavorite({ adId: ad.id, isFavorite: true }),
@@ -38,7 +41,12 @@ export function FavoritesList() {
 
   const renderItem: ListRenderItem<FavoriteAd> = ({ item }) => (
     <View className='pb-4'>
-      <FavoriteAdCard ad={item} onRemove={removeFavorite} isRemoving={isRemoving && pendingAdId === item.id} />
+      <FavoriteAdCard
+        ad={item}
+        onOpen={openFavorite}
+        onRemove={removeFavorite}
+        isRemoving={isRemoving && pendingAdId === item.id}
+      />
     </View>
   )
 

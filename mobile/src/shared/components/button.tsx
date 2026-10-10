@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { ActivityIndicator, Pressable, type PressableProps, Text, View } from 'react-native'
 
-type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'destructive'
+type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'destructive' | 'destructive-soft'
 
 interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> {
   title: string
@@ -25,7 +25,13 @@ const VARIANT_CLASSES: Record<ButtonVariant, { container: string; text: string; 
   // Тёмно-синяя — как variant='secondary' сайта («Показать» в фильтре).
   secondary: { container: 'bg-secondary', text: 'text-white', spinner: 'accent-white' },
   outline: { container: 'border border-border bg-card', text: 'text-foreground', spinner: 'accent-foreground' },
-  destructive: { container: 'bg-destructive', text: 'text-white', spinner: 'accent-white' }
+  destructive: { container: 'bg-destructive', text: 'text-white', spinner: 'accent-white' },
+  // Бледно-красная — как variant='destructive' сайта («Удалить» объявление).
+  'destructive-soft': {
+    container: 'bg-destructive/10 dark:bg-destructive/20',
+    text: 'text-destructive',
+    spinner: 'accent-destructive'
+  }
 }
 
 // Основная кнопка приложения. Высота 48 — удобная зона нажатия для пальца

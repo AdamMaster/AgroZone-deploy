@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { Text, View } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
 
 import { StyledImage } from '@/shared/components/styled'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
@@ -14,6 +14,7 @@ import { FavoriteButton } from './favorite-button'
 
 interface AdCardProps {
   ad: AdListItem
+  onOpen: (ad: AdListItem) => void
   onToggleFavorite: (ad: AdListItem) => void
   isFavoritePending: boolean
 }
@@ -23,7 +24,7 @@ interface AdCardProps {
 // цена с единицей, населённый пункт и расстояние.
 // memo: FlashList переиспользует ячейки и при прокрутке перерисовывает
 // только те, у которых сменилось объявление.
-export const AdCard = memo(function AdCard({ ad, onToggleFavorite, isFavoritePending }: AdCardProps) {
+export const AdCard = memo(function AdCard({ ad, onOpen, onToggleFavorite, isFavoritePending }: AdCardProps) {
   const placeholderIconColor = useThemeColor('--color-gray-500')
   const coverUrl = ad.images[0]
   // Цена выделяется, пока активна платная услуга или премиум у продавца —
@@ -34,7 +35,7 @@ export const AdCard = memo(function AdCard({ ad, onToggleFavorite, isFavoritePen
   const price = formatPriceWithUnit(ad.price, ad.unit)
 
   return (
-    <View className='gap-2'>
+    <Pressable accessibilityRole='link' accessibilityLabel={ad.title} onPress={() => onOpen(ad)} className='gap-2'>
       <View className='aspect-square items-center justify-center overflow-hidden rounded-lg bg-gray-100'>
         {coverUrl ? (
           <StyledImage
@@ -86,7 +87,7 @@ export const AdCard = memo(function AdCard({ ad, onToggleFavorite, isFavoritePen
           />
         </View>
       </View>
-    </View>
+    </Pressable>
   )
 })
 

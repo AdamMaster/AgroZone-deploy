@@ -29,8 +29,8 @@ interface TabItem {
 // Те же вкладки, порядок, подписи и иконки, что у MobileTabBar сайта.
 const TABS: readonly TabItem[] = [
   { routeName: '(home)', label: 'Главная', icon: HouseFillIcon, href: '/', requiresAuth: false },
-  { routeName: 'favorites', label: 'Избранное', icon: HeartFillIcon, href: '/favorites', requiresAuth: true },
-  { routeName: 'my-ads', label: 'Объявления', icon: StackFillIcon, href: '/my-ads', requiresAuth: true },
+  { routeName: '(favorites)', label: 'Избранное', icon: HeartFillIcon, href: '/favorites', requiresAuth: true },
+  { routeName: '(my-ads)', label: 'Объявления', icon: StackFillIcon, href: '/my-ads', requiresAuth: true },
   { routeName: 'messages', label: 'Сообщения', icon: ChatCircleFillIcon, href: '/messages', requiresAuth: true },
   { routeName: 'profile', label: 'Профиль', icon: UserFillIcon, href: '/profile', requiresAuth: true }
 ]
@@ -61,12 +61,9 @@ export function SiteTabBar({ state, navigation, insets }: TabBarProps) {
       style={{ paddingBottom: insets.bottom }}
     >
       {TABS.map(tab => {
-        // Как на сайте: «Главная» подсвечена только на самой главной, а не в
-        // каталоге, открытом из неё.
-        const isActive =
-          tab.routeName === '(home)'
-            ? focusedRouteName === tab.routeName && pathname === '/'
-            : focusedRouteName === tab.routeName
+        // Как на сайте: вкладка подсвечена только на своём разделе, а не в
+        // каталоге или объявлении, открытых из него.
+        const isActive = focusedRouteName === tab.routeName && pathname === tab.href
         const color = isActive ? activeColor : inactiveColor
         const Icon = tab.icon
 
@@ -81,8 +78,8 @@ export function SiteTabBar({ state, navigation, insets }: TabBarProps) {
 
           const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true })
 
-          // Нажатие на уже открытую «Главную» (например, из каталога)
-          // возвращает к самой главной: вложенный стек сам делает это по
+          // Нажатие на уже открытую вкладку (например, из объявления)
+          // возвращает к её разделу: вложенный стек сам делает это по
           // событию tabPress — стандартное поведение вкладок.
           if (focusedRouteName !== route.name && !event.defaultPrevented) {
             navigation.navigate(route.name, route.params)

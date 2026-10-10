@@ -3,6 +3,7 @@
 export const isFutureDate = (value: string | null | undefined): boolean => !!value && new Date(value) > new Date()
 
 const dayMonthFormatter = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' })
+const fullDateFormatter = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
 const timeFormatter = new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' })
 
 // «12 октября» — до какого дня действует услуга.
@@ -20,4 +21,13 @@ export function formatRelativeDay(value: string): string {
   yesterday.setDate(now.getDate() - 1)
 
   return date.toDateString() === yesterday.toDateString() ? 'вчера' : formatDayMonth(value)
+}
+
+// «12 октября 2026 г.» — дата публикации объявления.
+export const formatFullDate = (value: string): string => fullDateFormatter.format(new Date(value))
+
+// «12.10» — день из даты вида «2026-10-12» (подписи недели в статистике).
+export const formatShortIsoDate = (isoDate: string): string => {
+  const [, month, day] = isoDate.split('-')
+  return `${day}.${month}`
 }

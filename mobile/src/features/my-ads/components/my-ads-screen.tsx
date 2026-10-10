@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react'
 import { ActivityIndicator, RefreshControl, Text, View } from 'react-native'
 import { toast } from 'sonner-native'
 
+import { useAdNavigation } from '@/features/ads/hooks/use-ad-navigation'
 import { useCreateAdAction } from '@/features/ads/hooks/use-create-ad-action'
 import { useProfile } from '@/features/auth/hooks/use-profile'
 
@@ -28,9 +29,8 @@ const LIST_BOTTOM_PADDING = 96
 
 const keyExtractor = (ad: MyAd) => ad.id
 
-// Экраны объявления и формы — следующие этапы; до них честно говорим об
-// этом, а не открываем пустой экран.
-const openAd = () => toast.info('Страница объявления появится в следующем обновлении приложения')
+// Форма редактирования — следующий этап; до него честно говорим об этом, а
+// не открываем пустой экран.
 const editAd = () => toast.info('Редактирование объявления появится в следующем обновлении приложения')
 
 function CardsSkeleton() {
@@ -56,6 +56,10 @@ export function MyAdsScreen() {
   const { data: profile } = useProfile()
   const isOwnerPremium = isFutureDate(profile?.premiumUntil)
   const createAd = useCreateAdAction()
+  const { openAd } = useAdNavigation()
+  // Опубликованное открываем как увидит покупатель, остальные — страницей
+  // владельца: публичная у них отдаёт 404 (как detailHref у сайта).
+  const openMyAd = useCallback((ad: MyAd) => openAd(ad.id, ad.status === 'PUBLISHED' ? 'public' : 'owner'), [openAd])
   const fab = useHideOnScroll()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const { refetch: refetchTabs } = tabsQuery
@@ -82,10 +86,10 @@ export function MyAdsScreen() {
   const renderItem: ListRenderItem<MyAd> = useCallback(
     ({ item }) => (
       <View className='pb-6'>
-        <MyAdCard ad={item} isOwnerPremium={isOwnerPremium} onOpen={openAd} onEdit={editAd} />
+        <MyAdCard ad={item} isOwnerPremium={isOwnerPremium} onOpen={openMyAd} onEdit={editAd} />
       </View>
     ),
-    [isOwnerPremium]
+    [isOwnerPremium, openMyAd]
   )
 
   const heading = (

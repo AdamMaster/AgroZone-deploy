@@ -1,11 +1,13 @@
-import { type InfiniteData, useMutation, useQueryClient } from '@tanstack/react-query'
+import { type InfiniteData, type QueryKey, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner-native'
 
 import { useRequestSignIn } from '@/features/auth/hooks/use-request-sign-in'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 
 import { adsApi } from '../api/ads.api'
-import type { FavoriteAd } from '../types/ad.types'
+import type { AdDetail } from '../types/ad-detail.types'
+import type { AdsListResponse, FavoriteAd } from '../types/ad.types'
+import { adDetailQueryKey, similarAdsQueryKeyPrefix } from './use-ad-detail'
 import type { AdsListData } from './use-ads-infinite'
 import { adsListQueryKeyPrefix } from './use-ads-infinite'
 import { favoritesQueryKey } from './use-favorites-infinite'
@@ -18,17 +20,10 @@ interface ToggleFavoriteVariables {
   isFavorite: boolean
 }
 
-function setFavoriteFlag(data: AdsListData | undefined, adId: string, isFavorite: boolean) {
-  if (!data) return data
-
-  return {
-    ...data,
-    pages: data.pages.map(page => ({
-      ...page,
-      items: page.items.map(ad => (ad.id === adId ? { ...ad, isFavorite } : ad))
-    }))
-  }
-}
+const flagItems = (response: AdsListResponse, adId: string, isFavorite: boolean): AdsListResponse => ({
+  ...response,
+  items: response.items.map(ad => (ad.id === adId ? { ...ad, isFavorite } : ad))
+})
 
 // Сердечко «в избранное» — как useAddFavorite/useRemoveFavorite сайта:
 // отметка меняется сразу во всех лентах (оптимистично), при ошибке
@@ -43,15 +38,29 @@ export function useToggleFavorite() {
     mutationFn: ({ adId, isFavorite }: ToggleFavoriteVariables) =>
       isFavorite ? adsApi.removeFavorite(adId) : adsApi.addFavorite(adId),
 
+    // Отметка меняется сразу везде, где видно объявление: в лентах и
+    // каталогах, на его странице и в «Похожих». Снимки для отката —
+    // одним списком, какой бы формы ни были данные.
     onMutate: async ({ adId, isFavorite }) => {
-      await queryClient.cancelQueries({ queryKey: adsListQueryKeyPrefix })
+      const nextFlag = !isFavorite
+      const keys = [adsListQueryKeyPrefix, favoritesQueryKey, adDetailQueryKey(adId), similarAdsQueryKeyPrefix]
+      await Promise.all(keys.map(queryKey => queryClient.cancelQueries({ queryKey })))
 
-      await queryClient.cancelQueries({ queryKey: favoritesQueryKey })
+      // Возвращает данные ДО изменения — для отката.
+      const update = <T>(queryKey: QueryKey, updater: (data: T) => T) => {
+        const previous = queryClient.getQueriesData<T>({ queryKey })
+        queryClient.setQueriesData<T>({ queryKey }, data => (data ? updater(data) : data))
+        return previous
+      }
 
-      const previous = queryClient.getQueriesData<AdsListData>({ queryKey: adsListQueryKeyPrefix })
-      previous.forEach(([queryKey]) =>
-        queryClient.setQueryData<AdsListData>(queryKey, data => setFavoriteFlag(data, adId, !isFavorite))
-      )
+      const snapshots = [
+        ...update<AdsListData>(adsListQueryKeyPrefix, data => ({
+          ...data,
+          pages: data.pages.map(page => flagItems(page, adId, nextFlag))
+        })),
+        ...update<AdsListResponse>(similarAdsQueryKeyPrefix, data => flagItems(data, adId, nextFlag)),
+        ...update<AdDetail>(adDetailQueryKey(adId), data => ({ ...data, isFavorite: nextFlag }))
+      ]
 
       // Убранное объявление сразу пропадает и из списка «Избранное».
       const previousFavorites = queryClient.getQueryData<FavoritesData>(favoritesQueryKey)
@@ -62,11 +71,11 @@ export function useToggleFavorite() {
         })
       }
 
-      return { previous, previousFavorites }
+      return { snapshots, previousFavorites }
     },
 
     onError: (error, _variables, context) => {
-      context?.previous.forEach(([queryKey, data]) => queryClient.setQueryData(queryKey, data))
+      context?.snapshots.forEach(([queryKey, data]) => queryClient.setQueryData(queryKey, data))
       if (context?.previousFavorites) queryClient.setQueryData(favoritesQueryKey, context.previousFavorites)
       toast.error(error.message)
     },
