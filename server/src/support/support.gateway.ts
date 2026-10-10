@@ -87,9 +87,12 @@ export class SupportGateway implements OnGatewayInit, OnGatewayConnection {
   // https://socket.io/how-to/use-with-express-session — тот же приём, что
   // и там: та же самая миддлварь, что и у Express (см.
   // SessionMiddlewareHolder), разбирает cookie сессии прямо на хэндшейке,
-  // до того как соединение попадёт в handleConnection.
+  // до того как соединение попадёт в handleConnection. Перед ней — ключ
+  // сессии мобильного приложения из Authorization (cookie у него нет).
   afterInit(namespace: Namespace) {
-    namespace.server.engine.use(this.sessionMiddlewareHolder.get())
+    for (const middleware of this.sessionMiddlewareHolder.get()) {
+      namespace.server.engine.use(middleware)
+    }
   }
 
   // Никакого создания нового гостя тут (см.

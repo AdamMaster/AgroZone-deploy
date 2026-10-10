@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router'
 import { ActivityIndicator, Pressable, Text, View } from 'react-native'
 
 import { useAdNavigation } from '@/features/ads/hooks/use-ad-navigation'
+import { useChatNavigation } from '@/features/messages/hooks/use-chat-navigation'
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
@@ -24,6 +25,7 @@ import { ProfileSectionScreen } from './profile-section-screen'
 export function ProfileNotificationsScreen() {
   const router = useRouter()
   const { openAd } = useAdNavigation()
+  const { openConversation } = useChatNavigation()
   const { data: notifications, error, isPending, refetch } = useNotifications()
   const { mutate: markRead } = useMarkNotificationRead()
   const { mutate: markAllRead, isPending: isMarkingAll } = useMarkAllNotificationsRead()
@@ -41,6 +43,8 @@ export function ProfileNotificationsScreen() {
     switch (target.kind) {
       case 'ad':
         return openAd(target.id, target.view)
+      case 'conversation':
+        return openConversation(target.id)
       case 'messages':
         return router.navigate('/messages')
       case 'site':

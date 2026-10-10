@@ -7,6 +7,7 @@ import { AppProviders } from '@/providers/app-providers'
 import { useNavigationTheme } from '@/providers/use-navigation-theme'
 
 import { useAuthStore } from '@/features/auth/store/auth-store'
+import { SupportRealtime } from '@/features/support/components/support-realtime'
 import { themeHydrated } from '@/features/theme/store/theme-store'
 
 import '@/global.css'
@@ -43,29 +44,32 @@ function RootNavigator() {
   // (пароль, почта, телефон, удаление) — только вошедшему. Когда статус меняется (вошёл, вышел, сессия истекла),
   // роутер сам убирает недоступные экраны.
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name='(tabs)' />
-      <Stack.Screen name='categories' options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
-      <Stack.Screen name='oauth' options={{ animation: 'none' }} />
+    <>
+      {isSignedIn && <SupportRealtime />}
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name='(tabs)' />
+        <Stack.Screen name='categories' options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name='oauth' options={{ animation: 'none' }} />
 
-      <Stack.Protected guard={!isSignedIn}>
-        <Stack.Screen name='login' options={{ headerShown: true, title: 'Вход', presentation: 'modal' }} />
-        <Stack.Screen name='register' options={{ headerShown: true, title: 'Регистрация', presentation: 'modal' }} />
-      </Stack.Protected>
+        <Stack.Protected guard={!isSignedIn}>
+          <Stack.Screen name='login' options={{ headerShown: true, title: 'Вход', presentation: 'modal' }} />
+          <Stack.Screen name='register' options={{ headerShown: true, title: 'Регистрация', presentation: 'modal' }} />
+        </Stack.Protected>
 
-      <Stack.Protected guard={isSignedIn}>
-        <Stack.Screen name='change-password' options={{ headerShown: true, presentation: 'modal' }} />
-        <Stack.Screen name='change-email' options={{ headerShown: true, presentation: 'modal' }} />
-        <Stack.Screen
-          name='change-phone'
-          options={{ headerShown: true, title: 'Изменить номер', presentation: 'modal' }}
-        />
-        <Stack.Screen
-          name='delete-account'
-          options={{ headerShown: true, title: 'Удаление аккаунта', presentation: 'modal' }}
-        />
-      </Stack.Protected>
-    </Stack>
+        <Stack.Protected guard={isSignedIn}>
+          <Stack.Screen name='change-password' options={{ headerShown: true, presentation: 'modal' }} />
+          <Stack.Screen name='change-email' options={{ headerShown: true, presentation: 'modal' }} />
+          <Stack.Screen
+            name='change-phone'
+            options={{ headerShown: true, title: 'Изменить номер', presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name='delete-account'
+            options={{ headerShown: true, title: 'Удаление аккаунта', presentation: 'modal' }}
+          />
+        </Stack.Protected>
+      </Stack>
+    </>
   )
 }
 

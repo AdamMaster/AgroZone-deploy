@@ -1,9 +1,9 @@
 import { Linking, Pressable, Text, View } from 'react-native'
-import { toast } from 'sonner-native'
 
 import { useRevealPhone } from '@/features/ads/hooks/use-ad-detail'
 import { useRequestSignIn } from '@/features/auth/hooks/use-request-sign-in'
 import { useAuthStore } from '@/features/auth/store/auth-store'
+import { useChatNavigation } from '@/features/messages/hooks/use-chat-navigation'
 
 import { formatPhoneInput } from '@/shared/utils/phone'
 
@@ -17,6 +17,7 @@ export function AdContactButtons({ adId }: AdContactButtonsProps) {
   const requestSignIn = useRequestSignIn()
   const isSignedIn = useAuthStore(state => state.status === 'signedIn')
   const revealPhone = useRevealPhone()
+  const { openNewConversation } = useChatNavigation()
   const phone = revealPhone.data?.phone
 
   const handlePhonePress = () => {
@@ -33,14 +34,15 @@ export function AdContactButtons({ adId }: AdContactButtonsProps) {
     revealPhone.mutate(adId)
   }
 
-  // Чат — отдельный этап; до него честно говорим об этом.
+  // Переписка с продавцом открывается поверх объявления. Гостя сначала
+  // просим войти — написать анонимно нельзя, как и на сайте.
   const handleWritePress = () => {
     if (!isSignedIn) {
       requestSignIn()
       return
     }
 
-    toast.info('Сообщения появятся в следующем обновлении приложения')
+    openNewConversation(adId)
   }
 
   const phoneTitle = phone

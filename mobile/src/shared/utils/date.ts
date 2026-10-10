@@ -50,3 +50,15 @@ export function formatTimeOrDayMonth(value: string): string {
 
   return date.toDateString() === new Date().toDateString() ? timeFormatter.format(date) : formatDayMonth(value)
 }
+
+const dayShortMonthFormatter = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' })
+
+// Время сообщения: сегодня — «14:05», раньше — «9 окт.», как
+// formatMessageTime сайта.
+export function formatMessageTime(value: string): string {
+  const date = new Date(value)
+
+  return date.toDateString() === new Date().toDateString()
+    ? timeFormatter.format(date)
+    : dayShortMonthFormatter.format(date)
+}

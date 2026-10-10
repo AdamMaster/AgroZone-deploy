@@ -54,7 +54,8 @@ async function bootstrap() {
   // cookie — превращаем его в cookie сессии до cookie-parser и
   // express-session, дальше всё работает как для сайта (см.
   // session/session-token.ts).
-  app.use(createSessionTokenMiddleware(config.getOrThrow<string>('SESSION_NAME')))
+  const sessionTokenMiddleware = createSessionTokenMiddleware(config.getOrThrow<string>('SESSION_NAME'))
+  app.use(sessionTokenMiddleware)
 
   app.use(cookieParser(config.getOrThrow<string>('COOKIES_SECRET')))
 
@@ -95,7 +96,9 @@ async function bootstrap() {
   })
 
   app.use(sessionMiddleware)
-  app.get(SessionMiddlewareHolder).set(sessionMiddleware)
+  // Хэндшейку сокетов — та же цепочка, что и HTTP: ключ сессии приложения
+  // из Authorization, затем сама сессия.
+  app.get(SessionMiddlewareHolder).set(sessionTokenMiddleware, sessionMiddleware)
 
   // Контекст запроса (IP, User-Agent, кто действует) для журнала событий
   // безопасности — см. security-events/request-context.ts. После session,

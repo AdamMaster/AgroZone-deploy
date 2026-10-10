@@ -13,16 +13,22 @@ import { RequestHandler } from 'express'
 // конфигу. main.ts один раз кладёт сюда уже готовый экземпляр (после
 // app.use(sessionMiddleware), до app.listen()), SupportGateway читает его
 // в afterInit.
+//
+// Хранит не одну миддлварь, а цепочку в порядке применения: перед
+// express-session стоит createSessionTokenMiddleware — мобильное приложение
+// присылает на хэндшейк ключ сессии в Authorization вместо cookie (см.
+// session/session-token.ts), и без этого звена сокет приложения выглядел бы
+// анонимным.
 @Injectable()
 export class SessionMiddlewareHolder {
-  private middleware?: RequestHandler
+  private middlewares?: readonly RequestHandler[]
 
-  set(middleware: RequestHandler) {
-    this.middleware = middleware
+  set(...middlewares: RequestHandler[]) {
+    this.middlewares = middlewares
   }
 
-  get(): RequestHandler {
-    if (!this.middleware) {
+  get(): readonly RequestHandler[] {
+    if (!this.middlewares?.length) {
       // Означает, что кто-то прочитал holder раньше, чем main.ts успел
       // вызвать .set() (то есть до app.use(session(...)) в bootstrap()).
       // Порядок в main.ts специально соблюдён так, чтобы этого не
@@ -32,6 +38,6 @@ export class SessionMiddlewareHolder {
       throw new Error('SessionMiddlewareHolder: middleware ещё не установлен — проверьте порядок вызовов в main.ts')
     }
 
-    return this.middleware
+    return this.middlewares
   }
 }

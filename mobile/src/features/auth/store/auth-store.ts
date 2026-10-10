@@ -16,8 +16,9 @@ export const profileQueryKey = ['profile'] as const
 
 // Объявления зависят от того, кто вошёл (например, отметка «в избранном»).
 const ADS_QUERY_KEY = ['ads'] as const
-// Уведомления принадлежат пользователю целиком.
-const NOTIFICATIONS_QUERY_KEY = ['notifications'] as const
+// Данные, принадлежащие пользователю целиком: при смене пользователя их
+// нельзя показывать даже мельком.
+const USER_QUERY_KEYS = [['notifications'], ['conversations'], ['blocked-users'], ['support']] as const
 
 interface AuthState {
   status: AuthStatus
@@ -33,12 +34,12 @@ interface AuthState {
 }
 
 // При смене пользователя (вход, выход) его данные нельзя показывать из
-// кэша: профиль (вместе с журналом безопасности под тем же префиксом) и
-// уведомления удаляем, объявления перезапрашиваем. Перезапрос не
+// кэша: профиль (вместе с журналом безопасности под тем же префиксом),
+// уведомления и переписку удаляем, объявления перезапрашиваем. Перезапрос не
 // ждём — вход и выход не должны зависеть от скорости загрузки ленты.
 function resetUserDependentQueries() {
   queryClient.removeQueries({ queryKey: profileQueryKey })
-  queryClient.removeQueries({ queryKey: NOTIFICATIONS_QUERY_KEY })
+  for (const queryKey of USER_QUERY_KEYS) queryClient.removeQueries({ queryKey })
   void queryClient.invalidateQueries({ queryKey: ADS_QUERY_KEY })
 }
 

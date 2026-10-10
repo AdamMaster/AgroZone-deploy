@@ -1,20 +1,15 @@
-import { useRouter, useSegments } from 'expo-router'
+import { useRouter } from 'expo-router'
 import { useCallback } from 'react'
+
+import { useTabStack } from '@/features/navigation/hooks/use-tab-stack'
 
 import type { AdDetailView } from './use-ad-detail'
 
-// Вкладки со своим стеком, внутри которых открывается объявление
-// (app/(tabs)/(home,favorites,my-ads,profile)).
-const TAB_STACKS = ['(home)', '(favorites)', '(my-ads)', '(profile)'] as const
-type TabStack = (typeof TAB_STACKS)[number]
-
 // Открыть объявление в текущей вкладке: из «Избранного» — внутри
-// «Избранного», из ленты — внутри «Главной». Так нижняя панель и «Назад»
-// ведут себя, как ожидает пользователь.
+// «Избранного», из ленты — внутри «Главной».
 export function useAdNavigation() {
   const router = useRouter()
-  const segments = useSegments()
-  const stack: TabStack = TAB_STACKS.find(item => (segments as readonly string[]).includes(item)) ?? '(home)'
+  const stack = useTabStack()
 
   const openAd = useCallback(
     (id: string, view: AdDetailView = 'public') =>

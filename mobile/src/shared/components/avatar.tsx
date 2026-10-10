@@ -7,7 +7,7 @@ import { StyledImage } from './styled'
 interface AvatarProps {
   name: string | null
   pictureUrl: string | null
-  size: 'sm' | 'md' | 'lg'
+  size: 'sm' | 'base' | 'md' | 'lg'
   // id пользователя: без фото фон — его цвет, как у UserAvatar сайта. Без
   // него — фирменный зелёный (свой профиль).
   colorSeed?: string
@@ -15,6 +15,8 @@ interface AvatarProps {
 
 const SIZE_CLASSES = {
   sm: { container: 'size-8', text: 'text-sm' },
+  // Как Avatar сайта по умолчанию (size-10): шапка и сообщения чата.
+  base: { container: 'size-10', text: 'text-lg' },
   md: { container: 'size-12', text: 'text-lg' },
   // Фото в «Личных данных» профиля — size-15, как на сайте.
   lg: { container: 'size-15', text: 'text-2xl' }
