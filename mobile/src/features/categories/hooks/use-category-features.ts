@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 
 import { categoriesApi } from '../api/categories.api'
@@ -13,14 +13,21 @@ export function isLeafCategory(category: Category | undefined): boolean {
   return !!category && !category.children?.length
 }
 
+// Запрос характеристик категории — и для хука, и для разовой загрузки
+// (выбор категории в форме объявления ждёт характеристики до перехода).
+export const categoryFeaturesQuery = (categoryId: string) =>
+  queryOptions({
+    queryKey: ['categories', 'features', categoryId],
+    queryFn: ({ signal }) => categoriesApi.fetchFeatures(categoryId, signal),
+    staleTime: FEATURES_STALE_TIME
+  })
+
 // Все характеристики категории (GET /categories/:id/features). Нет id —
 // запрос не уходит.
 export function useCategoryFeatures(categoryId: string | undefined): readonly CategoryFeature[] {
   const { data } = useQuery({
-    queryKey: ['categories', 'features', categoryId],
-    queryFn: ({ signal }) => categoriesApi.fetchFeatures(categoryId!, signal),
-    enabled: !!categoryId,
-    staleTime: FEATURES_STALE_TIME
+    ...categoryFeaturesQuery(categoryId ?? ''),
+    enabled: !!categoryId
   })
 
   return categoryId ? (data ?? EMPTY_FEATURES) : EMPTY_FEATURES

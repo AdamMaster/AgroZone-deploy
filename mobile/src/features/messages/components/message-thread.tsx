@@ -16,6 +16,8 @@ interface MessageThreadProps {
   // Аватар собеседника у его сообщений (переписка по объявлению).
   counterpart?: BubbleAuthor
   emptyText: string
+  // Только у администратора в чате поддержки.
+  onDeleteMessage?: (messageId: string) => void
   hasOlder: boolean
   isLoadingOlder: boolean
   onLoadOlder: () => void
@@ -33,6 +35,7 @@ export function MessageThread({
   isOwnMessage,
   counterpart,
   emptyText,
+  onDeleteMessage,
   hasOlder,
   isLoadingOlder,
   onLoadOlder
@@ -49,8 +52,15 @@ export function MessageThread({
   }, [lastMessage?.id, isLastMessageOwn])
 
   const renderItem: ListRenderItem<ChatMessage> = useCallback(
-    ({ item }) => <MessageBubble message={item} isOwn={isOwnMessage(item)} author={counterpart} />,
-    [isOwnMessage, counterpart]
+    ({ item }) => (
+      <MessageBubble
+        message={item}
+        isOwn={isOwnMessage(item)}
+        author={counterpart}
+        onDelete={onDeleteMessage && (() => onDeleteMessage(item.id))}
+      />
+    ),
+    [isOwnMessage, counterpart, onDeleteMessage]
   )
 
   if (!messages && error) {

@@ -24,11 +24,13 @@ interface ChatHeaderProps {
   isLoading?: boolean
   // Своя картинка вместо аватара собеседника (чат поддержки).
   avatar?: ReactNode
+  // Действия справа (меню «…» в переписке администратора с обращением).
+  trailing?: ReactNode
 }
 
 // Шапка переписки — как ChatHeader сайта: «назад», собеседник и
 // объявление, по которому идёт разговор (нажатие открывает его).
-export function ChatHeader({ counterpart, ad, isLoading = false, avatar }: ChatHeaderProps) {
+export function ChatHeader({ counterpart, ad, isLoading = false, avatar, trailing }: ChatHeaderProps) {
   const router = useRouter()
   const { openAd } = useAdNavigation()
   const iconColor = useThemeColor('--color-gray-900')
@@ -87,6 +89,8 @@ export function ChatHeader({ counterpart, ad, isLoading = false, avatar }: ChatH
           </Pressable>
         )}
       </View>
+
+      {trailing}
     </View>
   )
 }

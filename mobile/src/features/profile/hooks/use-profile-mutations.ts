@@ -149,11 +149,13 @@ export function useRequestPhone() {
   })
 }
 
-export function useConfirmPhone() {
+// makePrimary — номер из профиля становится основным; номер для
+// объявления просто добавляется к аккаунту.
+export function useConfirmPhone(makePrimary: boolean) {
   const refreshProfile = useRefreshProfile()
 
   return useMutation({
-    mutationFn: (code: string) => profileApi.confirmPhone(code),
+    mutationFn: (code: string) => profileApi.confirmPhone(code, makePrimary),
     onSuccess: async () => {
       await refreshProfile()
       toast.success('Номер телефона добавлен')

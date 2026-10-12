@@ -6,7 +6,8 @@ import { MessagesHeading } from './messages-heading'
 interface ChatLayoutProps {
   header: ReactNode
   thread: ReactNode
-  composer: ReactNode
+  // Нет у списка обращений поддержки — там писать некуда.
+  composer?: ReactNode
 }
 
 // Открытая переписка — как на сайте: заголовок «Сообщения», шапка диалога,

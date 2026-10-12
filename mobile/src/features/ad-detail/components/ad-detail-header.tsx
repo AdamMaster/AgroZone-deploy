@@ -1,10 +1,10 @@
-import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import { Pressable, View } from 'react-native'
 
 import { ActionSheet, type SheetAction } from '@/shared/components/action-sheet'
+import { BackButton } from '@/shared/components/back-button'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
-import { ArrowLeft, Ellipsis, Heart, SquarePen } from '@/shared/icons/lucide'
+import { Ellipsis, Heart, SquarePen } from '@/shared/icons/lucide'
 
 // Красный — как text-red-500 у сердечка сайта.
 const FAVORITE_COLOR = '#fb2c36'
@@ -54,16 +54,12 @@ export function AdDetailHeader({
   onEdit,
   menuActions = []
 }: AdDetailHeaderProps) {
-  const router = useRouter()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const iconColor = useThemeColor('--color-gray-950')
 
   return (
     <View className='flex-row items-center justify-between bg-background'>
-      {/* Открыли по ссылке и возвращаться некуда — на главную. */}
-      <HeaderButton label='Назад' onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
-        <ArrowLeft size={20} color={iconColor} />
-      </HeaderButton>
+      <BackButton />
 
       <View className='flex-row items-center'>
         {mode === 'owner' && onEdit && (

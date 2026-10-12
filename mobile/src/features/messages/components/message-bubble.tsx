@@ -1,6 +1,8 @@
-import { Text, View } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
 
 import { Avatar } from '@/shared/components/avatar'
+import { useThemeColor } from '@/shared/hooks/use-theme-color'
+import { Trash2 } from '@/shared/icons/lucide'
 import { formatMessageTime } from '@/shared/utils/date'
 
 import type { ChatMessage } from '../types/message.types'
@@ -18,13 +20,17 @@ interface MessageBubbleProps {
   // собеседника его аватар, время сбоку от пузыря. Нет — чат поддержки
   // (SupportMessageBubble): без аватара, время внутри пузыря.
   author?: BubbleAuthor
+  // Только у администратора в чате поддержки (SupportMessageBubble сайта):
+  // корзина с внешнего края пузыря, всегда на виду — наведения на телефоне нет.
+  onDelete?: () => void
 }
 
 const BUBBLE_CLASS = 'rounded-xl px-3.5 py-2'
 const OWN_BUBBLE_CLASS = 'bg-primary/10'
 const OTHER_BUBBLE_CLASS = 'bg-gray-100'
 
-export function MessageBubble({ message, isOwn, author }: MessageBubbleProps) {
+export function MessageBubble({ message, isOwn, author, onDelete }: MessageBubbleProps) {
+  const deleteIconColor = useThemeColor('--color-gray-400')
   const bubbleColor = isOwn ? OWN_BUBBLE_CLASS : OTHER_BUBBLE_CLASS
   const time = formatMessageTime(message.createdAt)
   const text = (
@@ -34,12 +40,26 @@ export function MessageBubble({ message, isOwn, author }: MessageBubbleProps) {
   )
 
   if (!author) {
+    const deleteButton = onDelete && (
+      <Pressable
+        accessibilityRole='button'
+        accessibilityLabel='Удалить сообщение'
+        hitSlop={8}
+        onPress={onDelete}
+        className='mb-1 size-6 items-center justify-center rounded-md active:bg-gray-100'
+      >
+        <Trash2 size={14} color={deleteIconColor} />
+      </Pressable>
+    )
+
     return (
-      <View className={`flex-row ${isOwn ? 'justify-end' : 'justify-start'}`}>
+      <View className={`flex-row items-end gap-1 ${isOwn ? 'justify-end' : 'justify-start'}`}>
+        {isOwn && deleteButton}
         <View className={`max-w-[80%] ${BUBBLE_CLASS} ${bubbleColor}`}>
           {text}
           <Text className='mt-1 self-end text-[11px] text-gray-400'>{time}</Text>
         </View>
+        {!isOwn && deleteButton}
       </View>
     )
   }

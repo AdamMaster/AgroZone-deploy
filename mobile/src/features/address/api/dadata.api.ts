@@ -12,15 +12,29 @@ interface DadataAddressSuggestion {
   data: {
     geo_lat: string | null
     geo_lon: string | null
+    region_with_type: string | null
+    region_iso_code: string | null
+    city_with_type: string | null
+    settlement_with_type: string | null
+    city_fias_id: string | null
+    settlement_fias_id: string | null
   }
 }
 
-// Адрес с координатами — то, что нужно поиску по радиусу.
+// Адрес с координатами и местом — поиск по радиусу берёт точку, объявление
+// сохраняет ещё и регион с населённым пунктом (по ним работает фильтр
+// каталога по месту, как у AddressInput сайта).
 export interface AddressSuggestion {
   address: string
   // null — у DaData нет координат для этого варианта (например, улица без
-  // дома в маленьком селе): искать от такой точки нельзя.
+  // дома в маленьком селе): от такой точки не посчитать расстояние.
   coords: { lat: number; lng: number } | null
+  // ISO 3166-2:RU код региона — стабильный ключ фильтра, название — для показа.
+  region?: string
+  regionIsoCode?: string
+  // Город, а если это не город — посёлок или село; ФИАС-код — ключ фильтра.
+  locality?: string
+  localityFiasId?: string
 }
 
 const parseCoordinate = (value: string | null) => {
@@ -56,7 +70,15 @@ export async function suggestAddresses(query: string, signal?: AbortSignal): Pro
       const lat = parseCoordinate(data.geo_lat)
       const lng = parseCoordinate(data.geo_lon)
 
-      return { address: value, coords: lat !== null && lng !== null ? { lat, lng } : null }
+      return {
+        address: value,
+        coords: lat !== null && lng !== null ? { lat, lng } : null,
+        region: data.region_with_type ?? undefined,
+        regionIsoCode: data.region_iso_code ?? undefined,
+        // Город и посёлок в DaData взаимоисключающие; приоритет — городу.
+        locality: data.city_with_type ?? data.settlement_with_type ?? undefined,
+        localityFiasId: data.city_fias_id ?? data.settlement_fias_id ?? undefined
+      }
     })
   } catch (error) {
     if (signal?.aborted || error instanceof ApiError) throw error

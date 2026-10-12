@@ -36,3 +36,10 @@ export interface CategoryLookup {
   category: Category
   parent: Category | null
 }
+
+// Подсказка категории по тексту — GET /categories/search-suggest.
+export interface CategorySearchSuggestion {
+  id: string
+  name: string
+  parentName: string | null
+}

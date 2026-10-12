@@ -7,7 +7,6 @@ import { SupportListItem } from '@/features/support/components/support-list-item
 
 import { ActionSheet } from '@/shared/components/action-sheet'
 import { ScreenMessage } from '@/shared/components/screen-message'
-import { openSitePage } from '@/shared/utils/open-site-page'
 
 import { useChatNavigation } from '../hooks/use-chat-navigation'
 import { useBlockUser, useConversations, useDeleteConversation } from '../hooks/use-conversations'
@@ -69,9 +68,6 @@ export function MessagesScreen() {
     [openChat, openMenu]
   )
 
-  // Инбокс обращений администратора (гости, блокировки, модерация) — на сайте.
-  const openSupport = () => (isAdmin ? void openSitePage('/profile/settings/messages?c=support') : openSupportChat())
-
   const listEmpty = isPending ? (
     <ListSkeleton />
   ) : error ? (
@@ -97,7 +93,7 @@ export function MessagesScreen() {
           <View>
             <MessagesHeading />
             <View className='mb-1'>
-              <SupportListItem isAdmin={isAdmin} onPress={openSupport} />
+              <SupportListItem isAdmin={isAdmin} onPress={openSupportChat} />
             </View>
           </View>
         }

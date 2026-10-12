@@ -31,5 +31,11 @@ export function useChatNavigation() {
 
   const openSupportChat = useCallback(() => router.push(`/(tabs)/${stack}/chat/support`), [router, stack])
 
-  return { openConversation, openNewConversation, replaceWithConversation, openSupportChat }
+  // Администратор: обращение из списка поддержки.
+  const openSupportConversation = useCallback(
+    (id: string) => router.push({ pathname: `/(tabs)/${stack}/chat/support/[id]`, params: { id } }),
+    [router, stack]
+  )
+
+  return { openConversation, openNewConversation, replaceWithConversation, openSupportChat, openSupportConversation }
 }

@@ -32,6 +32,8 @@ export interface UserProfile {
   businessVerifiedAt: string | null
   // До какого момента действует премиум (null — нет премиума).
   premiumUntil: string | null
+  // Сколько фото можно приложить к объявлению (с премиумом — больше).
+  maxUploadLimit: number
   // Документ о компании в публичном профиле (прайс, каталог).
   presentationUrl: string | null
   presentationFileName: string | null

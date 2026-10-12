@@ -7,7 +7,7 @@ import { StyledImage } from './styled'
 interface AvatarProps {
   name: string | null
   pictureUrl: string | null
-  size: 'sm' | 'base' | 'md' | 'lg'
+  size: 'sm' | 'base' | 'md' | 'lg' | 'xl'
   // id пользователя: без фото фон — его цвет, как у UserAvatar сайта. Без
   // него — фирменный зелёный (свой профиль).
   colorSeed?: string
@@ -19,7 +19,9 @@ const SIZE_CLASSES = {
   base: { container: 'size-10', text: 'text-lg' },
   md: { container: 'size-12', text: 'text-lg' },
   // Фото в «Личных данных» профиля — size-15, как на сайте.
-  lg: { container: 'size-15', text: 'text-2xl' }
+  lg: { container: 'size-15', text: 'text-2xl' },
+  // Карточка продавца — size-16, как на сайте.
+  xl: { container: 'size-16', text: 'text-2xl' }
 } as const
 
 // Фото профиля или, если его нет, первая буква имени на цветном фоне.

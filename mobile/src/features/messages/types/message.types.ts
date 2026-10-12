@@ -1,10 +1,11 @@
 // Сообщение переписки — общее для диалогов по объявлениям и чата
-// поддержки: у поддержки вместо senderId может быть senderGuestId (гость
-// сайта), приложению он не нужен.
+// поддержки: у сообщения гостя сайта senderId пуст, а заполнен
+// senderGuestId — его видит только администратор в инбоксе обращений.
 export interface ChatMessage {
   id: string
   conversationId: string
   senderId: string | null
+  senderGuestId?: string | null
   text: string
   attachments: string[]
   createdAt: string

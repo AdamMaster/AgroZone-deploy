@@ -59,6 +59,8 @@ export interface AdsFilters {
   regionIsoCode?: string
   localityFiasId?: string
   sellerType?: SellerType
+  // Объявления одного продавца — страница продавца.
+  sellerId?: string
   lat?: string
   lng?: string
   radiusKm?: string

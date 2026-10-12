@@ -1,7 +1,6 @@
 import { FlashList, type ListRenderItem } from '@shopify/flash-list'
 import { useCallback, useState } from 'react'
 import { ActivityIndicator, RefreshControl, Text, View } from 'react-native'
-import { toast } from 'sonner-native'
 
 import { useAdNavigation } from '@/features/ads/hooks/use-ad-navigation'
 import { useCreateAdAction } from '@/features/ads/hooks/use-create-ad-action'
@@ -29,10 +28,6 @@ const LIST_BOTTOM_PADDING = 96
 
 const keyExtractor = (ad: MyAd) => ad.id
 
-// Форма редактирования — следующий этап; до него честно говорим об этом, а
-// не открываем пустой экран.
-const editAd = () => toast.info('Редактирование объявления появится в следующем обновлении приложения')
-
 function CardsSkeleton() {
   return (
     <View className='gap-6'>
@@ -56,10 +51,11 @@ export function MyAdsScreen() {
   const { data: profile } = useProfile()
   const isOwnerPremium = isFutureDate(profile?.premiumUntil)
   const createAd = useCreateAdAction()
-  const { openAd } = useAdNavigation()
+  const { openAd, openAdEditor } = useAdNavigation()
   // Опубликованное открываем как увидит покупатель, остальные — страницей
   // владельца: публичная у них отдаёт 404 (как detailHref у сайта).
   const openMyAd = useCallback((ad: MyAd) => openAd(ad.id, ad.status === 'PUBLISHED' ? 'public' : 'owner'), [openAd])
+  const editMyAd = useCallback((ad: MyAd) => openAdEditor(ad.id), [openAdEditor])
   const fab = useHideOnScroll()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const { refetch: refetchTabs } = tabsQuery
@@ -86,10 +82,10 @@ export function MyAdsScreen() {
   const renderItem: ListRenderItem<MyAd> = useCallback(
     ({ item }) => (
       <View className='pb-6'>
-        <MyAdCard ad={item} isOwnerPremium={isOwnerPremium} onOpen={openMyAd} onEdit={editAd} />
+        <MyAdCard ad={item} isOwnerPremium={isOwnerPremium} onOpen={openMyAd} onEdit={editMyAd} />
       </View>
     ),
-    [isOwnerPremium, openMyAd]
+    [isOwnerPremium, openMyAd, editMyAd]
   )
 
   const heading = (

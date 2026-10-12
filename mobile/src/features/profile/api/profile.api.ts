@@ -69,8 +69,8 @@ export const profileApi = {
   phoneCallStatus: (signal?: AbortSignal) =>
     apiClient.post<{ confirmed: boolean; code?: string }>('/users/profile/phones/status', undefined, { signal }),
 
-  confirmPhone: (code: string) =>
-    apiClient.patch<{ success: boolean }>('/users/profile/phones/confirm', { code, makePrimary: true }),
+  confirmPhone: (code: string, makePrimary: boolean) =>
+    apiClient.patch<{ success: boolean }>('/users/profile/phones/confirm', { code, makePrimary }),
 
   // Уже подтверждённый номер делается основным без повторного звонка.
   setPrimaryPhone: (phone: string) => apiClient.patch<{ success: boolean }>('/users/profile/phones/primary', { phone }),

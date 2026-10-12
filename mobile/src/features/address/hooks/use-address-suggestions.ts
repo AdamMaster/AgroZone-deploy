@@ -8,8 +8,7 @@ const MIN_QUERY_LENGTH = 3
 const DEBOUNCE_MS = 300
 const EMPTY_SUGGESTIONS: readonly AddressSuggestion[] = []
 
-// Подсказки адресов для поиска по радиусу: запрос — когда пользователь
-// перестал печатать.
+// Подсказки адресов DaData: запрос — когда пользователь перестал печатать.
 export function useAddressSuggestions(query: string) {
   const debouncedQuery = useDebouncedValue(query.trim(), DEBOUNCE_MS)
   const isEnabled = debouncedQuery.length >= MIN_QUERY_LENGTH

@@ -1,5 +1,5 @@
 import { RequireSignIn } from '@/features/auth/components/require-sign-in'
-import { SupportChatScreen } from '@/features/support/components/support-chat-screen'
+import { SupportEntryScreen } from '@/features/support/components/support-entry-screen'
 
 import { TabScreen } from '@/shared/components/tab-screen'
 
@@ -7,7 +7,7 @@ export default function SupportChatRoute() {
   return (
     <RequireSignIn>
       <TabScreen>
-        <SupportChatScreen />
+        <SupportEntryScreen />
       </TabScreen>
     </RequireSignIn>
   )

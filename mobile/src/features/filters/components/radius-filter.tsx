@@ -2,6 +2,8 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 
+import { AddressInput, type PickedAddress } from '@/features/address/components/address-input'
+
 import { Button } from '@/shared/components/button'
 import { SelectField } from '@/shared/components/select-field'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
@@ -11,7 +13,6 @@ import { filtersApi } from '../api/filters.api'
 import { useCurrentPosition } from '../hooks/use-current-position'
 import { CLEARED_RADIUS, DEFAULT_RADIUS_KM } from '../lib/catalog-filters'
 import type { RadiusFilterValue } from '../types/filter.types'
-import { AddressInput, type PickedAddress } from './address-input'
 
 const RADIUS_OPTIONS = ['10', '25', '50', '100', '200', '500'].map(km => ({ value: km, label: `${km} км` }))
 

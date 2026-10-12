@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, Text, type TextInput, View } from 'react-native'
 
 import { useFormScroll } from './form-scroll-view'
@@ -7,6 +7,9 @@ import { Input } from './input'
 export interface ComboboxItem {
   key: string
   label: string
+  // Пояснение мелким серым текстом рядом (например, раздел категории —
+  // чтобы различить одноимённые).
+  hint?: string
 }
 
 interface ComboboxProps<T extends ComboboxItem> {
@@ -19,7 +22,15 @@ interface ComboboxProps<T extends ComboboxItem> {
   placeholder: string
   accessibilityLabel: string
   emptyText: string
+  // Своё содержимое пустого списка вместо emptyText (например, с ссылкой).
+  emptyContent?: ReactNode
   isLoading?: boolean
+  // Список раскрывается, только когда в поле что-то набрано — как поиск
+  // категории на сайте (пустое поле ничего не подсказывает).
+  opensOnlyWithText?: boolean
+  // Поле — снаружи: например, чтобы вернуть в него фокус после подстановки
+  // текста кнопкой из пустого списка.
+  inputRef?: RefObject<TextInput | null>
 }
 
 const BLUR_CLOSE_DELAY_MS = 200
@@ -39,13 +50,18 @@ export function Combobox<T extends ComboboxItem>({
   placeholder,
   accessibilityLabel,
   emptyText,
-  isLoading = false
+  emptyContent,
+  isLoading = false,
+  opensOnlyWithText = false,
+  inputRef: externalInputRef
 }: ComboboxProps<T>) {
   const key = useId()
   const containerRef = useRef<View>(null)
-  const inputRef = useRef<TextInput>(null)
+  const ownInputRef = useRef<TextInput>(null)
+  const inputRef = externalInputRef ?? ownInputRef
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  const [isOpen, setIsOpen] = useState(false)
+  const [isFocused, setIsFocused] = useState(false)
+  const isOpen = isFocused && (!opensOnlyWithText || text.trim().length > 0)
   const { expand, collapse } = useFormScroll()
 
   useEffect(() => {
@@ -60,7 +76,7 @@ export function Combobox<T extends ComboboxItem>({
 
   const open = () => {
     clearTimeout(closeTimerRef.current)
-    setIsOpen(true)
+    setIsFocused(true)
   }
 
   // Закрываем не сразу, а чуть позже — как сайт: в браузере (и в
@@ -68,12 +84,12 @@ export function Combobox<T extends ComboboxItem>({
   // нажатие на вариант, и мгновенно убранный список «съел» бы выбор.
   const closeLater = () => {
     clearTimeout(closeTimerRef.current)
-    closeTimerRef.current = setTimeout(() => setIsOpen(false), BLUR_CLOSE_DELAY_MS)
+    closeTimerRef.current = setTimeout(() => setIsFocused(false), BLUR_CLOSE_DELAY_MS)
   }
 
   const select = (item: T) => {
     clearTimeout(closeTimerRef.current)
-    setIsOpen(false)
+    setIsFocused(false)
     inputRef.current?.blur()
     onSelect(item)
   }
@@ -102,14 +118,17 @@ export function Combobox<T extends ComboboxItem>({
                 onPress={() => select(item)}
                 className='px-3.5 py-2 active:bg-gray-50 dark:active:bg-neutral-800'
               >
-                <Text className='text-base text-gray-950'>{item.label}</Text>
+                <Text className='text-base text-gray-950'>
+                  {item.label}
+                  {item.hint && <Text className='text-sm text-gray-500'>{`  ${item.hint}`}</Text>}
+                </Text>
               </Pressable>
             ))}
             {items.length === 0 &&
               (isLoading ? (
                 <ActivityIndicator className='py-4' colorClassName='accent-gray-500' />
               ) : (
-                <Text className='px-3.5 py-4 text-center text-sm text-gray-500'>{emptyText}</Text>
+                (emptyContent ?? <Text className='px-3.5 py-4 text-center text-sm text-gray-500'>{emptyText}</Text>)
               ))}
           </ScrollView>
         </View>

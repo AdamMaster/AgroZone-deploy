@@ -26,6 +26,16 @@ export function formatRelativeDay(value: string): string {
 // «12 октября 2026 г.» — дата публикации объявления.
 export const formatFullDate = (value: string): string => fullDateFormatter.format(new Date(value))
 
+// «октября 2026» — месяц и год в родительном падеже: «На сайте с октября
+// 2026». Отдельный формат месяца и года дал бы именительный («октябрь»), а
+// родительный получается только вместе с числом — берём его части без дня.
+export function formatMonthYear(value: string): string {
+  const parts = fullDateFormatter.formatToParts(new Date(value))
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(item => item.type === type)?.value ?? ''
+
+  return `${part('month')} ${part('year')}`
+}
+
 // «12.10» — день из даты вида «2026-10-12» (подписи недели в статистике).
 export const formatShortIsoDate = (isoDate: string): string => {
   const [, month, day] = isoDate.split('-')

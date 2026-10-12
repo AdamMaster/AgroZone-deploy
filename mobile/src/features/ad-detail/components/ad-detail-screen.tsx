@@ -1,7 +1,6 @@
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import { RefreshControl, ScrollView, Share, Text, View } from 'react-native'
-import { toast } from 'sonner-native'
 
 import { SITE_URL } from '@/config/env'
 
@@ -41,10 +40,6 @@ interface AdDetailScreenProps {
   onSwitchToOwnerView: () => void
 }
 
-// Редактирование — этап с формой подачи объявления; до него честно говорим
-// об этом.
-const editAd = () => toast.info('Редактирование объявления появится в следующем обновлении приложения')
-
 // Ссылка на объявление на сайте — ей делятся: у приложения своих адресов в
 // интернете нет.
 const shareAd = (ad: AdDetail) => {
@@ -74,7 +69,7 @@ export function AdDetailScreen({ id, view, onSwitchToOwnerView }: AdDetailScreen
   const counters = useAdCounters(id, { enabled: isOwner })
   const ownerActions = useAdOwnerActions(id)
   const { toggleFavorite, isPending: isFavoritePending } = useToggleFavorite()
-  const { openAd, openAdStats } = useAdNavigation()
+  const { openAd, openAdStats, openAdEditor } = useAdNavigation()
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false)
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -163,7 +158,7 @@ export function AdDetailScreen({ id, view, onSwitchToOwnerView }: AdDetailScreen
         isFavorite={!!ad.isFavorite}
         isFavoritePending={isFavoritePending}
         onToggleFavorite={() => toggleFavorite({ adId: ad.id, isFavorite: !!ad.isFavorite })}
-        onEdit={editAd}
+        onEdit={() => openAdEditor(ad.id)}
         menuActions={menuActions}
       />
 

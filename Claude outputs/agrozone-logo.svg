@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="60 50 770 770" width="256" height="256" role="img" aria-label="AgroZone">
+  <defs>
+    <linearGradient id="ribbon" gradientUnits="userSpaceOnUse" x1="85" y1="0" x2="806" y2="0"><stop offset="0" stop-color="#2f8f00"/><stop offset="0.5" stop-color="#40a500"/><stop offset="1" stop-color="#8ae44a"/></linearGradient>
+    <linearGradient id="fold" gradientUnits="userSpaceOnUse" x1="100" y1="300" x2="720" y2="560"><stop offset="0" stop-color="#2a5a93"/><stop offset="1" stop-color="#1a365d"/></linearGradient>
+  </defs>
+  <!-- верх -->
+  <path fill="url(#fold)" d="M450 171C490 156 530 142 575 140C640 136 700 166 716 192C722 215 710 238 680 246C630 254 570 232 520 205C495 192 470 182 450 175Z"/>
+  <path fill="url(#ribbon)" d="M450 175C400 195 340 235 270 245C215 252 175 235 175 212C175 190 215 150 290 108C340 82 400 72 450 72C540 72 640 100 700 180C650 150 600 140 560 146C520 150 480 165 450 175Z"/>
+  <!-- середина -->
+  <path fill="url(#fold)" d="M440 357C340 300 250 293 190 293C130 293 90 340 87 404C110 428 150 436 200 435C300 428 380 388 440 363Z"/>
+  <path fill="url(#fold)" d="M450 506C540 474 640 434 715 434C775 434 800 462 806 495C806 540 770 572 720 574C650 576 560 540 450 510Z"/>
+  <path fill="url(#ribbon)" d="M440 360C520 333 620 296 715 293C775 293 806 325 806 380C806 415 806 440 800 470C780 445 745 436 715 438C640 440 540 478 450 510C380 535 300 570 220 572C140 575 92 545 85 495C82 460 84 430 90 405C110 425 150 433 200 432C300 425 380 385 440 360Z"/>
+  <!-- низ -->
+  <path fill="url(#fold)" d="M175 665C215 620 270 622 320 640C370 655 410 685 440 692C390 715 330 728 260 725C205 721 175 698 175 665Z"/>
+  <path fill="url(#ribbon)" d="M440 692C500 670 560 640 620 628C680 620 718 635 718 660C718 700 640 760 520 785C480 795 440 797 410 795C330 780 250 740 190 700C205 712 230 722 260 722C330 725 390 712 440 692Z"/>
+</svg>

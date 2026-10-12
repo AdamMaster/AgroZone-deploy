@@ -57,6 +57,11 @@ function RootNavigator() {
         </Stack.Protected>
 
         <Stack.Protected guard={isSignedIn}>
+          {/* Форма объявления: свайп назад отключён — им легко случайно
+              потерять заполненное; «назад» — кнопкой формы (со второго шага
+              — к выбору категории, как на сайте). */}
+          <Stack.Screen name='create-ad' options={{ gestureEnabled: false }} />
+          <Stack.Screen name='edit-ad/[id]' options={{ gestureEnabled: false }} />
           <Stack.Screen name='change-password' options={{ headerShown: true, presentation: 'modal' }} />
           <Stack.Screen name='change-email' options={{ headerShown: true, presentation: 'modal' }} />
           <Stack.Screen

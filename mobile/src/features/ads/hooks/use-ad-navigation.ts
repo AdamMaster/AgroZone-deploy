@@ -25,5 +25,15 @@ export function useAdNavigation() {
     [router, stack]
   )
 
-  return { openAd, openAdStats }
+  // Страница продавца — в текущей вкладке, как /sellers/:id сайта.
+  const openSeller = useCallback(
+    (id: string) => router.push({ pathname: `/(tabs)/${stack}/sellers/[id]`, params: { id } }),
+    [router, stack]
+  )
+
+  // Правка — отдельный экран поверх вкладок (как страница /ads/:id/edit
+  // сайта, без нижней панели).
+  const openAdEditor = useCallback((id: string) => router.push({ pathname: '/edit-ad/[id]', params: { id } }), [router])
+
+  return { openAd, openAdStats, openSeller, openAdEditor }
 }
