@@ -32,7 +32,19 @@ export const loginSchema = z.object({
 
 export type LoginValues = z.infer<typeof loginSchema>
 
-export const registerPhoneSchema = z.object({
+export const resetPasswordSchema = z.object({
+  email: z.string().trim().min(1, 'Заполните почту').pipe(z.email('Некорректная почта'))
+})
+
+export type ResetPasswordValues = z.infer<typeof resetPasswordSchema>
+
+export const newPasswordSchema = z.object({
+  password: z.string().min(6, 'Пароль минимум 6 символов')
+})
+
+export type NewPasswordValues = z.infer<typeof newPasswordSchema>
+
+export const phoneSchema = z.object({
   phone: z
     .string()
     .min(10, 'Номер телефона указан не полностью')
@@ -40,7 +52,7 @@ export const registerPhoneSchema = z.object({
     .refine(isValidPhone, 'Номер телефона указан не полностью')
 })
 
-export type RegisterPhoneValues = z.infer<typeof registerPhoneSchema>
+export type PhoneValues = z.infer<typeof phoneSchema>
 
 export const registerFinalSchema = z
   .object({

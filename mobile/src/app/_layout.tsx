@@ -50,10 +50,17 @@ function RootNavigator() {
         <Stack.Screen name='(tabs)' />
         <Stack.Screen name='categories' options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name='oauth' options={{ animation: 'none' }} />
+        {/* Ссылка из письма о сбросе пароля: открывается и гостем, и вошедшим
+            (пароль мог забыть другой аккаунт), поэтому вне Stack.Protected. */}
+        <Stack.Screen name='new-password' options={{ headerShown: true, title: 'Новый пароль' }} />
 
         <Stack.Protected guard={!isSignedIn}>
           <Stack.Screen name='login' options={{ headerShown: true, title: 'Вход', presentation: 'modal' }} />
           <Stack.Screen name='register' options={{ headerShown: true, title: 'Регистрация', presentation: 'modal' }} />
+          <Stack.Screen
+            name='forgot-password'
+            options={{ headerShown: true, title: 'Сброс пароля', presentation: 'modal' }}
+          />
         </Stack.Protected>
 
         <Stack.Protected guard={isSignedIn}>

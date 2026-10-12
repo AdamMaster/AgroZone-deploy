@@ -5,9 +5,10 @@ import { UserService } from '@/user/user.service'
 import { MailService } from '@/libs/mail/mail.service'
 import { PhoneConfirmationModule } from '@/libs/phone-confirmation/phone-confirmation.module'
 import { RateLimitModule } from '@/libs/rate-limit/rate-limit.module'
+import { AuthModule } from '@/auth/auth.module'
 
 @Module({
-  imports: [PhoneConfirmationModule, RateLimitModule],
+  imports: [PhoneConfirmationModule, RateLimitModule, AuthModule],
   controllers: [PasswordRecoveryController],
   providers: [PasswordRecoveryService, UserService, MailService]
 })

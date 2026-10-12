@@ -47,7 +47,8 @@ export class AuthService {
   // Токен из БД сам по себе звонка не доказывает: он создаётся ещё на старте
   // и содержит id проверки у провайдера. Поэтому перед любым действием,
   // которое опирается на «номер подтверждён», заново спрашиваем провайдера.
-  private async assertCallConfirmed(phone: string, token: string) {
+  // Публичный: тем же пользуется сброс пароля по звонку (PasswordRecoveryService).
+  async assertCallConfirmed(phone: string, token: string) {
     const confirmed = await this.phoneConfirmationService.checkCallbackConfirmed(phone, token)
 
     if (!confirmed) {

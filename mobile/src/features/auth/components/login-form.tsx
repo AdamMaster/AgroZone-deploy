@@ -140,6 +140,15 @@ export function LoginForm() {
               />
             )}
           />
+          {/* Как на сайте: мелкая ссылка справа под полем пароля. */}
+          <Pressable
+            accessibilityRole='link'
+            hitSlop={8}
+            className='-mt-2 self-end'
+            onPress={() => router.replace('/forgot-password')}
+          >
+            <Text className='text-xs text-gray-900 underline'>Забыли пароль?</Text>
+          </Pressable>
         </>
       )}
 

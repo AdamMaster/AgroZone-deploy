@@ -8,6 +8,8 @@ import { UserService } from '@/user/user.service'
 import { MailService } from '@/libs/mail/mail.service'
 import { SecurityEventsService } from '@/security-events/security-events.service'
 import { RateLimitService } from '@/libs/rate-limit/rate-limit.service'
+import { AuthService } from '@/auth/auth.service'
+import { ThrottlerException } from '@nestjs/throttler'
 import { SecurityEventType, TokenType } from '@/generated/prisma/enums'
 
 jest.mock('argon2')
@@ -21,6 +23,7 @@ describe('PasswordRecoveryService', () => {
   let mailService: any
   let securityEventsService: any
   let rateLimitService: any
+  let authService: any
 
   const validToken = (overrides: Record<string, unknown> = {}) => ({
     id: 'token-1',
@@ -42,10 +45,15 @@ describe('PasswordRecoveryService', () => {
         update: jest.fn()
       }
     }
-    userService = { findByEmail: jest.fn() }
+    userService = { findByEmail: jest.fn(), findByPhone: jest.fn() }
     mailService = { sendPasswordResetEmail: jest.fn().mockResolvedValue(true) }
     securityEventsService = { record: jest.fn().mockResolvedValue(undefined) }
     rateLimitService = { hit: jest.fn().mockResolvedValue({ allowed: true, count: 1 }) }
+    authService = {
+      sendSmsCode: jest.fn().mockResolvedValue({ message: 'Позвоните', callNumber: '+7 (800) 555-35-35' }),
+      checkSmsCallbackStatus: jest.fn(),
+      assertCallConfirmed: jest.fn().mockResolvedValue(undefined)
+    }
 
     mockedHash.mockReset()
     mockedHash.mockResolvedValue('hashed-new-password' as any)
@@ -57,7 +65,8 @@ describe('PasswordRecoveryService', () => {
         { provide: UserService, useValue: userService },
         { provide: MailService, useValue: mailService },
         { provide: SecurityEventsService, useValue: securityEventsService },
-        { provide: RateLimitService, useValue: rateLimitService }
+        { provide: RateLimitService, useValue: rateLimitService },
+        { provide: AuthService, useValue: authService }
       ]
     }).compile()
 
@@ -162,6 +171,129 @@ describe('PasswordRecoveryService', () => {
       const logged = JSON.stringify(securityEventsService.record.mock.calls)
       expect(logged).not.toContain('newpass1-secret')
       expect(logged).not.toContain('reset-token')
+    })
+  })
+
+  describe('phoneResetStart', () => {
+    it('для существующего номера просит звонок и передаёт IP пользователя', async () => {
+      userService.findByPhone.mockResolvedValue({ id: 'user-1' })
+
+      const result = await service.phoneResetStart({ phone: '+7 (999) 123-45-67' }, '203.0.113.5')
+
+      expect(userService.findByPhone).toHaveBeenCalledWith('79991234567')
+      expect(authService.sendSmsCode).toHaveBeenCalledWith('79991234567', TokenType.PASSWORD_RESET, '203.0.113.5')
+      expect(result).toEqual({ message: 'Позвоните', callNumber: '+7 (800) 555-35-35' })
+    })
+
+    it('для неизвестного номера отвечает NotFoundException и звонок не заказывает', async () => {
+      userService.findByPhone.mockResolvedValue(null)
+
+      await expect(service.phoneResetStart({ phone: '79991234567' })).rejects.toBeInstanceOf(NotFoundException)
+      expect(authService.sendSmsCode).not.toHaveBeenCalled()
+    })
+
+    it('при превышении лимита на номер отклоняет запрос, не трогая пользователя и провайдера', async () => {
+      rateLimitService.hit.mockResolvedValue({ allowed: false, count: 6 })
+
+      await expect(service.phoneResetStart({ phone: '79991234567' })).rejects.toBeInstanceOf(ThrottlerException)
+      expect(userService.findByPhone).not.toHaveBeenCalled()
+      expect(authService.sendSmsCode).not.toHaveBeenCalled()
+    })
+
+    it('ключ лимита строится по нормализованному номеру', async () => {
+      userService.findByPhone.mockResolvedValue({ id: 'user-1' })
+
+      await service.phoneResetStart({ phone: '8 999 123-45-67' })
+
+      expect(rateLimitService.hit).toHaveBeenCalledWith('password-reset-phone:79991234567', 5, 3600)
+    })
+  })
+
+  describe('phoneResetStatus', () => {
+    it('опрашивает статус звонка с типом PASSWORD_RESET', async () => {
+      authService.checkSmsCallbackStatus.mockResolvedValue({ confirmed: true, code: 'sr:1' })
+
+      await expect(service.phoneResetStatus({ phone: '79991234567' })).resolves.toEqual({
+        confirmed: true,
+        code: 'sr:1'
+      })
+      expect(authService.checkSmsCallbackStatus).toHaveBeenCalledWith('79991234567', TokenType.PASSWORD_RESET)
+    })
+  })
+
+  describe('newPasswordByPhone', () => {
+    const dto = { phone: '+7 (999) 123-45-67', code: 'sr:1', password: 'newpass1' }
+    const phoneToken = (overrides: Record<string, unknown> = {}) => ({
+      id: 'token-1',
+      token: 'sr:1',
+      phone: '79991234567',
+      email: null,
+      type: TokenType.PASSWORD_RESET,
+      expiresIn: new Date(Date.now() + 300_000),
+      ...overrides
+    })
+
+    it('ищет токен по номеру, коду и типу PASSWORD_RESET', async () => {
+      prisma.token.findFirst.mockResolvedValue(null)
+
+      await expect(service.newPasswordByPhone(dto)).rejects.toBeInstanceOf(BadRequestException)
+      expect(prisma.token.findFirst).toHaveBeenCalledWith({
+        where: { phone: '79991234567', token: 'sr:1', type: TokenType.PASSWORD_RESET }
+      })
+      expect(prisma.user.update).not.toHaveBeenCalled()
+    })
+
+    it('просроченный токен удаляет и отклоняет', async () => {
+      prisma.token.findFirst.mockResolvedValue(phoneToken({ expiresIn: new Date(Date.now() - 1000) }))
+
+      await expect(service.newPasswordByPhone(dto)).rejects.toBeInstanceOf(BadRequestException)
+      expect(prisma.token.delete).toHaveBeenCalledWith({ where: { id: 'token-1' } })
+      expect(prisma.user.update).not.toHaveBeenCalled()
+    })
+
+    it('если звонок не подтверждён провайдером, пароль не меняет', async () => {
+      prisma.token.findFirst.mockResolvedValue(phoneToken())
+      authService.assertCallConfirmed.mockRejectedValue(new BadRequestException('Звонок не получен.'))
+
+      await expect(service.newPasswordByPhone(dto)).rejects.toBeInstanceOf(BadRequestException)
+      expect(authService.assertCallConfirmed).toHaveBeenCalledWith('79991234567', 'sr:1')
+      expect(prisma.user.update).not.toHaveBeenCalled()
+      expect(prisma.token.delete).not.toHaveBeenCalled()
+    })
+
+    it('не меняет пароль, если аккаунт с этим номером пропал', async () => {
+      prisma.token.findFirst.mockResolvedValue(phoneToken())
+      userService.findByPhone.mockResolvedValue(null)
+
+      await expect(service.newPasswordByPhone(dto)).rejects.toBeInstanceOf(NotFoundException)
+      expect(prisma.user.update).not.toHaveBeenCalled()
+    })
+
+    it('при подтверждённом звонке меняет пароль, гасит токен и пишет PASSWORD_RESET', async () => {
+      prisma.token.findFirst.mockResolvedValue(phoneToken())
+      userService.findByPhone.mockResolvedValue({ id: 'user-1' })
+
+      await expect(service.newPasswordByPhone(dto)).resolves.toBe(true)
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { password: 'hashed-new-password' }
+      })
+      expect(prisma.token.delete).toHaveBeenCalledWith({
+        where: { id: 'token-1', type: TokenType.PASSWORD_RESET }
+      })
+      expect(securityEventsService.record).toHaveBeenCalledWith({
+        userId: 'user-1',
+        type: SecurityEventType.PASSWORD_RESET
+      })
+    })
+
+    it('токен из письма (с email, без номера) этим путём не принимается', async () => {
+      prisma.token.findFirst.mockResolvedValue(null)
+
+      await expect(service.newPasswordByPhone({ ...dto, code: 'reset-token' })).rejects.toBeInstanceOf(
+        BadRequestException
+      )
     })
   })
 })

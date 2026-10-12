@@ -4,7 +4,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { ActivityIndicator, Pressable, Text, View } from 'react-native'
 
 import { useProfile } from '@/features/auth/hooks/use-profile'
-import { type RegisterPhoneValues, registerPhoneSchema } from '@/features/auth/schemas/auth.schemas'
+import { type PhoneValues, phoneSchema } from '@/features/auth/schemas/auth.schemas'
 
 import { Button } from '@/shared/components/button'
 import { CallConfirmationStep } from '@/shared/components/call-confirmation-step'
@@ -55,8 +55,8 @@ export function PhoneFlow({ mode, onDone, onStepChange }: PhoneFlowProps) {
   const { mutate: confirmPhone, isPending: isConfirming } = useConfirmPhone(isProfileMode)
   const { mutate: setPrimaryPhone, isPending: isSettingPrimary } = useSetPrimaryPhone()
 
-  const form = useForm<RegisterPhoneValues>({
-    resolver: zodResolver(registerPhoneSchema),
+  const form = useForm<PhoneValues>({
+    resolver: zodResolver(phoneSchema),
     defaultValues: { phone: '' }
   })
 

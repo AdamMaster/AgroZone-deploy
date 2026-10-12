@@ -13,7 +13,7 @@ import { formatPhoneInput, phoneToApi } from '@/shared/utils/phone'
 import { ApiError } from '@/lib/api/api-error'
 
 import { authApi } from '../api/auth.api'
-import { type RegisterPhoneValues, registerPhoneSchema } from '../schemas/auth.schemas'
+import { type PhoneValues, phoneSchema } from '../schemas/auth.schemas'
 
 interface RegisterPhoneStepProps {
   onCallRequested: (params: { phone: string; callNumber: string }) => void
@@ -25,8 +25,8 @@ export function RegisterPhoneStep({ onCallRequested }: RegisterPhoneStepProps) {
   // 409 — номер уже зарегистрирован: вместо тупика предлагаем войти.
   const [isPhoneTaken, setIsPhoneTaken] = useState(false)
 
-  const form = useForm<RegisterPhoneValues>({
-    resolver: zodResolver(registerPhoneSchema),
+  const form = useForm<PhoneValues>({
+    resolver: zodResolver(phoneSchema),
     defaultValues: { phone: '' }
   })
 
