@@ -2,7 +2,7 @@
 
 import { useAppModal } from '@/store'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import React, { useEffect, useState } from 'react'
@@ -20,11 +20,12 @@ import { cn } from '@/lib/utils'
 import { useRegisterSmsMutation } from '../hooks/use-register-sms-mutation'
 import {
   RegisterSmsFinalSchema,
-  RegisterSmsPhoneSchema,
+  PhoneSchema,
   TypeRegisterSmsFinalSchema,
-  TypeRegisterSmsPhoneSchema
+  TypePhoneSchema
 } from '../schemes'
 import { AuthFormWrapper } from './auth-form-wrapper'
+import { CallConfirmationStep } from './call-confirmation-step'
 
 interface RegisterSmsFormProps {
   // См. form-login.tsx — тот же приём (U1 в ROADMAP.md).
@@ -53,8 +54,8 @@ export const FormRegisterSms = ({ returnTo, initialPhone }: RegisterSmsFormProps
 
   const { executeCaptcha, CaptchaWidget } = useYandexCaptcha()
 
-  const formPhone = useForm<TypeRegisterSmsPhoneSchema>({
-    resolver: zodResolver(RegisterSmsPhoneSchema),
+  const formPhone = useForm<TypePhoneSchema>({
+    resolver: zodResolver(PhoneSchema),
     defaultValues: { phone: initialPhone ? formatPhoneNumber(initialPhone) : '' }
   })
 
@@ -82,7 +83,7 @@ export const FormRegisterSms = ({ returnTo, initialPhone }: RegisterSmsFormProps
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [callbackStatus, step])
 
-  const onFormPhoneSubmit = async (data: TypeRegisterSmsPhoneSchema) => {
+  const onFormPhoneSubmit = async (data: TypePhoneSchema) => {
     try {
       const recaptchaToken = await executeCaptcha()
 
@@ -185,35 +186,7 @@ export const FormRegisterSms = ({ returnTo, initialPhone }: RegisterSmsFormProps
         </form>
       )}
       {step === 2 && (
-        <div className='flex flex-col items-center gap-4 text-center'>
-          <p className='text-sm text-gray-500'>Позвоните с номера {formatPhoneNumber(regData.phone)} на</p>
-          {/* tel: — на мобильных открывает штатный набор номера, чтобы не
-          заставлять пользователя перепечатывать номер руками (он и так
-          должен позвонить именно с этого телефона, иначе провайдер не
-          опознает звонок — см. checkCallbackConfirmed). Пробелы/скобки/
-          дефисы из отображаемого номера в href не годятся — некоторые
-          мобильные браузеры их не разбирают, поэтому чистим до
-          цифр+плюса отдельно от того, что показываем на экране. */}
-          <a href={`tel:${callNumber.replace(/[^\d+]/g, '')}`} className='text-2xl font-semibold'>
-            {callNumber}
-          </a>
-          <p className='text-sm text-gray-500'>
-            Звонок бесплатный, трубку можно сразу положить — подтверждение придёт автоматически
-          </p>
-
-          <div className='mt-2 flex items-center gap-2 text-sm text-gray-400'>
-            <Loader2 className='text-primary size-4 animate-spin' />
-            Ждём звонка...
-          </div>
-
-          <button
-            type='button'
-            className='text-muted-foreground mt-2 text-sm underline'
-            onClick={() => setStep(1)}
-          >
-            Указать другой номер
-          </button>
-        </div>
+        <CallConfirmationStep phone={regData.phone} callNumber={callNumber} onChangePhone={() => setStep(1)} />
       )}
       {step === 3 && (
         <form id='form-rhf-demo' onSubmit={formFinal.handleSubmit(onFormFinalSubmit)}>

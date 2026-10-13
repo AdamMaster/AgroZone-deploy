@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 
 import { METRIKA_GOALS, reachGoal, toastMessageHandler } from '@/shared/utils'
 
-import { TypeRegisterSmsFinalSchema, TypeRegisterSmsPhoneSchema } from '../schemes'
+import { TypePhoneSchema, TypeRegisterSmsFinalSchema } from '../schemes'
 import { authService } from '../services'
 
 export function useRegisterSmsMutation() {
@@ -13,7 +13,7 @@ export function useRegisterSmsMutation() {
 
   const { mutate: registerSmsStart, isPending: isLoadingSmsStart } = useMutation({
     mutationKey: ['register sms start'],
-    mutationFn: ({ values, recaptcha }: { values: TypeRegisterSmsPhoneSchema; recaptcha: string }) =>
+    mutationFn: ({ values, recaptcha }: { values: TypePhoneSchema; recaptcha: string }) =>
       authService.registerSmsStart(values, recaptcha),
     onError(error) {
       toastMessageHandler(error)

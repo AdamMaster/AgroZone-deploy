@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import { isValidPhone } from '@/shared/utils/format-phone-numbers'
 
-export const RegisterSmsPhoneSchema = z.object({
+export const PhoneSchema = z.object({
   phone: z
     .string()
     .min(10, 'Номер телефона указан не полностью')
@@ -29,6 +29,6 @@ export const RegisterSmsFinalSchema = z
     path: ['passwordRepeat']
   })
 
-export type TypeRegisterSmsPhoneSchema = z.infer<typeof RegisterSmsPhoneSchema>
+export type TypePhoneSchema = z.infer<typeof PhoneSchema>
 export type TypeRegisterSmsCodeSchema = z.infer<typeof RegisterSmsCodeSchema>
 export type TypeRegisterSmsFinalSchema = z.infer<typeof RegisterSmsFinalSchema>
