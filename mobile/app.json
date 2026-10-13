@@ -73,8 +73,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "AgroZone использует фото из галереи, чтобы вы могли поставить фото профиля.",
-          "cameraPermission": false,
+          "photosPermission": "AgroZone использует фото из галереи, чтобы вы могли добавить фото к объявлению и профилю.",
+          "cameraPermission": "AgroZone использует камеру, чтобы вы могли сфотографировать технику для объявления.",
           "microphonePermission": false
         }
       ]

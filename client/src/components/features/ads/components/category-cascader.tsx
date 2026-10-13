@@ -164,6 +164,9 @@ export const CategoryCascader = ({ categories, form, onCategorySelect }: Categor
       form.setValue('categoryId', catId, { shouldValidate: true })
       const pathNames = path.map(id => findCategoryById(categories, id)?.name).filter(Boolean) as string[]
       setCategoryPath(pathNames)
+      // В поле остаётся название выбранной категории, а не набранное начало
+      // («Яблоки», а не «Ябл»).
+      setSearchTerm(fullCategory.name)
     } else {
       form.setValue('categoryId', '', { shouldValidate: true })
       form.setValue('categoryFeatures', {})
@@ -197,6 +200,7 @@ export const CategoryCascader = ({ categories, form, onCategorySelect }: Categor
           aria-label='Поиск нужной категории'
           className='text-md p-0 placeholder:text-gray-500'
           placeholder='Поиск нужной категории'
+          value={searchTerm}
           onFocus={() => {
             if (searchTerm.trim().length > 0) setOpen(true)
           }}

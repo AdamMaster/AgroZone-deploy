@@ -83,3 +83,23 @@ export async function pickAdPhotos(limit: number): Promise<UploadFile[] | null> 
 
   return files
 }
+
+// Пользователь не дал доступ к камере — сообщение для показа как есть.
+export class CameraPermissionError extends Error {
+  constructor() {
+    super('Нет доступа к камере. Разрешите его в настройках телефона')
+    this.name = 'CameraPermissionError'
+  }
+}
+
+// Снимок с камеры — одно фото, сжимается так же, как выбранные из галереи.
+// null — пользователь закрыл камеру, не сделав снимок.
+export async function takeAdPhoto(): Promise<UploadFile[] | null> {
+  const permission = await ImagePicker.requestCameraPermissionsAsync()
+  if (!permission.granted) throw new CameraPermissionError()
+
+  const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 })
+  if (result.canceled || !result.assets[0]) return null
+
+  return [await compressPhoto(result.assets[0], 0)]
+}

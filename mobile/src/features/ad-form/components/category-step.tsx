@@ -9,7 +9,7 @@ import type { Category, CategoryFeature } from '@/features/categories/types/cate
 import { Combobox } from '@/shared/components/combobox'
 import { Heading } from '@/shared/components/heading'
 
-import { useCategorySearch } from '../hooks/use-category-search'
+import { type CategorySearchItem, useCategorySearch } from '../hooks/use-category-search'
 
 // Раздел для всего, что не нашлось: подсказка ведёт в его подкатегории.
 const OTHER_CATEGORY_NAME = 'Прочее'
@@ -25,19 +25,21 @@ interface CategoryStepProps {
 // «Выберите категорию» — CategoryCascader сайта на телефоне: поиск по
 // названию с подсказками (только конечные категории, плюс смысловые
 // подсказки сервера). Категория считается выбранной, когда загрузились её
-// характеристики, — до этого «Продолжить» недоступна.
+// характеристики, — до этого «Продолжить» недоступна. После выбора в поле
+// остаётся название категории, а не набранное начало («Яблоки», а не «Ябл»).
 export function CategoryStep({ roots, selectedName, onSelect }: CategoryStepProps) {
   const queryClient = useQueryClient()
   const inputRef = useRef<TextInput>(null)
-  const [text, setText] = useState('')
+  const [text, setText] = useState(selectedName ?? '')
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const { items, isLoading } = useCategorySearch(roots, text)
 
-  const select = async (categoryId: string) => {
+  const select = async ({ categoryId, label }: CategorySearchItem) => {
     setLoadingId(categoryId)
     try {
       const features = await queryClient.fetchQuery(categoryFeaturesQuery(categoryId))
       onSelect(categoryId, features)
+      setText(label)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Не удалось загрузить категорию')
     } finally {
@@ -55,7 +57,7 @@ export function CategoryStep({ roots, selectedName, onSelect }: CategoryStepProp
         text={text}
         onChangeText={setText}
         items={items}
-        onSelect={item => void select(item.categoryId)}
+        onSelect={item => void select(item)}
         placeholder='Поиск нужной категории'
         accessibilityLabel='Поиск нужной категории'
         emptyText=''
@@ -88,7 +90,9 @@ export function CategoryStep({ roots, selectedName, onSelect }: CategoryStepProp
           <ActivityIndicator colorClassName='accent-gray-500' />
         </View>
       ) : (
-        selectedName && <Text className='mt-3 text-sm text-gray-500'>{selectedName}</Text>
+        // Название под полем нужно, только если в поле уже набрано другое.
+        selectedName &&
+        selectedName !== text.trim() && <Text className='mt-3 text-sm text-gray-500'>{selectedName}</Text>
       )}
     </View>
   )
