@@ -17,6 +17,7 @@ import { AuthFormWrapper } from './auth-form-wrapper'
 import { CallConfirmationStep } from './call-confirmation-step'
 
 interface FormResetPasswordPhoneProps {
+  initialPhone?: string
   onSwitchToEmail: () => void
 }
 
@@ -31,7 +32,7 @@ const DESCRIPTIONS = {
 // звонку: номер → звонок на проверочный номер → новый пароль. Сервер
 // перепроверяет звонок и на последнем шаге, так что пропустить второй шаг
 // нельзя.
-export const FormResetPasswordPhone = ({ onSwitchToEmail }: FormResetPasswordPhoneProps) => {
+export const FormResetPasswordPhone = ({ initialPhone, onSwitchToEmail }: FormResetPasswordPhoneProps) => {
   const { onOpen } = useAppModal()
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [phone, setPhone] = useState('')
@@ -43,7 +44,7 @@ export const FormResetPasswordPhone = ({ onSwitchToEmail }: FormResetPasswordPho
 
   const formPhone = useForm<TypePhoneSchema>({
     resolver: zodResolver(PhoneSchema),
-    defaultValues: { phone: '' }
+    defaultValues: { phone: initialPhone ? formatPhoneNumber(initialPhone) : '' }
   })
 
   const formPassword = useForm<TypeNewPasswordSchema>({
@@ -94,7 +95,7 @@ export const FormResetPasswordPhone = ({ onSwitchToEmail }: FormResetPasswordPho
       heading='Сброс пароля'
       description={DESCRIPTIONS[currentStep]}
       switchButtonLabel={<>Войти в аккаунт</>}
-      onSwitchButtonClick={() => onOpen('login')}
+      onSwitchButtonClick={() => onOpen('login', { initialLogin: formPhone.getValues('phone') })}
       isShowSocial={false}
     >
       {currentStep === 1 && (

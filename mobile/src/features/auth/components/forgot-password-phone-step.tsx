@@ -13,17 +13,25 @@ import { authApi } from '../api/auth.api'
 import { type PhoneValues, phoneSchema } from '../schemas/auth.schemas'
 
 interface ForgotPasswordPhoneStepProps {
+  // Номер, уже набранный на форме входа.
+  initialPhone?: string
+  // Введённое значение — для переноса обратно на форму входа.
+  onValueChange: (value: string) => void
   onCallRequested: (params: { phone: string; callNumber: string }) => void
 }
 
 // Первый шаг сброса по звонку: номер аккаунта. Дальше — звонок на
 // проверочный номер, как при регистрации.
-export function ForgotPasswordPhoneStep({ onCallRequested }: ForgotPasswordPhoneStepProps) {
+export function ForgotPasswordPhoneStep({
+  initialPhone,
+  onValueChange,
+  onCallRequested
+}: ForgotPasswordPhoneStepProps) {
   const [formError, setFormError] = useState<string | null>(null)
 
   const form = useForm<PhoneValues>({
     resolver: zodResolver(phoneSchema),
-    defaultValues: { phone: '' }
+    defaultValues: { phone: initialPhone ? formatPhoneInput(initialPhone) : '' }
   })
 
   const { mutate: requestCall, isPending } = useMutation({
@@ -53,7 +61,12 @@ export function ForgotPasswordPhoneStep({ onCallRequested }: ForgotPasswordPhone
             label='Номер телефона'
             placeholder='+7 (999) 123-45-67'
             value={field.value}
-            onChangeText={text => field.onChange(formatPhoneInput(text, field.value))}
+            onChangeText={text => {
+              const formatted = formatPhoneInput(text, field.value)
+
+              field.onChange(formatted)
+              onValueChange(formatted)
+            }}
             onBlur={field.onBlur}
             error={fieldState.error?.message}
             keyboardType='phone-pad'

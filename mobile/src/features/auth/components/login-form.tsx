@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { Pressable, Text, View } from 'react-native'
@@ -21,6 +21,8 @@ import { YandexSignInButton } from './yandex-sign-in-button'
 // клиентов, иначе её можно было бы обойти, представившись приложением.
 export function LoginForm() {
   const router = useRouter()
+  // Введённое на экране сброса пароля, если вернулись оттуда (ForgotPasswordFlow).
+  const { login: initialLogin } = useLocalSearchParams<{ login?: string }>()
   const signIn = useAuthStore(state => state.signIn)
   const { requestCaptcha, captchaModal } = useCaptcha()
   const [isTwoFactorStep, setIsTwoFactorStep] = useState(false)
@@ -28,7 +30,7 @@ export function LoginForm() {
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { login: '', password: '', code: '' }
+    defaultValues: { login: initialLogin ?? '', password: '', code: '' }
   })
 
   const { mutate: login, isPending } = useMutation({
@@ -145,7 +147,7 @@ export function LoginForm() {
             accessibilityRole='link'
             hitSlop={8}
             className='-mt-2 self-end'
-            onPress={() => router.replace('/forgot-password')}
+            onPress={() => router.replace({ pathname: '/forgot-password', params: { login: form.getValues('login') } })}
           >
             <Text className='text-xs text-gray-900 underline'>Забыли пароль?</Text>
           </Pressable>

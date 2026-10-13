@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
-import { useRouter } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useCallback, useRef, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 
 import { CallConfirmationStep } from '@/shared/components/call-confirmation-step'
@@ -8,6 +8,7 @@ import { ScreenMessage } from '@/shared/components/screen-message'
 
 import { authApi } from '../api/auth.api'
 import { useFinishPasswordReset } from '../hooks/use-finish-password-reset'
+import { parseLoginIdentifier } from '../lib/login-identifier'
 import { ForgotPasswordForm } from './forgot-password-form'
 import { ForgotPasswordPhoneStep } from './forgot-password-phone-step'
 import { NewPasswordFields } from './new-password-fields'
@@ -26,8 +27,18 @@ type ForgotPasswordStep =
 
 export function ForgotPasswordFlow() {
   const router = useRouter()
-  const [step, setStep] = useState<ForgotPasswordStep>({ name: 'phone' })
+  // Что пользователь уже набрал на форме входа: номер попадает в поле номера,
+  // почта — в форму сброса по почте (она и открывается).
+  const { login } = useLocalSearchParams<{ login?: string }>()
+  const { email: initialEmail, phone: initialPhone } = parseLoginIdentifier(login)
+  const [step, setStep] = useState<ForgotPasswordStep>(initialEmail ? { name: 'email' } : { name: 'phone' })
+  // Последнее введённое в поле значение — чтобы «Войти в аккаунт» вернуло его
+  // в форму входа. Хранится в ref: перерисовка при наборе не нужна.
+  const typedValueRef = useRef(login ?? '')
 
+  const handleValueChange = useCallback((value: string) => {
+    typedValueRef.current = value
+  }, [])
   const restart = useCallback(() => setStep({ name: 'phone' }), [])
   const handleConfirmed = useCallback(
     (code: string) =>
@@ -68,9 +79,17 @@ export function ForgotPasswordFlow() {
   return (
     <View className='gap-6'>
       {isEmail ? (
-        <ForgotPasswordForm onSent={() => setStep({ name: 'email-sent' })} />
+        <ForgotPasswordForm
+          initialEmail={initialEmail}
+          onValueChange={handleValueChange}
+          onSent={() => setStep({ name: 'email-sent' })}
+        />
       ) : (
-        <ForgotPasswordPhoneStep onCallRequested={params => setStep({ name: 'call', ...params })} />
+        <ForgotPasswordPhoneStep
+          initialPhone={initialPhone}
+          onValueChange={handleValueChange}
+          onCallRequested={params => setStep({ name: 'call', ...params })}
+        />
       )}
 
       <View className='items-center gap-4'>
@@ -80,7 +99,11 @@ export function ForgotPasswordFlow() {
           </Text>
         </Pressable>
 
-        <Pressable accessibilityRole='link' hitSlop={8} onPress={() => router.replace('/login')}>
+        <Pressable
+          accessibilityRole='link'
+          hitSlop={8}
+          onPress={() => router.replace({ pathname: '/login', params: { login: typedValueRef.current } })}
+        >
           <Text className='text-base text-foreground'>Войти в аккаунт</Text>
         </Pressable>
       </View>

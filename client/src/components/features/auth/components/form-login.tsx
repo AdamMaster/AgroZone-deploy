@@ -11,7 +11,7 @@ import { Button, Field, FieldError, FieldGroup, Input, InputGroup, Loading, Pass
 
 import { useYandexCaptcha } from '@/shared/hooks/use-yandex-captcha'
 
-import { isSafeReturnPath } from '@/shared/utils'
+import { isSafeReturnPath, parseLoginIdentifier } from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
 
@@ -106,13 +106,11 @@ export const FormLogin = ({ isShowSocial = true, returnTo, initialLogin }: Login
                 // пользователь уже начал его вводить, передаём дальше на
                 // форму регистрации, чтобы не пропадало при переключении
                 // вкладки (см. initialPhone в FormRegisterSms).
-                const typedValue = form.getValues('login')?.trim()
-                const digitsOnly = typedValue ? typedValue.replace(/\D/g, '') : ''
-                const looksLikePhone = digitsOnly.length >= 10
+                const { phone } = parseLoginIdentifier(form.getValues('login'))
 
                 onOpen('register-sms', {
                   ...(returnTo && { returnTo }),
-                  ...(looksLikePhone && { initialPhone: typedValue })
+                  ...(phone && { initialPhone: phone })
                 })
               }
             }
@@ -159,7 +157,7 @@ export const FormLogin = ({ isShowSocial = true, returnTo, initialLogin }: Login
           <Button
             variant='link'
             className='hover:text-primary inline-block h-auto text-right text-xs text-gray-900 underline'
-            onClick={() => onOpen('new-password')}
+            onClick={() => onOpen('new-password', { initialLogin: form.getValues('login') })}
           >
             Забыли пароль?
           </Button>

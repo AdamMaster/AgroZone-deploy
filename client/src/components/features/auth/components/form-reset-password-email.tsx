@@ -16,19 +16,20 @@ import { ResetPasswordSchema, TypeResetPasswordSchema } from '../schemes'
 import { AuthFormWrapper } from './auth-form-wrapper'
 
 interface FormResetPasswordEmailProps {
+  initialEmail?: string
   onSwitchToPhone: () => void
 }
 
 // Сброс по почте — запасной способ для аккаунтов с привязанной почтой
 // (основной — по звонку на номер, см. FormResetPasswordPhone).
-export const FormResetPasswordEmail = ({ onSwitchToPhone }: FormResetPasswordEmailProps) => {
+export const FormResetPasswordEmail = ({ initialEmail, onSwitchToPhone }: FormResetPasswordEmailProps) => {
   const { executeCaptcha, CaptchaWidget } = useYandexCaptcha()
   const { onOpen, setView } = useAppModal()
 
   const form = useForm<TypeResetPasswordSchema>({
     resolver: zodResolver(ResetPasswordSchema),
     defaultValues: {
-      email: ''
+      email: initialEmail ?? ''
     }
   })
 
@@ -57,7 +58,7 @@ export const FormResetPasswordEmail = ({ onSwitchToPhone }: FormResetPasswordEma
       heading='Сброс пароля'
       description='Введите вашу почту, и мы отправим на неё ссылку для восстановления пароля'
       switchButtonLabel={<>Войти в аккаунт</>}
-      onSwitchButtonClick={() => onOpen('login')}
+      onSwitchButtonClick={() => onOpen('login', { initialLogin: form.getValues('email') })}
       isShowSocial={false}
     >
       <form id='form-rhf-demo' onSubmit={form.handleSubmit(onSubmit)}>

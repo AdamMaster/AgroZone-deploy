@@ -30,7 +30,7 @@ export const AppModal = () => {
       case 'login-after-reset':
         return <FormLogin isShowSocial={false} {...props} />
       case 'new-password':
-        return <FormResetPassword />
+        return <FormResetPassword {...props} />
       case 'change-password':
         return <FormPasswordChange />
       case 'delete-account':
