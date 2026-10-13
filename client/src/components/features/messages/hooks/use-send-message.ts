@@ -6,6 +6,7 @@ import { METRIKA_GOALS, reachGoal, toastMessageHandler } from '@/shared/utils'
 
 import { conversationsService } from '../services/conversations.service'
 import { IMessage } from '../types/message.types'
+import { appendMessage } from '../utils/append-message'
 
 export function useSendMessage(conversationId: string) {
   const queryClient = useQueryClient()
@@ -15,10 +16,11 @@ export function useSendMessage(conversationId: string) {
 
     onSuccess: message => {
       // Дописываем реальное сообщение в кэш сразу же, не дожидаясь
-      // ближайшего поллинга (до 3 секунд) — иначе своё же только что
-      // отправленное сообщение будто "зависает" перед тем, как появиться.
+      // поллинга или эха сокета — иначе своё же только что отправленное
+      // сообщение будто "зависает" перед тем, как появиться. Эхо сокета
+      // могло прийти раньше этого ответа — appendMessage не дублирует.
       queryClient.setQueryData<IMessage[]>(['conversation-messages', conversationId], old =>
-        old ? [...old, message] : [message]
+        appendMessage(old, message)
       )
       queryClient.invalidateQueries({ queryKey: ['conversations'] })
 

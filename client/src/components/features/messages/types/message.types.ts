@@ -54,6 +54,15 @@ export interface IConversationListItem {
   updatedAt: string
 }
 
+// События сокета /conversations (ConversationsGateway на бэкенде).
+export interface IConversationSocketEvent {
+  conversationId: string
+}
+
+export interface IConversationSocketMessageEvent extends IConversationSocketEvent {
+  message: IMessage
+}
+
 export interface IStartConversationResponse {
   conversation: IConversation
   message: IMessage

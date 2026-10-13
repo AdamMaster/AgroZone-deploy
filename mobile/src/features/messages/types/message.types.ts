@@ -57,3 +57,13 @@ export interface ChatHistory {
   messages: ChatMessage[]
   hasOlder: boolean
 }
+
+// События сокета /conversations (ConversationsGateway сервера).
+export interface ConversationMessageEvent {
+  conversationId: string
+  message: ChatMessage
+}
+
+export interface ConversationEvent {
+  conversationId: string
+}

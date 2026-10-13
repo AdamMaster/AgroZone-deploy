@@ -3,6 +3,7 @@ import { Google_Sans, Inter } from 'next/font/google'
 import { Suspense } from 'react'
 
 import { LEGAL_DETAILS, SITE_URL } from '@/components/features/legal/legal-details'
+import { ConversationsRealtime } from '@/components/features/messages/components/conversations-realtime-lazy'
 import { SupportChatWidget } from '@/components/features/support/components/support-chat-widget-lazy'
 import { CookieConsentBanner, YandexMetrika } from '@/components/layout'
 import { AppModal } from '@/components/modals/app'
@@ -106,6 +107,7 @@ export default function RootLayout({
           </Suspense>
           <CookieConsentBanner />
           <SupportChatWidget />
+          <ConversationsRealtime />
           {/* useSearchParams внутри — нужен Suspense (тот же приём, что и у
           FilterModal выше), иначе `next build` падает с ошибкой
           "missing Suspense boundary". */}

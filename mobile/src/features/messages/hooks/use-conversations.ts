@@ -8,18 +8,20 @@ import { useAuthStore } from '@/features/auth/store/auth-store'
 import { blockedUsersApi } from '../api/blocked-users.api'
 import { type MessagesPageParams, conversationsApi } from '../api/conversations.api'
 import { appendMessage } from '../lib/chat-history'
+import { useConversationsSocketStore } from '../store/conversations-socket-store'
 import type { BlockedUser, ChatHistory, ConversationListItem } from '../types/message.types'
 import { useChatHistory } from './use-chat-history'
 
-// Вебсокетов у диалогов по объявлениям нет — как и сайт, опрашиваем:
-// список раз в 5 секунд, открытый диалог — раз в 3.
+// Новые сообщения приходят по сокету (useConversationsRealtime). Пока он не
+// подключён (старый сервер, плохая сеть), опрашиваем: список раз в 5 секунд,
+// открытый диалог — раз в 3.
 const CONVERSATIONS_POLL_INTERVAL_MS = 5000
 const MESSAGES_POLL_INTERVAL_MS = 3000
 
 export const conversationsQueryKey = ['conversations'] as const
 const blockedUsersQueryKey = ['blocked-users'] as const
 
-const conversationMessagesQueryKey = (conversationId: string) =>
+export const conversationMessagesQueryKey = (conversationId: string) =>
   [...conversationsQueryKey, conversationId, 'messages'] as const
 
 const showError = (error: Error) => toast.error(error.message)
@@ -27,12 +29,13 @@ const showError = (error: Error) => toast.error(error.message)
 export function useConversations() {
   const isSignedIn = useAuthStore(state => state.status === 'signedIn')
   const isFocused = useIsFocused()
+  const isSocketConnected = useConversationsSocketStore(state => state.isConnected)
 
   return useQuery({
     queryKey: conversationsQueryKey,
     queryFn: ({ signal }) => conversationsApi.list(signal),
     enabled: isSignedIn,
-    refetchInterval: isFocused ? CONVERSATIONS_POLL_INTERVAL_MS : false
+    refetchInterval: isFocused && !isSocketConnected ? CONVERSATIONS_POLL_INTERVAL_MS : false
   })
 }
 
@@ -45,6 +48,7 @@ export function useConversation(conversationId: string) {
 }
 
 export function useConversationMessages(conversationId: string) {
+  const isSocketConnected = useConversationsSocketStore(state => state.isConnected)
   const queryKey = useMemo(() => conversationMessagesQueryKey(conversationId), [conversationId])
   const fetchPage = useMemo(
     () => (params: MessagesPageParams, signal?: AbortSignal) =>
@@ -52,7 +56,7 @@ export function useConversationMessages(conversationId: string) {
     [conversationId]
   )
 
-  return useChatHistory({ queryKey, fetchPage, pollIntervalMs: MESSAGES_POLL_INTERVAL_MS })
+  return useChatHistory({ queryKey, fetchPage, pollIntervalMs: isSocketConnected ? false : MESSAGES_POLL_INTERVAL_MS })
 }
 
 export function useSendConversationMessage(conversationId: string) {

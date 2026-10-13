@@ -1,3 +1,4 @@
+import { EventEmitter2 } from '@nestjs/event-emitter'
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { AdStatus, ConversationType } from '@/generated/prisma/enums'
 
@@ -5,6 +6,13 @@ import { BlockedUsersService } from '@/blocked-users/blocked-users.service'
 import { NotificationsService } from '@/notifications/notifications.service'
 import { PrismaService } from '@/prisma/prisma.service'
 
+import {
+  CONVERSATION_MESSAGE_CREATED_EVENT,
+  CONVERSATION_READ_EVENT,
+  CONVERSATION_REMOVED_EVENT,
+  ConversationMessageCreatedPayload,
+  ConversationUserPayload
+} from './conversations.events'
 import { FindMessagesQueryDto } from './dto/find-messages-query.dto'
 import { SendMessageDto } from './dto/send-message.dto'
 import { StartConversationDto } from './dto/start-conversation.dto'
@@ -16,7 +24,8 @@ export class ConversationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly blockedUsersService: BlockedUsersService,
-    private readonly notificationsService: NotificationsService
+    private readonly notificationsService: NotificationsService,
+    private readonly eventEmitter: EventEmitter2
   ) {}
 
   // Начать диалог с продавцом объявления. Всегда вызывается покупателем —
@@ -182,6 +191,8 @@ export class ConversationsService {
       where: { id: conversationId },
       data: isBuyer ? { buyerLastReadAt: new Date() } : { sellerLastReadAt: new Date() }
     })
+
+    this.eventEmitter.emit(CONVERSATION_READ_EVENT, { conversationId, userId } satisfies ConversationUserPayload)
   }
 
   // "Удаление" диалога — по умолчанию скрывает его только у того, кто нажал
@@ -224,13 +235,14 @@ export class ConversationsService {
 
     if (counterpart.deletedAt) {
       await this.prisma.conversation.delete({ where: { id: conversationId } })
-      return
+    } else {
+      await this.prisma.conversation.update({
+        where: { id: conversationId },
+        data: isBuyer ? { hiddenByBuyer: true } : { hiddenBySeller: true }
+      })
     }
 
-    await this.prisma.conversation.update({
-      where: { id: conversationId },
-      data: isBuyer ? { hiddenByBuyer: true } : { hiddenBySeller: true }
-    })
+    this.eventEmitter.emit(CONVERSATION_REMOVED_EVENT, { conversationId, userId } satisfies ConversationUserPayload)
   }
 
   private async createMessage(
@@ -253,6 +265,13 @@ export class ConversationsService {
         data: { lastMessageAt: new Date(), hiddenByBuyer: false, hiddenBySeller: false }
       })
     ])
+
+    // Живая доставка обоим участникам (получателю и другим устройствам
+    // отправителя) — рассылает ConversationsGateway.
+    this.eventEmitter.emit(CONVERSATION_MESSAGE_CREATED_EVENT, {
+      message,
+      participantIds: [senderId, recipientId]
+    } satisfies ConversationMessageCreatedPayload)
 
     // Уведомление получателю о новом сообщении — best-effort: провал не
     // должен ронять отправку самого сообщения. Здесь (в отличие от

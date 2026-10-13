@@ -1,10 +1,13 @@
 'use client'
 
+import { useConversationsSocketStore } from '@/store'
 import { useQuery } from '@tanstack/react-query'
 
 import { conversationsService } from '../services/conversations.service'
 
 export function useConversationMessages(conversationId: string | null) {
+  const isSocketConnected = useConversationsSocketStore(state => state.isConnected)
+
   const query = useQuery({
     queryKey: ['conversation-messages', conversationId],
 
@@ -12,9 +15,10 @@ export function useConversationMessages(conversationId: string | null) {
 
     enabled: !!conversationId,
 
-    // Открытый диалог поллим чаще, чем список — это как раз то место, куда
-    // сейчас смотрит пользователь.
-    refetchInterval: 3000,
+    // Новые сообщения приходят по сокету (useConversationsSocket) — пока он
+    // не подключён, открытый диалог опрашиваем чаще списка: это как раз то
+    // место, куда сейчас смотрит пользователь.
+    refetchInterval: isSocketConnected ? false : 3000,
     refetchIntervalInBackground: false
   })
 

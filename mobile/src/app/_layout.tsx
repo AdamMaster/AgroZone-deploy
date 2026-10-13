@@ -7,6 +7,7 @@ import { AppProviders } from '@/providers/app-providers'
 import { useNavigationTheme } from '@/providers/use-navigation-theme'
 
 import { useAuthStore } from '@/features/auth/store/auth-store'
+import { ConversationsRealtime } from '@/features/messages/components/conversations-realtime'
 import { SupportRealtime } from '@/features/support/components/support-realtime'
 import { themeHydrated } from '@/features/theme/store/theme-store'
 
@@ -46,6 +47,7 @@ function RootNavigator() {
   return (
     <>
       {isSignedIn && <SupportRealtime />}
+      {isSignedIn && <ConversationsRealtime />}
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name='(tabs)' />
         <Stack.Screen name='categories' options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />

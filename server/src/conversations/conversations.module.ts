@@ -7,11 +7,12 @@ import { PrismaService } from '@/prisma/prisma.service'
 import { UserModule } from '@/user/user.module'
 
 import { ConversationsController } from './conversations.controller'
+import { ConversationsGateway } from './conversations.gateway'
 import { ConversationsService } from './conversations.service'
 
 @Module({
   imports: [UserModule, AuthModule, BlockedUsersModule, NotificationsModule],
   controllers: [ConversationsController],
-  providers: [ConversationsService, PrismaService]
+  providers: [ConversationsService, ConversationsGateway, PrismaService]
 })
 export class ConversationsModule {}
