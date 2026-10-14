@@ -1,3 +1,4 @@
+import { Square } from 'lucide-react-native'
 import { useRef, useState } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 
@@ -15,7 +16,7 @@ export interface WindowRect {
 }
 
 interface SearchFocusLayerProps {
-  // Строка поиска с «Отменить» — остаётся над затемнением.
+  // Строка поиска с «Отменить» — нажатия на неё слой пропускает.
   bar: WindowRect
   // Само поле — под ним, на его ширину, выпадают подсказки.
   field: WindowRect
@@ -24,14 +25,13 @@ interface SearchFocusLayerProps {
   onClose: () => void
 }
 
-const BACKDROP_CLASS = 'absolute bg-black/20'
-
-// Затемнение страницы и подсказки под строкой поиска, пока в ней фокус, —
-// как у SearchBar сайта (fixed-подложка под формой с z-100). Строка поиска
-// живёт в шапке ленты, а затемнение должно лечь на весь экран, поэтому слой
-// рисуется поверх экрана (Portal), а саму строку обходит: подложка
-// собирается из четырёх частей вокруг неё, и поле остаётся живым — с фокусом
-// и клавиатурой. Под самой строкой то же затемнение даёт SearchHeader.
+// Подсказки под строкой поиска и перехват нажатий вокруг неё, пока в ней
+// фокус. Само затемнение рисует SearchHeader — под строкой, как подложка
+// сайта (fixed z-50 под формой z-100): слой лежит поверх всего экрана, и
+// затемнение здесь закрыло бы строку. Строка живёт в шапке ленты, а нажатие
+// по странице должно закрывать поиск на весь экран, поэтому слой рисуется
+// поверх экрана (Portal), а строку обходит: нажатия ловят четыре прозрачные
+// части вокруг неё, и поле остаётся живым — с фокусом и клавиатурой.
 export function SearchFocusLayer({ bar, field, suggestions, onSelect, onClose }: SearchFocusLayerProps) {
   const rootRef = useRef<View>(null)
   // Где сам слой в окне: координаты строки переводим в его систему.
@@ -52,31 +52,31 @@ export function SearchFocusLayer({ bar, field, suggestions, onSelect, onClose }:
           <Pressable
             accessibilityLabel='Закрыть поиск'
             onPress={onClose}
-            className={BACKDROP_CLASS}
+            className='absolute'
             style={{ top: 0, left: 0, right: 0, height: top }}
           />
           <Pressable
             accessible={false}
             onPress={onClose}
-            className={BACKDROP_CLASS}
+            className='absolute'
             style={{ top, left: 0, width: left, height: bar.height }}
           />
           <Pressable
             accessible={false}
             onPress={onClose}
-            className={BACKDROP_CLASS}
+            className='absolute'
             style={{ top, left: left + bar.width, right: 0, height: bar.height }}
           />
           <Pressable
             accessible={false}
             onPress={onClose}
-            className={BACKDROP_CLASS}
+            className='absolute'
             style={{ top: bottom, left: 0, right: 0, bottom: 0 }}
           />
 
           {suggestions.length > 0 && (
             <View
-              className='absolute max-h-64 overflow-hidden rounded-lg bg-white shadow-lg dark:bg-neutral-700'
+              className='absolute max-h-64 overflow-hidden rounded-xl bg-white shadow-lg dark:bg-neutral-700'
               style={{ top: field.y - origin.y + field.height + 4, left: field.x - origin.x, width: field.width }}
             >
               <ScrollView keyboardShouldPersistTaps='handled' contentContainerClassName='py-2'>
@@ -87,12 +87,12 @@ export function SearchFocusLayer({ bar, field, suggestions, onSelect, onClose }:
                     onPress={() => onSelect(suggestion)}
                     className='flex-row items-center gap-3 px-4 py-3 active:bg-gray-50'
                   >
-                    {suggestion.type !== 'category' && <Search size={16} color={textColor} />}
+                    {suggestion.type !== 'category' && <Square size={16} color={textColor} />}
                     <View className='flex-1 flex-row flex-wrap items-center gap-1'>
-                      <Text className='font-medium text-gray-950'>{suggestion.name}</Text>
+                      <Text className='text-base font-medium text-gray-950'>{suggestion.name}</Text>
                       <ChevronRight size={16} color={mutedColor} />
                       {suggestion.type === 'category' && suggestion.parentName && (
-                        <Text className='text-gray-500'>{suggestion.parentName}</Text>
+                        <Text className='text-base text-gray-500'>{suggestion.parentName}</Text>
                       )}
                     </View>
                   </Pressable>

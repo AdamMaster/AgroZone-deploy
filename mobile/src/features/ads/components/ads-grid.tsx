@@ -147,6 +147,9 @@ export function AdsGrid({ query, header, emptyMessage }: AdsGridProps) {
       // списка, — при обычной прокрутке пользователь не упирается в загрузку.
       onEndReachedThreshold={1.5}
       ListHeaderComponent={listHeader}
+      // Шапка выше сетки: затемнение поиска в фокусе (SearchHeader) должно лечь и
+      // на карточки, а они в списке лежат поверх шапки.
+      ListHeaderComponentStyle={{ zIndex: 1 }}
       ListEmptyComponent={listEmpty}
       ListFooterComponent={footer}
       keyboardShouldPersistTaps='handled'

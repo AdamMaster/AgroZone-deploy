@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { BackHandler, Pressable, Text, TextInput, View } from 'react-native'
+import { BackHandler, Keyboard, Pressable, TextInput, View, useWindowDimensions } from 'react-native'
 
 import type { Category } from '@/features/categories/types/category.types'
 import { FilterModal } from '@/features/filters/components/filter-modal'
@@ -13,6 +13,7 @@ import { SlidersHorizontal, X } from '@/shared/icons/lucide'
 import { useSearchSuggestions } from '../hooks/use-search-suggestions'
 import { parseCatalogUrl } from '../lib/catalog-link'
 import type { SearchSuggestion } from '../types/search.types'
+import { SearchCancelButton } from './search-cancel-button'
 import { SearchFocusLayer, type WindowRect } from './search-focus-layer'
 
 interface SearchHeaderProps {
@@ -25,6 +26,11 @@ interface SearchHeaderProps {
   category?: Category
   onApplyFilters: (filters: CatalogFilters) => void
   onOpenCategory: (categoryPath: string) => void
+}
+
+// ВРЕМЕННО: диагностика «клавиатура только со второго нажатия». Удалить после разбора.
+const diag = (event: string) => {
+  if (__DEV__) console.log(`[search-diag] ${Date.now() % 100000} ${event}`)
 }
 
 const measure = (view: View | null) =>
@@ -48,6 +54,7 @@ export function SearchHeader({
   onOpenCategory
 }: SearchHeaderProps) {
   const router = useRouter()
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions()
   const inputRef = useRef<TextInput>(null)
   const barRef = useRef<View>(null)
   const fieldRef = useRef<View>(null)
@@ -66,12 +73,23 @@ export function SearchHeader({
     setText(query)
   }
 
-  // Где строка и поле на экране — затемнение обходит строку, подсказки
+  // Где строка и поле на экране — затемнение вырезает их, подсказки
   // выпадают под полем. Перемеряем при каждой смене раскладки строки
   // (появилась «Отменить», поле сузилось).
   const measureLayout = useCallback(async () => {
     const [bar, field] = await Promise.all([measure(barRef.current), measure(fieldRef.current)])
     if (bar && field) setLayout({ bar, field })
+  }, [])
+
+  // ВРЕМЕННО: диагностика (см. diag).
+  useEffect(() => {
+    diag(`isFocused=${isFocused}`)
+  }, [isFocused])
+  useEffect(() => {
+    const events = ['keyboardWillShow', 'keyboardDidShow', 'keyboardWillHide', 'keyboardDidHide'] as const
+    const subscriptions = events.map(name => Keyboard.addListener(name, () => diag(name)))
+
+    return () => subscriptions.forEach(subscription => subscription.remove())
   }, [])
 
   const close = useCallback(() => {
@@ -116,18 +134,29 @@ export function SearchHeader({
   }
 
   return (
-    <View className='py-3'>
-      {/* В фокусе у самой строки — то же затемнение, что у слоя вокруг неё
-          (слой строку обходит прямоугольником): поле со скруглёнными углами
-          и «Отменить» лежат на затемнённой странице, как на сайте. */}
+    // Шапка в фокусе поднимается над остальной лентой (zIndex), а строка —
+    // над затемнением внутри неё: как на сайте, где подложка z-50 лежит под
+    // формой z-100.
+    <View className='py-3' style={isFocused ? { zIndex: 2 } : undefined}>
+      {isFocused && (
+        // Затемнение страницы (bg-black/20 сайта): выходит за границы шапки
+        // на весь экран и лежит под строкой, поэтому ни вырезов, ни
+        // отдельных тёмных кусков. Нажатия по нему ловит SearchFocusLayer.
+        <View
+          pointerEvents='none'
+          className='absolute bg-black/20'
+          style={{ top: -windowHeight, bottom: -windowHeight, left: -windowWidth, right: -windowWidth, zIndex: 0 }}
+        />
+      )}
       <View
         ref={barRef}
-        className={`flex-row items-center ${isFocused ? 'bg-black/20' : ''}`}
+        className='flex-row items-center'
+        style={{ zIndex: 1 }}
         onLayout={() => isFocused && void measureLayout()}
       >
         <View
           ref={fieldRef}
-          className={`flex-1 flex-row items-center rounded-lg p-[2px] ${
+          className={`flex-1 flex-row items-center rounded-xl p-[2px] ${
             isFocused ? 'bg-white dark:bg-neutral-700' : 'bg-gray-100 dark:bg-neutral-700'
           }`}
         >
@@ -135,7 +164,10 @@ export function SearchHeader({
             ref={inputRef}
             value={text}
             onChangeText={setText}
+            onPressIn={() => diag('pressIn')}
+            onBlur={() => diag('blur')}
             onFocus={() => {
+              diag('focus')
               setIsFocused(true)
               void measureLayout()
             }}
@@ -148,7 +180,7 @@ export function SearchHeader({
             returnKeyType='search'
             enterKeyHint='search'
             submitBehavior='blurAndSubmit'
-            className='h-12 flex-1 rounded-lg pt-0 pb-0 pl-3 text-base text-gray-950'
+            className='h-12 flex-1 pt-0 pb-0 pl-3 text-base text-gray-950'
           />
           {text.length > 0 && (
             <Pressable
@@ -169,11 +201,7 @@ export function SearchHeader({
             <SlidersHorizontal size={20} color={mutedColor} />
           </Pressable>
         </View>
-        {isFocused && (
-          <Pressable accessibilityRole='button' onPress={close} hitSlop={8} className='pl-3'>
-            <Text className='text-xs text-gray-950'>Отменить</Text>
-          </Pressable>
-        )}
+        {isFocused && <SearchCancelButton onPress={close} />}
       </View>
 
       {isFocused && layout && (
