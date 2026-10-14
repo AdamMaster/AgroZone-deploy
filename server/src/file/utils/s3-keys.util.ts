@@ -4,7 +4,7 @@ import { photoVariantKeys } from './photo-variants.util'
 // FileService.uploadFile). Всё, что лежит вне этих папок, приложению не
 // принадлежит — например, ручные загрузки через панель Selectel, — и
 // обслуживающие скрипты такие объекты не трогают.
-export const S3_UPLOAD_FOLDERS = ['ads', 'avatars', 'presentations'] as const
+export const S3_UPLOAD_FOLDERS = ['ads', 'avatars', 'presentations', 'chat'] as const
 
 export interface S3UrlContext {
   // S3_PUBLIC_URL — публичный домен бакета (текущий формат ссылок).

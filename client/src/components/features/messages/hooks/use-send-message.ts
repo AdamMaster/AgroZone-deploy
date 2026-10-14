@@ -5,14 +5,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { METRIKA_GOALS, reachGoal, toastMessageHandler } from '@/shared/utils'
 
 import { conversationsService } from '../services/conversations.service'
-import { IMessage } from '../types/message.types'
+import { IMessage, IMessageDraft } from '../types/message.types'
 import { appendMessage } from '../utils/append-message'
 
 export function useSendMessage(conversationId: string) {
   const queryClient = useQueryClient()
 
-  const { mutate: sendMessage, isPending: isSending } = useMutation({
-    mutationFn: (text: string) => conversationsService.sendMessage(conversationId, text),
+  const { mutateAsync, isPending: isSending } = useMutation({
+    mutationFn: (draft: IMessageDraft) => conversationsService.sendMessage(conversationId, draft),
 
     onSuccess: message => {
       // Дописываем реальное сообщение в кэш сразу же, не дожидаясь
@@ -33,6 +33,18 @@ export function useSendMessage(conversationId: string) {
 
     onError: err => toastMessageHandler(err)
   })
+
+  // true — сообщение отправлено; при ошибке (о ней уже сообщил toast) false:
+  // композер оставляет набранный текст и фото, чтобы отправить ещё раз.
+  const sendMessage = async (draft: IMessageDraft) => {
+    try {
+      await mutateAsync(draft)
+
+      return true
+    } catch {
+      return false
+    }
+  }
 
   return { sendMessage, isSending }
 }

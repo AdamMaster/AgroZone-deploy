@@ -16,10 +16,14 @@ export interface WindowRect {
 }
 
 interface SearchFocusLayerProps {
-  // Строка поиска с «Отменить» — нажатия на неё слой пропускает.
-  bar: WindowRect
+  // Слой смонтирован всегда, а в фокусе поиска только показывается (flex ↔
+  // hidden): так при фокусе поля в дереве экрана ничего не добавляется.
+  isActive: boolean
+  // Строка поиска с «Отменить» — нажатия на неё слой пропускает. Пока поле ни
+  // разу не измеряли, их нет.
+  bar?: WindowRect
   // Само поле — под ним, на его ширину, выпадают подсказки.
-  field: WindowRect
+  field?: WindowRect
   suggestions: readonly SearchSuggestion[]
   onSelect: (suggestion: SearchSuggestion) => void
   onClose: () => void
@@ -32,7 +36,7 @@ interface SearchFocusLayerProps {
 // по странице должно закрывать поиск на весь экран, поэтому слой рисуется
 // поверх экрана (Portal), а строку обходит: нажатия ловят четыре прозрачные
 // части вокруг неё, и поле остаётся живым — с фокусом и клавиатурой.
-export function SearchFocusLayer({ bar, field, suggestions, onSelect, onClose }: SearchFocusLayerProps) {
+export function SearchFocusLayer({ isActive, bar, field, suggestions, onSelect, onClose }: SearchFocusLayerProps) {
   const rootRef = useRef<View>(null)
   // Где сам слой в окне: координаты строки переводим в его систему.
   const [origin, setOrigin] = useState<{ x: number; y: number } | null>(null)
@@ -41,13 +45,18 @@ export function SearchFocusLayer({ bar, field, suggestions, onSelect, onClose }:
 
   const measureOrigin = () => rootRef.current?.measureInWindow((x, y) => setOrigin({ x, y }))
 
-  const top = origin ? bar.y - origin.y : 0
-  const left = origin ? bar.x - origin.x : 0
-  const bottom = top + bar.height
+  const top = origin && bar ? bar.y - origin.y : 0
+  const left = origin && bar ? bar.x - origin.x : 0
+  const bottom = top + (bar?.height ?? 0)
 
   return (
-    <View ref={rootRef} onLayout={measureOrigin} pointerEvents='box-none' className='absolute inset-0'>
-      {origin && (
+    <View
+      ref={rootRef}
+      onLayout={measureOrigin}
+      pointerEvents='box-none'
+      className={`absolute inset-0 ${isActive ? 'flex' : 'hidden'}`}
+    >
+      {origin && bar && field && (
         <>
           <Pressable
             accessibilityLabel='Закрыть поиск'
@@ -87,7 +96,7 @@ export function SearchFocusLayer({ bar, field, suggestions, onSelect, onClose }:
                     onPress={() => onSelect(suggestion)}
                     className='flex-row items-center gap-3 px-4 py-3 active:bg-gray-50'
                   >
-                    {suggestion.type !== 'category' && <Square size={16} color={textColor} />}
+                    {suggestion.type !== 'category' && <Search size={16} color={textColor} />}
                     <View className='flex-1 flex-row flex-wrap items-center gap-1'>
                       <Text className='text-base font-medium text-gray-950'>{suggestion.name}</Text>
                       <ChevronRight size={16} color={mutedColor} />

@@ -1123,6 +1123,10 @@ export class UserService {
       await this.fileService.deleteFileByUrl(user.presentationUrl)
     }
 
+    // Фото сообщений бесхозных диалогов: ссылки собираются в транзакции, а
+    // файлы удаляются из S3 только после её успеха.
+    let orphanConversationPhotos: string[] = []
+
     await this.prismaService.$transaction(async tx => {
       // Чисто персональные данные — ни на кого больше не ссылаются, можно
       // удалить физически.
@@ -1173,6 +1177,13 @@ export class UserService {
         .map(conversation => conversation.id)
 
       if (orphanConversationIds.length) {
+        const photos = await tx.message.findMany({
+          where: { conversationId: { in: orphanConversationIds }, attachments: { isEmpty: false } },
+          select: { attachments: true }
+        })
+
+        orphanConversationPhotos = photos.flatMap(message => message.attachments)
+
         await tx.conversation.deleteMany({ where: { id: { in: orphanConversationIds } } })
       }
 
@@ -1197,6 +1208,8 @@ export class UserService {
         }
       })
     })
+
+    await this.fileService.deleteFilesQuietly(orphanConversationPhotos)
 
     // Строка User остаётся (мягкое удаление), поэтому и журнал сохраняется:
     // если аккаунт удалил не владелец, а тот, кто получил к нему доступ,

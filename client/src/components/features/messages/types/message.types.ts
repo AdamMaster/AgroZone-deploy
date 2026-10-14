@@ -28,6 +28,13 @@ export interface IMessage {
   createdAt: string
 }
 
+// Сообщение, которое пользователь собирается отправить: текст и/или фото
+// (хотя бы что-то одно — см. MessageComposer).
+export interface IMessageDraft {
+  text: string
+  photos: File[]
+}
+
 // Диалог "как он есть" — ровно то, что отдаёт POST /conversations в поле
 // conversation. Для отображения в списке используется другая, более богатая
 // форма — IConversationListItem (см. ниже), которую отдаёт GET /conversations.

@@ -6,6 +6,7 @@ import { useThemeColor } from '@/shared/hooks/use-theme-color'
 import { Ellipsis, ImageIcon } from '@/shared/icons/lucide'
 import { formatMessageTime } from '@/shared/utils/date'
 
+import { getMessagePreview } from '../lib/message-preview'
 import type { ConversationListItem as Conversation } from '../types/message.types'
 
 interface ConversationListItemProps {
@@ -63,7 +64,7 @@ export const ConversationListItem = memo(function ConversationListItem({
         </Text>
         {lastMessage && (
           <Text numberOfLines={1} className={`pr-12 text-sm ${isUnread ? 'text-gray-900' : 'text-gray-400'}`}>
-            {lastMessage.text}
+            {getMessagePreview(lastMessage)}
           </Text>
         )}
       </View>

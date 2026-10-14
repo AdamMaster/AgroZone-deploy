@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { BackHandler, Keyboard, Pressable, TextInput, View, useWindowDimensions } from 'react-native'
+import { BackHandler, Pressable, TextInput, View, useWindowDimensions } from 'react-native'
 
 import type { Category } from '@/features/categories/types/category.types'
 import { FilterModal } from '@/features/filters/components/filter-modal'
@@ -26,11 +26,6 @@ interface SearchHeaderProps {
   category?: Category
   onApplyFilters: (filters: CatalogFilters) => void
   onOpenCategory: (categoryPath: string) => void
-}
-
-// ВРЕМЕННО: диагностика «клавиатура только со второго нажатия». Удалить после разбора.
-const diag = (event: string) => {
-  if (__DEV__) console.log(`[search-diag] ${Date.now() % 100000} ${event}`)
 }
 
 const measure = (view: View | null) =>
@@ -73,23 +68,12 @@ export function SearchHeader({
     setText(query)
   }
 
-  // Где строка и поле на экране — затемнение вырезает их, подсказки
-  // выпадают под полем. Перемеряем при каждой смене раскладки строки
-  // (появилась «Отменить», поле сузилось).
+  // Где строка и поле на экране — слой поиска ловит нажатия вокруг строки, а
+  // подсказки выпадают под полем. Перемеряем при каждой смене раскладки
+  // строки (появилась «Отменить», поле сузилось).
   const measureLayout = useCallback(async () => {
     const [bar, field] = await Promise.all([measure(barRef.current), measure(fieldRef.current)])
     if (bar && field) setLayout({ bar, field })
-  }, [])
-
-  // ВРЕМЕННО: диагностика (см. diag).
-  useEffect(() => {
-    diag(`isFocused=${isFocused}`)
-  }, [isFocused])
-  useEffect(() => {
-    const events = ['keyboardWillShow', 'keyboardDidShow', 'keyboardWillHide', 'keyboardDidHide'] as const
-    const subscriptions = events.map(name => Keyboard.addListener(name, () => diag(name)))
-
-    return () => subscriptions.forEach(subscription => subscription.remove())
   }, [])
 
   const close = useCallback(() => {
@@ -134,20 +118,20 @@ export function SearchHeader({
   }
 
   return (
-    // Шапка в фокусе поднимается над остальной лентой (zIndex), а строка —
-    // над затемнением внутри неё: как на сайте, где подложка z-50 лежит под
-    // формой z-100.
-    <View className='py-3' style={isFocused ? { zIndex: 2 } : undefined}>
-      {isFocused && (
-        // Затемнение страницы (bg-black/20 сайта): выходит за границы шапки
-        // на весь экран и лежит под строкой, поэтому ни вырезов, ни
-        // отдельных тёмных кусков. Нажатия по нему ловит SearchFocusLayer.
-        <View
-          pointerEvents='none'
-          className='absolute bg-black/20'
-          style={{ top: -windowHeight, bottom: -windowHeight, left: -windowWidth, right: -windowWidth, zIndex: 0 }}
-        />
-      )}
+    // Дерево шапки при фокусе не меняется: всё, что нужно в фокусе, смонтировано
+    // всегда с теми же стилями, а на фокус переключается только видимость
+    // (hidden ↔ flex) и цвет. Иначе Android перестраивает вьюхи вокруг поля, и
+    // оно теряет фокус вместе с клавиатурой.
+    // Шапка стоит над остальной лентой (zIndex), а строка — над затемнением
+    // внутри неё: как на сайте, где подложка z-50 лежит под формой z-100.
+    <View collapsable={false} className='py-3' style={{ zIndex: 2 }}>
+      {/* Затемнение страницы (bg-black/20 сайта): выходит за границы шапки на
+          весь экран и лежит под строкой. Нажатия по нему ловит SearchFocusLayer. */}
+      <View
+        pointerEvents='none'
+        className={`absolute bg-black/20 ${isFocused ? 'flex' : 'hidden'}`}
+        style={{ top: -windowHeight, bottom: -windowHeight, left: -windowWidth, right: -windowWidth, zIndex: 0 }}
+      />
       <View
         ref={barRef}
         className='flex-row items-center'
@@ -157,17 +141,14 @@ export function SearchHeader({
         <View
           ref={fieldRef}
           className={`flex-1 flex-row items-center rounded-xl p-[2px] ${
-            isFocused ? 'bg-white dark:bg-neutral-700' : 'bg-gray-100 dark:bg-neutral-700'
+            isFocused ? 'bg-white dark:bg-neutral-700' : 'bg-primary dark:bg-neutral-700'
           }`}
         >
           <TextInput
             ref={inputRef}
             value={text}
             onChangeText={setText}
-            onPressIn={() => diag('pressIn')}
-            onBlur={() => diag('blur')}
             onFocus={() => {
-              diag('focus')
               setIsFocused(true)
               void measureLayout()
             }}
@@ -180,7 +161,7 @@ export function SearchHeader({
             returnKeyType='search'
             enterKeyHint='search'
             submitBehavior='blurAndSubmit'
-            className='h-12 flex-1 pt-0 pb-0 pl-3 text-base text-gray-950'
+            className='h-12 flex-1 rounded-[10px] bg-white pt-0 pb-0 pl-3 text-base text-gray-950'
           />
           {text.length > 0 && (
             <Pressable
@@ -196,25 +177,26 @@ export function SearchHeader({
             accessibilityRole='button'
             accessibilityLabel='Открыть фильтр'
             onPress={openFilters}
-            className='h-10 justify-center px-2.5'
+            className={`h-10 justify-center px-2.5 ${isFocused ? 'hidden' : 'block'}`}
           >
-            <SlidersHorizontal size={20} color={mutedColor} />
+            <SlidersHorizontal size={20} color={isFocused ? textColor : '#fff'} />
           </Pressable>
         </View>
-        {isFocused && <SearchCancelButton onPress={close} />}
+        <View collapsable={false} className={isFocused ? 'flex' : 'hidden'}>
+          <SearchCancelButton onPress={close} />
+        </View>
       </View>
 
-      {isFocused && layout && (
-        <Portal>
-          <SearchFocusLayer
-            bar={layout.bar}
-            field={layout.field}
-            suggestions={suggestions}
-            onSelect={selectSuggestion}
-            onClose={close}
-          />
-        </Portal>
-      )}
+      <Portal>
+        <SearchFocusLayer
+          isActive={isFocused}
+          bar={layout?.bar}
+          field={layout?.field}
+          suggestions={suggestions}
+          onSelect={selectSuggestion}
+          onClose={close}
+        />
+      </Portal>
 
       <FilterModal
         visible={isFiltersOpen}

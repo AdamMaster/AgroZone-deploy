@@ -3,8 +3,10 @@ import { PHOTO_VARIANT_SIZES, hasPhotoVariants, photoVariantKey, photoVariantKey
 describe('photo-variants.util', () => {
   const key = 'ads/1712345678901-123456789.jpg'
 
-  it('копии есть только у фото объявлений', () => {
+  it('копии есть только у фото объявлений и чатов', () => {
     expect(hasPhotoVariants(key)).toBe(true)
+    expect(hasPhotoVariants('chat/1712345678901-123456789.jpg')).toBe(true)
+    expect(hasPhotoVariants('chat/1712345678901-123456789_800.webp')).toBe(false)
     expect(hasPhotoVariants('avatars/1712345678901-1.jpg')).toBe(false)
     expect(hasPhotoVariants('presentations/1712345678901-1.pdf')).toBe(false)
     // Сами копии копий не имеют.
@@ -25,6 +27,10 @@ describe('photo-variants.util', () => {
   it('ключ копии выводится из ключа оригинала', () => {
     expect(photoVariantKey(key, 800)).toBe('ads/1712345678901-123456789_800.webp')
     expect(photoVariantKeys(key)).toEqual(PHOTO_VARIANT_SIZES.map(size => `ads/1712345678901-123456789_${size}.webp`))
+  })
+
+  it('ключ копии фото чата — в той же папке', () => {
+    expect(photoVariantKey('chat/1712345678901-123456789.jpg', 400)).toBe('chat/1712345678901-123456789_400.webp')
   })
 
   it('у остальных объектов копий нет', () => {

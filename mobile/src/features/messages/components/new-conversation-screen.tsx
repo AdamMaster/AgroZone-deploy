@@ -3,6 +3,8 @@ import { Text, View } from 'react-native'
 
 import { useAdDetail } from '@/features/ads/hooks/use-ad-detail'
 
+import type { UploadFile } from '@/lib/api/upload-file'
+
 import { useChatNavigation } from '../hooks/use-chat-navigation'
 import { useConversations, useStartConversation } from '../hooks/use-conversations'
 import { ChatHeader } from './chat-header'
@@ -23,9 +25,9 @@ export function NewConversationScreen({ adId }: { adId: string }) {
     if (existingId) replaceWithConversation(existingId)
   }, [existingId, replaceWithConversation])
 
-  const send = async (text: string) => {
+  const send = async (text: string, photos: UploadFile[]) => {
     try {
-      const { conversation } = await startConversation({ adId, text })
+      const { conversation } = await startConversation({ adId, draft: { text, photos } })
       replaceWithConversation(conversation.id)
       return true
     } catch {
@@ -49,7 +51,7 @@ export function NewConversationScreen({ adId }: { adId: string }) {
           </Text>
         </View>
       }
-      composer={<MessageComposer onSend={send} isSending={isStarting} />}
+      composer={<MessageComposer allowPhotos onSend={send} isSending={isStarting} />}
     />
   )
 }

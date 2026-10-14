@@ -4,7 +4,8 @@ import { Platform } from 'react-native'
 
 import type { UploadFile } from '@/lib/api/upload-file'
 
-// Сжатие перед загрузкой — как IMAGE_COMPRESSION сайта: 2048 px по большей
+// Сжатие перед загрузкой — как IMAGE_COMPRESSION сайта (для фото объявлений
+// и сообщений чата одинаково): 2048 px по большей
 // стороне хватает и карточке, и полноэкранному просмотру; небольшие файлы
 // подходящего формата не перекодируются.
 const MAX_DIMENSION = 2048
@@ -62,10 +63,10 @@ async function compressPhoto(asset: ImagePicker.ImagePickerAsset, index: number)
   }
 }
 
-// Фото объявления из галереи — сразу несколько, в порядке выбора. Сжимаем
+// Фото из галереи (объявление, сообщение чата) — сразу несколько, в порядке выбора. Сжимаем
 // по одному: распаковка нескольких 12-мегапиксельных снимков разом может не
 // поместиться в память слабого телефона. null — пользователь передумал.
-export async function pickAdPhotos(limit: number): Promise<UploadFile[] | null> {
+export async function pickPhotos(limit: number): Promise<UploadFile[] | null> {
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
     allowsMultipleSelection: true,
@@ -94,7 +95,7 @@ export class CameraPermissionError extends Error {
 
 // Снимок с камеры — одно фото, сжимается так же, как выбранные из галереи.
 // null — пользователь закрыл камеру, не сделав снимок.
-export async function takeAdPhoto(): Promise<UploadFile[] | null> {
+export async function takePhoto(): Promise<UploadFile[] | null> {
   const permission = await ImagePicker.requestCameraPermissionsAsync()
   if (!permission.granted) throw new CameraPermissionError()
 

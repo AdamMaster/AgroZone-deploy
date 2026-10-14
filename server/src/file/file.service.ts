@@ -70,12 +70,47 @@ export class FileService {
   }
 
   // Фото объявления: оригинал и его уменьшенные копии (photo-variants.util).
+  uploadAdPhoto(file: Express.Multer.File) {
+    return this.uploadPhotoWithVariants(file, 'ads')
+  }
+
+  // Фото в сообщении чата — тот же конвейер, что и у фото объявления.
+  // Всё или ничего: если хотя бы одно фото не загрузилось, остальные
+  // удаляются — иначе они остались бы в S3 без ссылки из БД. Возвращает
+  // ссылки в порядке файлов.
+  async uploadChatPhotos(files: Express.Multer.File[]): Promise<string[]> {
+    const results = await Promise.allSettled(files.map(file => this.uploadPhotoWithVariants(file, 'chat')))
+    const uploaded = results.flatMap(result => (result.status === 'fulfilled' ? [result.value.url] : []))
+    const failed = results.find((result): result is PromiseRejectedResult => result.status === 'rejected')
+
+    if (failed) {
+      await this.deleteFilesQuietly(uploaded)
+
+      throw failed.reason
+    }
+
+    return uploaded
+  }
+
+  // Best-effort: сбой S3 при уборке не должен превращать успешную операцию в
+  // ошибку для пользователя — причина пишется в лог, файл остаётся лишним
+  // объектом в бакете (его найдёт scripts/find-orphaned-s3-files.ts).
+  async deleteFilesQuietly(urls: string[]) {
+    const results = await Promise.allSettled(urls.map(url => this.deleteFileByUrl(url)))
+
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        this.logger.warn(`Не удалось удалить файл ${urls[index]} из S3: ${(result.reason as Error).message}`)
+      }
+    })
+  }
+
   // Всё или ничего: без копий клиент показал бы вместо фото ошибку
   // загрузки, поэтому при сбое уже загруженное удаляется, а ошибка уходит
   // наверх, как и при сбое самого оригинала.
-  async uploadAdPhoto(file: Express.Multer.File) {
+  private async uploadPhotoWithVariants(file: Express.Multer.File, folder: 'ads' | 'chat') {
     const processed = await processImage(file.buffer, { ...PHOTO_IMAGE_OPTIONS, fileName: file.originalname })
-    const key = this.generateKey('ads', processed.extension)
+    const key = this.generateKey(folder, processed.extension)
     const variants = await createPhotoVariants(processed.buffer, PHOTO_VARIANT_SIZES)
 
     const uploads = [

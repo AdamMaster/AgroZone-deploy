@@ -1,15 +1,12 @@
 import { useRouter } from 'expo-router'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { ActivityIndicator, Pressable, Text, View } from 'react-native'
-import { toast } from 'sonner-native'
 
-import { ActionSheet, type SheetAction } from '@/shared/components/action-sheet'
+import { ActionSheet } from '@/shared/components/action-sheet'
+import { usePhotoPicker } from '@/shared/hooks/use-photo-picker'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
 import { ImagePlus } from '@/shared/icons/lucide'
 
-import type { UploadFile } from '@/lib/api/upload-file'
-
-import { CameraPermissionError, pickAdPhotos, takeAdPhoto } from '../lib/pick-ad-photos'
 import type { AdFormPhoto } from '../types/ad-form.types'
 import { SortablePhotoGrid } from './sortable-photo-grid'
 
@@ -38,8 +35,6 @@ export function PhotoUploader({
 }: PhotoUploaderProps) {
   const router = useRouter()
   const iconColor = useThemeColor('--color-gray-900')
-  const [isPicking, setIsPicking] = useState(false)
-  const [isSourceSheetOpen, setIsSourceSheetOpen] = useState(false)
   // Пока снимки сжимаются, пользователь мог удалить или переставить фото —
   // новые добавляем к актуальному списку, а не к тому, что был до выбора.
   const latestPhotosRef = useRef(photos)
@@ -49,35 +44,20 @@ export function PhotoUploader({
 
   const isLimitReached = photos.length >= maxFiles
 
-  // Добавляет снимки к актуальному списку; pick — галерея или камера.
-  const addPhotos = async (pick: (remaining: number) => Promise<UploadFile[] | null>) => {
-    setIsPicking(true)
-    try {
-      const remaining = maxFiles - latestPhotosRef.current.length
-      onProcessingChange(true)
-      const files = await pick(remaining)
-      if (!files?.length) return
-
+  const { isPicking, isSheetOpen, openSheet, closeSheet, sourceActions } = usePhotoPicker({
+    getRemaining: () => maxFiles - latestPhotosRef.current.length,
+    onPicked: files => {
       const added = files.map((file): AdFormPhoto => ({ kind: 'local', id: `local-${(localPhotoCounter += 1)}`, file }))
       onChange([...latestPhotosRef.current, ...added].slice(0, maxFiles))
-    } catch (error) {
-      toast.error(
-        error instanceof CameraPermissionError ? error.message : 'Не удалось добавить фото. Попробуйте выбрать другие'
-      )
-    } finally {
-      onProcessingChange(false)
-      setIsPicking(false)
     }
-  }
+  })
 
-  const sourceActions: SheetAction[] = [
-    {
-      key: 'camera',
-      label: 'Сделать фото',
-      onPress: () => void addPhotos(takeAdPhoto)
-    },
-    { key: 'gallery', label: 'Выбрать из галереи', onPress: () => void addPhotos(pickAdPhotos) }
-  ]
+  // Пока снимки выбираются и сжимаются, форму отправлять рано.
+  useEffect(() => {
+    onProcessingChange(isPicking)
+
+    return () => onProcessingChange(false)
+  }, [isPicking, onProcessingChange])
 
   const busy = isPicking || isProcessing
 
@@ -102,7 +82,7 @@ export function PhotoUploader({
               accessibilityLabel={busy ? 'Обрабатываем фото' : 'Добавить фото'}
               accessibilityState={{ busy }}
               disabled={busy}
-              onPress={() => setIsSourceSheetOpen(true)}
+              onPress={openSheet}
               className='size-full items-center justify-center rounded-lg border-2 border-dashed border-border active:border-primary'
             >
               {busy ? (
@@ -115,7 +95,7 @@ export function PhotoUploader({
         }
       />
 
-      <ActionSheet visible={isSourceSheetOpen} actions={sourceActions} onClose={() => setIsSourceSheetOpen(false)} />
+      <ActionSheet visible={isSheetOpen} actions={sourceActions} onClose={closeSheet} />
 
       {!isPremium && isLimitReached && (
         <View className='rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/40 dark:bg-amber-500/10'>

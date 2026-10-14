@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { ScrollArea } from '@/components/ui'
 
@@ -8,6 +8,7 @@ import { useProfile } from '@/shared/hooks'
 
 import { IMessage } from '../types/message.types'
 import { MessageBubble } from './message-bubble'
+import { MessagePhotoLightbox } from './message-photo-lightbox'
 
 interface MessageThreadCounterpart {
   id: string
@@ -24,6 +25,8 @@ interface MessageThreadProps {
 export const MessageThread = ({ messages, isLoading, counterpart }: MessageThreadProps) => {
   const { user } = useProfile()
   const bottomRef = useRef<HTMLDivElement>(null)
+  // Открытое на весь экран фото: какое сообщение и какое по счёту.
+  const [openedPhotos, setOpenedPhotos] = useState<{ photos: string[]; index: number } | null>(null)
 
   // Прокручиваем к последнему сообщению при открытии диалога и при
   // появлении новых — без этого пользователь каждый раз видел бы начало
@@ -49,10 +52,19 @@ export const MessageThread = ({ messages, isLoading, counterpart }: MessageThrea
             message={message}
             isOwn={message.senderId === user?.id}
             counterpart={counterpart}
+            onPhotoClick={(photos, index) => setOpenedPhotos({ photos, index })}
           />
         ))}
         <div ref={bottomRef} />
       </div>
+      {openedPhotos && (
+        <MessagePhotoLightbox
+          photos={openedPhotos.photos}
+          index={openedPhotos.index}
+          onIndexChange={index => setOpenedPhotos(current => current && { ...current, index })}
+          onClose={() => setOpenedPhotos(null)}
+        />
+      )}
     </ScrollArea>
   )
 }

@@ -1,16 +1,13 @@
-import { IsArray, IsOptional, IsString, IsUrl, MaxLength, MinLength } from 'class-validator'
+import { IsOptional, IsString, MaxLength } from 'class-validator'
 
+// Сообщение приходит как multipart/form-data (или JSON, если фото нет): текст
+// в поле text, фото — в поле files. Ссылки на вложения клиент не присылает:
+// их выдаёт сервер после загрузки файлов, иначе в чужой диалог можно было бы
+// подсунуть произвольный URL. Текст необязателен, если есть хотя бы одно фото
+// — это проверяет ConversationsService.
 export class SendMessageDto {
-  @IsString()
-  @MinLength(1)
-  @MaxLength(2000)
-  text!: string
-
-  // Ссылки на уже загруженные файлы (тот же аплоад-пайплайн, что и у фото
-  // объявлений) — сам загрузчик вложений для чата будет отдельным шагом,
-  // поле уже закладываем, чтобы потом не трогать схему/DTO ещё раз.
   @IsOptional()
-  @IsArray()
-  @IsUrl({}, { each: true })
-  attachments?: string[]
+  @IsString()
+  @MaxLength(2000)
+  text?: string
 }

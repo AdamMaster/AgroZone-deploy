@@ -1,8 +1,11 @@
 import { EventEmitter2 } from '@nestjs/event-emitter'
+import 'multer'
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { AdStatus, ConversationType } from '@/generated/prisma/enums'
+import type { Message } from '@/generated/prisma/client'
 
 import { BlockedUsersService } from '@/blocked-users/blocked-users.service'
+import { FileService } from '@/file/file.service'
 import { NotificationsService } from '@/notifications/notifications.service'
 import { PrismaService } from '@/prisma/prisma.service'
 
@@ -25,6 +28,7 @@ export class ConversationsService {
     private readonly prisma: PrismaService,
     private readonly blockedUsersService: BlockedUsersService,
     private readonly notificationsService: NotificationsService,
+    private readonly fileService: FileService,
     private readonly eventEmitter: EventEmitter2
   ) {}
 
@@ -33,7 +37,8 @@ export class ConversationsService {
   // было подменить продавца. Повторное обращение того же покупателя к тому
   // же объявлению не плодит новый диалог (см. @@unique([adId, buyerId]) в
   // схеме) — upsert просто найдёт существующий и добавит туда сообщение.
-  async startConversation(userId: string, dto: StartConversationDto) {
+  async startConversation(userId: string, dto: StartConversationDto, files: Express.Multer.File[] = []) {
+    const text = this.requireContent(dto.text, files)
     const ad = await this.prisma.ad.findUnique({
       where: { id: dto.adId },
       select: { id: true, userId: true, title: true }
@@ -54,21 +59,28 @@ export class ConversationsService {
       throw new ForbiddenException('Не удалось отправить сообщение')
     }
 
-    const conversation = await this.prisma.conversation.upsert({
-      where: { adId_buyerId: { adId: dto.adId, buyerId: userId } },
-      update: {},
-      // adTitleSnapshot — на случай, если объявление позже будет физически
-      // удалено (Conversation.adId тогда обнулится, см. schema.prisma), чтобы
-      // в списке диалогов не было пустоты (см. getConversations ниже).
-      create: { adId: dto.adId, buyerId: userId, sellerId: ad.userId, adTitleSnapshot: ad.title }
+    // Фото грузятся до создания диалога: если загрузка не удалась, пустого
+    // диалога без сообщения не появится.
+    const { conversation, message } = await this.withUploadedPhotos(files, async attachments => {
+      const conversation = await this.prisma.conversation.upsert({
+        where: { adId_buyerId: { adId: dto.adId, buyerId: userId } },
+        update: {},
+        // adTitleSnapshot — на случай, если объявление позже будет физически
+        // удалено (Conversation.adId тогда обнулится, см. schema.prisma), чтобы
+        // в списке диалогов не было пустоты (см. getConversations ниже).
+        create: { adId: dto.adId, buyerId: userId, sellerId: ad.userId, adTitleSnapshot: ad.title }
+      })
+
+      return { conversation, message: await this.saveMessage(conversation.id, userId, text, attachments) }
     })
 
-    const message = await this.createMessage(conversation.id, userId, dto.text, ad.userId, ad.title)
+    await this.publishMessage(message, ad.userId, ad.title)
 
     return { conversation, message }
   }
 
-  async sendMessage(conversationId: string, userId: string, dto: SendMessageDto) {
+  async sendMessage(conversationId: string, userId: string, dto: SendMessageDto, files: Express.Multer.File[] = []) {
+    const text = this.requireContent(dto.text, files)
     const conversation = await this.getConversationForParticipant(conversationId, userId)
     // buyerId/sellerId — String? на уровне колонки (см. schema.prisma:
     // SUPPORT-диалоги их не заполняют), но getConversationForParticipant
@@ -80,14 +92,13 @@ export class ConversationsService {
       throw new ForbiddenException('Не удалось отправить сообщение')
     }
 
-    return this.createMessage(
-      conversationId,
-      userId,
-      dto.text,
-      counterpartId,
-      conversation.adTitleSnapshot ?? '',
-      dto.attachments
+    const message = await this.withUploadedPhotos(files, attachments =>
+      this.saveMessage(conversationId, userId, text, attachments)
     )
+
+    await this.publishMessage(message, counterpartId, conversation.adTitleSnapshot ?? '')
+
+    return message
   }
 
   // Список диалогов текущего юзера — и как покупателя, и как продавца
@@ -234,7 +245,15 @@ export class ConversationsService {
     const counterpart = (isBuyer ? conversation.seller : conversation.buyer)!
 
     if (counterpart.deletedAt) {
+      // Фото сообщений удаляются из S3 вместе с перепиской — после записи в БД:
+      // если она откажет, диалог останется со всеми фото.
+      const photos = await this.prisma.message.findMany({
+        where: { conversationId, attachments: { isEmpty: false } },
+        select: { attachments: true }
+      })
+
       await this.prisma.conversation.delete({ where: { id: conversationId } })
+      await this.fileService.deleteFilesQuietly(photos.flatMap(message => message.attachments))
     } else {
       await this.prisma.conversation.update({
         where: { id: conversationId },
@@ -245,14 +264,36 @@ export class ConversationsService {
     this.eventEmitter.emit(CONVERSATION_REMOVED_EVENT, { conversationId, userId } satisfies ConversationUserPayload)
   }
 
-  private async createMessage(
-    conversationId: string,
-    senderId: string,
-    text: string,
-    recipientId: string,
-    adTitle: string,
-    attachments: string[] = []
-  ) {
+  // Сообщение должно содержать текст или хотя бы одно фото.
+  private requireContent(text: string | undefined, files: Express.Multer.File[]) {
+    const value = text ?? ''
+
+    if (!value.trim() && files.length === 0) {
+      throw new BadRequestException('Сообщение не может быть пустым')
+    }
+
+    return value
+  }
+
+  // Загружает фото и передаёт ссылки в action, который сохраняет их в БД. Если
+  // сохранение не удалось, загруженные фото удаляются — иначе они остались бы
+  // в S3 без ссылки из БД.
+  private async withUploadedPhotos<T>(
+    files: Express.Multer.File[],
+    action: (attachments: string[]) => Promise<T>
+  ): Promise<T> {
+    const attachments = await this.fileService.uploadChatPhotos(files)
+
+    try {
+      return await action(attachments)
+    } catch (error) {
+      await this.fileService.deleteFilesQuietly(attachments)
+
+      throw error
+    }
+  }
+
+  private async saveMessage(conversationId: string, senderId: string, text: string, attachments: string[]) {
     const [message] = await this.prisma.$transaction([
       this.prisma.message.create({ data: { conversationId, senderId, text, attachments } }),
       // Сбрасываем скрытие с обеих сторон при любом новом сообщении — не
@@ -265,6 +306,15 @@ export class ConversationsService {
         data: { lastMessageAt: new Date(), hiddenByBuyer: false, hiddenBySeller: false }
       })
     ])
+
+    return message
+  }
+
+  // Что происходит после сохранения сообщения: живая доставка и уведомление.
+  private async publishMessage(message: Message, recipientId: string, adTitle: string) {
+    // senderId у сообщений этого сервиса всегда есть (гостевые — только в
+    // SUPPORT), тип Message его лишь допускает пустым.
+    const senderId = message.senderId!
 
     // Живая доставка обоим участникам (получателю и другим устройствам
     // отправителя) — рассылает ConversationsGateway.
@@ -283,16 +333,15 @@ export class ConversationsService {
       const sender = await this.prisma.user.findUnique({ where: { id: senderId }, select: { displayName: true } })
       await this.notificationsService.notifyNewMessage(
         recipientId,
-        conversationId,
+        message.conversationId,
         adTitle,
         sender?.displayName ?? 'Пользователь',
-        text
+        // Сообщение только с фото: в превью уведомления вместо пустого текста.
+        message.text.trim() || (message.attachments.length ? 'Фото' : '')
       )
     } catch (error) {
       this.logger.error(`Не удалось отправить уведомление о новом сообщении: ${(error as Error).message}`)
     }
-
-    return message
   }
 
   private async getConversationForParticipant(conversationId: string, userId: string) {

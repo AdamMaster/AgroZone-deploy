@@ -138,6 +138,55 @@ describe('FileService', () => {
       expect(cleanup.input.Delete.Objects).toHaveLength(4)
     })
 
+    describe('фото чата', () => {
+      it('uploadChatPhotos кладёт фото в папку chat вместе с копиями и возвращает ссылки по порядку', async () => {
+        const urls = await service.uploadChatPhotos([
+          multerFile(await photo(), 'a.jpg', 'image/jpeg'),
+          multerFile(await photo(), 'b.jpg', 'image/jpeg')
+        ])
+        const keys = commands('put').map(command => command.input.Key as string)
+
+        expect(urls).toHaveLength(2)
+        for (const url of urls) expect(url).toMatch(/\/chat\/\d+-\d+\.jpg$/)
+        expect(keys).toHaveLength(8)
+        expect(keys.every(key => key.startsWith('chat/'))).toBe(true)
+      })
+
+      it('если одно фото не загрузилось — остальные удаляются, ошибка уходит наверх', async () => {
+        let attempt = 0
+
+        mockSend.mockImplementation(command => {
+          if (command.type === 'put' && command.input.Key.endsWith('_400.webp') && ++attempt === 2) {
+            return Promise.reject(new Error('S3 down'))
+          }
+
+          return Promise.resolve({})
+        })
+
+        await expect(
+          service.uploadChatPhotos([
+            multerFile(await photo(), 'a.jpg', 'image/jpeg'),
+            multerFile(await photo(), 'b.jpg', 'image/jpeg')
+          ])
+        ).rejects.toThrow()
+
+        const deleted = commands('delete-many').flatMap(command =>
+          command.input.Delete.Objects.map((item: { Key: string }) => item.Key)
+        )
+
+        expect(deleted.length).toBeGreaterThanOrEqual(4)
+        expect(deleted.every((key: string) => key.startsWith('chat/'))).toBe(true)
+      })
+
+      it('сбой удаления при уборке не бросает — только лог', async () => {
+        mockSend.mockRejectedValue(new Error('S3 down'))
+
+        await expect(
+          service.deleteFilesQuietly(['https://cdn.example.com/chat/1712345678901-1.jpg'])
+        ).resolves.toBeUndefined()
+      })
+    })
+
     it('удаление фото объявления убирает и копии', async () => {
       await service.deleteFileByUrl('https://cdn.example.com/ads/1712345678901-1.jpg')
 

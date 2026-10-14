@@ -2,6 +2,8 @@ import { useCallback, useEffect } from 'react'
 
 import { useProfile } from '@/features/auth/hooks/use-profile'
 
+import type { UploadFile } from '@/lib/api/upload-file'
+
 import {
   useConversation,
   useConversationMessages,
@@ -33,8 +35,8 @@ export function ConversationChatScreen({ conversationId }: { conversationId: str
   const isOwnMessage = useCallback((message: ChatMessage) => message.senderId === userId, [userId])
   const counterpart = conversation?.counterpart
 
-  const send = (text: string) =>
-    sendMessage(text).then(
+  const send = (text: string, photos: UploadFile[]) =>
+    sendMessage({ text, photos }).then(
       () => true,
       () => false
     )
@@ -55,7 +57,7 @@ export function ConversationChatScreen({ conversationId }: { conversationId: str
           onLoadOlder={() => void history.loadOlder()}
         />
       }
-      composer={<MessageComposer onSend={send} isSending={isSending} />}
+      composer={<MessageComposer allowPhotos onSend={send} isSending={isSending} />}
     />
   )
 }

@@ -13,10 +13,9 @@ import { AdBadgeChip } from '@/features/ads/components/ad-badge-chip'
 import type { AdBadge } from '@/features/ads/types/ad.types'
 
 import { AdPhoto } from '@/shared/components/ad-photo'
+import { PhotoLightbox } from '@/shared/components/photo-lightbox'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
 import { ImageIcon } from '@/shared/icons/lucide'
-
-import { PhotoLightbox } from './photo-lightbox'
 
 interface AdGalleryProps {
   images: readonly string[]

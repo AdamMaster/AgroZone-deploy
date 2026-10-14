@@ -1,4 +1,4 @@
-// Уменьшенные копии фото объявлений. Оригинал (до 2000 px, JPEG) нужен
+// Уменьшенные копии фото объявлений и фото в чатах. Оригинал (до 2000 px, JPEG) нужен
 // только для просмотра на весь экран с увеличением — в ленте, списках и
 // галерее грузить его — лишние мегабайты на мобильном интернете. Копии
 // делаются один раз при загрузке фото и лежат в S3 рядом с оригиналом, по
@@ -24,17 +24,17 @@ export type PhotoVariantSize = (typeof PHOTO_VARIANT_SIZES)[number]
 export const PHOTO_VARIANT_QUALITY = 78
 export const PHOTO_VARIANT_CONTENT_TYPE = 'image/webp'
 
-// Ключи фото объявлений: имя, которое даёт FileService (время-случайное
-// число), в папке ads. Сейчас оригинал всегда JPEG, но фото, загруженные
+// Ключи фото объявлений и чатов: имя, которое даёт FileService
+// (время-случайное число), в папке ads или chat. Сейчас оригинал всегда JPEG, но фото, загруженные
 // до перекодирования, лежат с исходным расширением (png, webp, …) —
 // копии делаются и для них. Сами копии («…_800.webp») под правило не
 // попадают: после числа у них «_». Аватары и документы копий не имеют.
-const AD_PHOTO_KEY_PATTERN = /^(ads\/\d+-\d+)\.(?:jpe?g|png|webp|gif)$/i
+const PHOTO_KEY_PATTERN = /^((?:ads|chat)\/\d+-\d+)\.(?:jpe?g|png|webp|gif)$/i
 
-export const hasPhotoVariants = (key: string): boolean => AD_PHOTO_KEY_PATTERN.test(key)
+export const hasPhotoVariants = (key: string): boolean => PHOTO_KEY_PATTERN.test(key)
 
 export const photoVariantKey = (key: string, size: PhotoVariantSize): string => {
-  const match = AD_PHOTO_KEY_PATTERN.exec(key)
+  const match = PHOTO_KEY_PATTERN.exec(key)
 
   if (!match) throw new Error(`У объекта ${key} нет уменьшенных копий`)
 

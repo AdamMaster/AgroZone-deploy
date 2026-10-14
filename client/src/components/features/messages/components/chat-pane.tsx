@@ -60,7 +60,7 @@ const ExistingConversation = ({ conversationId, conversations, onBack }: Existin
     <div className='flex min-w-0 flex-1 flex-col'>
       <ChatHeader ad={conversation?.ad} counterpart={conversation?.counterpart} onBack={onBack} />
       <MessageThread messages={messages} isLoading={isLoading} counterpart={conversation?.counterpart} />
-      <MessageComposer onSend={sendMessage} isSending={isSending} />
+      <MessageComposer allowPhotos onSend={(text, photos) => sendMessage({ text, photos })} isSending={isSending} />
     </div>
   )
 }
@@ -83,9 +83,17 @@ const NewConversation = ({ adId, onStarted, onBack }: NewConversationProps) => {
 
   const { startConversation, isStarting } = useStartConversation()
 
-  const handleSend = async (text: string) => {
-    const result = await startConversation({ adId, text })
-    onStarted(result.conversation.id)
+  // true — диалог начат; при ошибке (toast уже показан) false: композер
+  // оставляет текст и фото.
+  const handleSend = async (text: string, photos: File[]) => {
+    try {
+      const result = await startConversation({ adId, draft: { text, photos } })
+      onStarted(result.conversation.id)
+
+      return true
+    } catch {
+      return false
+    }
   }
 
   return (
@@ -94,7 +102,7 @@ const NewConversation = ({ adId, onStarted, onBack }: NewConversationProps) => {
       <div className='flex flex-1 items-center justify-center px-6 text-center text-sm text-gray-500'>
         Напишите первое сообщение — так начнётся диалог с продавцом
       </div>
-      <MessageComposer onSend={handleSend} isSending={isStarting} />
+      <MessageComposer allowPhotos onSend={handleSend} isSending={isStarting} />
     </div>
   )
 }

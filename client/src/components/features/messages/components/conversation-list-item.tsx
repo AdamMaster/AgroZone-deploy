@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { useBlockUser, useDeleteConversation } from '../hooks'
 import { IConversationListItem } from '../types/message.types'
 import { formatMessageTime } from '../utils/format-message-time'
+import { getMessagePreview } from '../utils/get-message-preview'
 
 interface ConversationListItemProps {
   conversation: IConversationListItem
@@ -68,7 +69,7 @@ export const ConversationListItem = ({ conversation, isActive, onClick }: Conver
         <p className='truncate text-sm'>{ad.title}</p>
         {lastMessage && (
           <p className={cn('truncate pr-12 text-sm', isUnread ? 'text-gray-900' : 'text-gray-400')}>
-            {lastMessage.text}
+            {getMessagePreview(lastMessage)}
           </p>
         )}
       </div>

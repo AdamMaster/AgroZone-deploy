@@ -1,8 +1,24 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common'
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  UploadedFiles,
+  UseGuards,
+  UseInterceptors
+} from '@nestjs/common'
+import { FilesInterceptor } from '@nestjs/platform-express'
+import 'multer'
 
 import { CurrentUser } from '@/auth/decorators/decorators/user.decorator'
 import { AuthGuard } from '@/auth/guards/auth.guard'
 
+import { CHAT_MAX_FILE_SIZE, CHAT_MAX_PHOTOS } from './constants/conversations.constants'
 import { ConversationsService } from './conversations.service'
 import { FindMessagesQueryDto } from './dto/find-messages-query.dto'
 import { SendMessageDto } from './dto/send-message.dto'
@@ -17,8 +33,13 @@ export class ConversationsController {
   constructor(private readonly conversationsService: ConversationsService) {}
 
   @Post()
-  start(@CurrentUser('id') userId: string, @Body() dto: StartConversationDto) {
-    return this.conversationsService.startConversation(userId, dto)
+  @UseInterceptors(FilesInterceptor('files', CHAT_MAX_PHOTOS, { limits: { fileSize: CHAT_MAX_FILE_SIZE } }))
+  start(
+    @CurrentUser('id') userId: string,
+    @Body() dto: StartConversationDto,
+    @UploadedFiles() files: Express.Multer.File[] = []
+  ) {
+    return this.conversationsService.startConversation(userId, dto, files)
   }
 
   @Get()
@@ -36,8 +57,14 @@ export class ConversationsController {
   }
 
   @Post(':id/messages')
-  sendMessage(@Param('id', ParseUUIDPipe) id: string, @CurrentUser('id') userId: string, @Body() dto: SendMessageDto) {
-    return this.conversationsService.sendMessage(id, userId, dto)
+  @UseInterceptors(FilesInterceptor('files', CHAT_MAX_PHOTOS, { limits: { fileSize: CHAT_MAX_FILE_SIZE } }))
+  sendMessage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: SendMessageDto,
+    @UploadedFiles() files: Express.Multer.File[] = []
+  ) {
+    return this.conversationsService.sendMessage(id, userId, dto, files)
   }
 
   @Patch(':id/read')

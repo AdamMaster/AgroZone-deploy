@@ -26,7 +26,17 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { PRICE_UNITS } from '@/shared/constants/units'
 import { USER_TYPE_LABELS } from '@/shared/constants/user-types'
 import { useProfile } from '@/shared/hooks'
-import { formatFeatureValue, formatPhoneNumber, isFutureDate, isPremiumActive, pluralizeRu } from '@/shared/utils'
+import {
+  MOBILE_LIGHTBOX_CAROUSEL,
+  MOBILE_LIGHTBOX_RENDER,
+  MOBILE_LIGHTBOX_TOOLBAR,
+  formatFeatureValue,
+  formatPhoneNumber,
+  isFutureDate,
+  isPremiumActive,
+  isTouchDevice,
+  pluralizeRu
+} from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
 
@@ -63,20 +73,6 @@ import 'yet-another-react-lightbox/styles.css'
 // yet-another-react-lightbox (+ его CSS) в основной бандл страницы
 // объявления, если посетитель ни разу не кликнул по галерее.
 const Lightbox = dynamic(() => import('yet-another-react-lightbox'), { ssr: false })
-
-// На компьютере листание фото в лайбоксе мгновенное (без анимации), на телефоне
-// - обычный плавный свайп пальцем. Анимацию отключали одной настройкой
-// animation.swipe = 0 для всех, из-за чего на телефоне слайд дёргался за
-// пальцем и после отпускания прыгал на место рывком. Различаем по основному
-// указателю: pointer: coarse - палец (телефон/планшет), иначе мышь.
-const isTouchDevice = () => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
-
-// На телефоне в лайбоксе оставляем только крестик: стрелки не нужны (листаем
-// свайпом), кнопки масштаба тоже (увеличение щипком работает и без них).
-const MOBILE_LIGHTBOX_RENDER = { buttonPrev: () => null, buttonNext: () => null, buttonZoom: () => null }
-const MOBILE_LIGHTBOX_TOOLBAR = { buttons: ['close' as const] }
-// На телефоне фото во всю ширину экрана: убираем внутренние отступы слайда
-const MOBILE_LIGHTBOX_CAROUSEL = { padding: 0 }
 
 // Виден только владельцу объявления (см. `isOwner &&` ниже) — recharts
 // незачем грузить всем остальным посетителям страницы.

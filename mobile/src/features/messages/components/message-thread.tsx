@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, FlatList, type ListRenderItem, Text, View } from 'react-native'
 
 import { Button } from '@/shared/components/button'
+import { PhotoLightbox } from '@/shared/components/photo-lightbox'
 
 import type { ChatMessage } from '../types/message.types'
 import { type BubbleAuthor, MessageBubble } from './message-bubble'
@@ -41,6 +42,8 @@ export function MessageThread({
   onLoadOlder
 }: MessageThreadProps) {
   const listRef = useRef<FlatList<ChatMessage>>(null)
+  // Фото на весь экран: все фото сообщения и номер открытого.
+  const [openedPhotos, setOpenedPhotos] = useState<{ photos: string[]; index: number } | null>(null)
   const lastMessage = messages?.at(-1)
   const isLastMessageOwn = !!lastMessage && isOwnMessage(lastMessage)
 
@@ -58,6 +61,7 @@ export function MessageThread({
         isOwn={isOwnMessage(item)}
         author={counterpart}
         onDelete={onDeleteMessage && (() => onDeleteMessage(item.id))}
+        onPhotoPress={(photos, index) => setOpenedPhotos({ photos, index })}
       />
     ),
     [isOwnMessage, counterpart, onDeleteMessage]
@@ -89,27 +93,37 @@ export function MessageThread({
   }
 
   return (
-    <FlatList
-      ref={listRef}
-      // Перевёрнутый список: первым идёт самое новое сообщение.
-      inverted
-      data={[...messages].reverse()}
-      renderItem={renderItem}
-      keyExtractor={keyExtractor}
-      className='flex-1'
-      contentContainerClassName='gap-2 py-3'
-      keyboardShouldPersistTaps='handled'
-      onEndReached={() => {
-        if (hasOlder && !isLoadingOlder) onLoadOlder()
-      }}
-      onEndReachedThreshold={0.5}
-      ListFooterComponent={
-        isLoadingOlder ? (
-          <View className='py-2'>
-            <ActivityIndicator colorClassName='accent-gray-500' />
-          </View>
-        ) : null
-      }
-    />
+    <>
+      <FlatList
+        ref={listRef}
+        // Перевёрнутый список: первым идёт самое новое сообщение.
+        inverted
+        data={[...messages].reverse()}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        className='flex-1'
+        contentContainerClassName='gap-2 py-3'
+        keyboardShouldPersistTaps='handled'
+        onEndReached={() => {
+          if (hasOlder && !isLoadingOlder) onLoadOlder()
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          isLoadingOlder ? (
+            <View className='py-2'>
+              <ActivityIndicator colorClassName='accent-gray-500' />
+            </View>
+          ) : null
+        }
+      />
+      <PhotoLightbox
+        visible={openedPhotos !== null}
+        images={openedPhotos?.photos ?? []}
+        index={openedPhotos?.index ?? 0}
+        title='Фото из переписки'
+        onIndexChange={index => setOpenedPhotos(current => current && { ...current, index })}
+        onClose={() => setOpenedPhotos(null)}
+      />
+    </>
   )
 }

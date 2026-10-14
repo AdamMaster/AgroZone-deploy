@@ -1,3 +1,5 @@
+import type { UploadFile } from '@/lib/api/upload-file'
+
 // Сообщение переписки — общее для диалогов по объявлениям и чата
 // поддержки: у сообщения гостя сайта senderId пуст, а заполнен
 // senderGuestId — его видит только администратор в инбоксе обращений.
@@ -36,6 +38,13 @@ export interface ConversationListItem {
   lastMessage: ChatMessage | null
   isUnread: boolean
   updatedAt: string
+}
+
+// Сообщение, которое пользователь отправляет: текст и/или фото (хотя бы что-то
+// одно — см. MessageComposer).
+export interface MessageDraft {
+  text: string
+  photos: UploadFile[]
 }
 
 export interface StartConversationResponse {

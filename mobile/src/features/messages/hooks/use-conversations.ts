@@ -9,7 +9,7 @@ import { blockedUsersApi } from '../api/blocked-users.api'
 import { type MessagesPageParams, conversationsApi } from '../api/conversations.api'
 import { appendMessage } from '../lib/chat-history'
 import { useConversationsSocketStore } from '../store/conversations-socket-store'
-import type { BlockedUser, ChatHistory, ConversationListItem } from '../types/message.types'
+import type { BlockedUser, ChatHistory, ConversationListItem, MessageDraft } from '../types/message.types'
 import { useChatHistory } from './use-chat-history'
 
 // Новые сообщения приходят по сокету (useConversationsRealtime). Пока он не
@@ -63,7 +63,7 @@ export function useSendConversationMessage(conversationId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (text: string) => conversationsApi.send(conversationId, text),
+    mutationFn: (draft: MessageDraft) => conversationsApi.send(conversationId, draft),
     // Своё сообщение видно сразу, не дожидаясь очередного опроса.
     onSuccess: message => {
       queryClient.setQueryData<ChatHistory>(conversationMessagesQueryKey(conversationId), current =>
@@ -81,7 +81,7 @@ export function useStartConversation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ adId, text }: { adId: string; text: string }) => conversationsApi.start(adId, text),
+    mutationFn: ({ adId, draft }: { adId: string; draft: MessageDraft }) => conversationsApi.start(adId, draft),
     onSuccess: ({ conversation, message }) => {
       queryClient.setQueryData<ChatHistory>(conversationMessagesQueryKey(conversation.id), current =>
         appendMessage(current, message)
