@@ -129,7 +129,7 @@ export function SearchHeader({
           весь экран и лежит под строкой. Нажатия по нему ловит SearchFocusLayer. */}
       <View
         pointerEvents='none'
-        className={`absolute bg-black/20 ${isFocused ? 'flex' : 'hidden'}`}
+        className={`absolute bg-black/20 dark:bg-white/10 ${isFocused ? 'flex' : 'hidden'}`}
         style={{ top: -windowHeight, bottom: -windowHeight, left: -windowWidth, right: -windowWidth, zIndex: 0 }}
       />
       <View
@@ -140,46 +140,48 @@ export function SearchHeader({
       >
         <View
           ref={fieldRef}
-          className={`flex-1 flex-row items-center rounded-xl p-[2px] ${
-            isFocused ? 'bg-white dark:bg-neutral-700' : 'bg-primary dark:bg-neutral-700'
+          className={`flex-1 flex-row items-center rounded-2xl p-[2px] ${
+            isFocused ? 'bg-white dark:bg-neutral-900' : 'bg-primary dark:bg-primary'
           }`}
         >
-          <TextInput
-            ref={inputRef}
-            value={text}
-            onChangeText={setText}
-            onFocus={() => {
-              setIsFocused(true)
-              void measureLayout()
-            }}
-            onSubmitEditing={submit}
-            placeholder='Поиск по объявлениям'
-            placeholderTextColorClassName='accent-gray-500'
-            accessibilityLabel='Поиск по объявлениям'
-            accessibilityRole='search'
-            autoCorrect={false}
-            returnKeyType='search'
-            enterKeyHint='search'
-            submitBehavior='blurAndSubmit'
-            className='h-12 flex-1 rounded-[10px] bg-white pt-0 pb-0 pl-3 text-base text-gray-950'
-          />
-          {text.length > 0 && (
-            <Pressable
-              accessibilityRole='button'
-              accessibilityLabel='Очистить поиск'
-              onPress={clear}
-              className='h-10 justify-center px-3'
-            >
-              <X size={20} color={textColor} />
-            </Pressable>
-          )}
+          <View className='flex-1 flex-row items-center rounded-[14px] bg-white dark:bg-neutral-900'>
+            <TextInput
+              ref={inputRef}
+              value={text}
+              onChangeText={setText}
+              onFocus={() => {
+                setIsFocused(true)
+                void measureLayout()
+              }}
+              onSubmitEditing={submit}
+              placeholder='Поиск по объявлениям'
+              placeholderTextColorClassName='accent-gray-500'
+              accessibilityLabel='Поиск по объявлениям'
+              accessibilityRole='search'
+              autoCorrect={false}
+              returnKeyType='search'
+              enterKeyHint='search'
+              submitBehavior='blurAndSubmit'
+              className='h-13 flex-1 pt-0 pb-0 pl-3.5 text-base text-gray-950'
+            />
+            {text.length > 0 && (
+              <Pressable
+                accessibilityRole='button'
+                accessibilityLabel='Очистить поиск'
+                onPress={clear}
+                className='h-10 justify-center px-3'
+              >
+                <X size={20} color={textColor} />
+              </Pressable>
+            )}
+          </View>
           <Pressable
             accessibilityRole='button'
             accessibilityLabel='Открыть фильтр'
             onPress={openFilters}
             className={`h-10 justify-center px-2.5 ${isFocused ? 'hidden' : 'block'}`}
           >
-            <SlidersHorizontal size={20} color={isFocused ? textColor : '#fff'} />
+            <SlidersHorizontal size={20} color={'#fff'} />
           </Pressable>
         </View>
         <View collapsable={false} className={isFocused ? 'flex' : 'hidden'}>

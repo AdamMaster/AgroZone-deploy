@@ -21,7 +21,7 @@ export function CategoryTile({ category, onPress }: CategoryTileProps) {
       accessibilityRole='link'
       accessibilityLabel={category.name}
       onPress={() => onPress(category)}
-      className='relative h-19 max-w-40 overflow-hidden rounded-lg bg-gray-100 px-3.5 py-2.5 pr-8 active:bg-gray-200'
+      className='relative h-19 max-w-40 overflow-hidden rounded-lg bg-gray-100 px-3.5 py-2.5 pr-8 active:bg-gray-200 dark:bg-neutral-700/50'
     >
       {icon && (
         <StyledImage

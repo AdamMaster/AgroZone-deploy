@@ -10,7 +10,7 @@ interface SearchCancelButtonProps {
 export function SearchCancelButton({ onPress }: SearchCancelButtonProps) {
   return (
     <Pressable accessibilityRole='button' onPress={onPress} hitSlop={8} className='h-10 justify-center pl-4'>
-      <Text className='text-xs'>Отменить</Text>
+      <Text className='text-sm dark:text-neutral-50'>Отменить</Text>
     </Pressable>
   )
 }
