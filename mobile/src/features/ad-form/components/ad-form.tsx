@@ -13,6 +13,7 @@ import { useCategoryFeatures } from '@/features/categories/hooks/use-category-fe
 import { findCategoryPathById } from '@/features/categories/lib/category-tree'
 import type { CategoryFeature } from '@/features/categories/types/category.types'
 
+import { BackButton } from '@/shared/components/back-button'
 import { Button } from '@/shared/components/button'
 import { FormField } from '@/shared/components/form-field'
 import { FormScrollView } from '@/shared/components/form-scroll-view'
@@ -20,8 +21,6 @@ import { Heading } from '@/shared/components/heading'
 import { Input } from '@/shared/components/input'
 import { SelectField } from '@/shared/components/select-field'
 import { PRICE_UNITS, WHOLE_PRICE_UNIT } from '@/shared/constants/price-units'
-import { useThemeColor } from '@/shared/hooks/use-theme-color'
-import { ArrowLeft } from '@/shared/icons/lucide'
 import { isFutureDate } from '@/shared/utils/date'
 import { formatPhoneInput } from '@/shared/utils/phone'
 
@@ -83,7 +82,6 @@ function valuesFromAd(ad: EditableAd): AdFormFields {
 export function AdForm(props: AdFormProps) {
   const router = useRouter()
   const { top } = useSafeAreaInsets()
-  const iconColor = useThemeColor('--color-gray-900')
   const ad = props.mode === 'edit' ? props.ad : null
   const isEdit = !!ad
   const isDraft = ad?.status === 'DRAFT'
@@ -185,15 +183,8 @@ export function AdForm(props: AdFormProps) {
 
   return (
     <View className='flex-1 bg-background' style={{ paddingTop: top }}>
-      <View className='h-12 flex-row items-center justify-between px-4'>
-        <Pressable
-          accessibilityRole='button'
-          accessibilityLabel='Назад'
-          onPress={goBack}
-          className='-ml-2 size-10 items-center justify-center rounded-lg active:bg-gray-100'
-        >
-          <ArrowLeft size={20} color={iconColor} />
-        </Pressable>
+      <View className='h-13 flex-row items-center justify-between pr-4'>
+        <BackButton onPress={goBack} />
         {step === 2 && (
           <Pressable
             accessibilityRole='button'

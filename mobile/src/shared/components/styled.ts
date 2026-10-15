@@ -1,4 +1,5 @@
 import { Image } from 'expo-image'
+import Animated from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { withUniwind } from 'uniwind'
 
@@ -11,3 +12,6 @@ export const StyledImage = withUniwind(Image)
 // понимает: без обёртки flex-1 молча терялся, и окно сжималось до высоты
 // содержимого.
 export const StyledSafeAreaView = withUniwind(SafeAreaView)
+
+// View из Reanimated: анимированные стили нужны вместе с className (Skeleton).
+export const StyledAnimatedView = withUniwind(Animated.View)

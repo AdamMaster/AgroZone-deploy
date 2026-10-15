@@ -1,11 +1,9 @@
-import { useRouter } from 'expo-router'
 import type { ReactNode } from 'react'
-import { ActivityIndicator, Pressable, View } from 'react-native'
+import { ActivityIndicator, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { BackButton } from '@/shared/components/back-button'
 import { ScreenMessage } from '@/shared/components/screen-message'
-import { useThemeColor } from '@/shared/hooks/use-theme-color'
-import { ArrowLeft } from '@/shared/icons/lucide'
 
 import { useEditableAd } from '../hooks/use-ad-form-mutations'
 import { AdForm } from './ad-form'
@@ -35,21 +33,12 @@ export function EditAdScreen({ id }: { id: string }) {
 }
 
 function LoadingFrame({ children }: { children: ReactNode }) {
-  const router = useRouter()
   const { top } = useSafeAreaInsets()
-  const iconColor = useThemeColor('--color-gray-900')
 
   return (
     <View className='flex-1 bg-background' style={{ paddingTop: top }}>
-      <View className='h-12 flex-row items-center px-4'>
-        <Pressable
-          accessibilityRole='button'
-          accessibilityLabel='Назад'
-          onPress={() => router.back()}
-          className='-ml-2 size-10 items-center justify-center rounded-lg active:bg-gray-100'
-        >
-          <ArrowLeft size={20} color={iconColor} />
-        </Pressable>
+      <View className='h-13 flex-row items-center'>
+        <BackButton />
       </View>
       {children}
     </View>

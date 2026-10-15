@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { Pressable, Text, View } from 'react-native'
 
 import { AdPhoto } from '@/shared/components/ad-photo'
+import { Skeleton } from '@/shared/components/skeleton'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
 import { ImageIcon } from '@/shared/icons/lucide'
 import { formatPriceWithUnit } from '@/shared/utils/format-price'
@@ -57,10 +58,10 @@ export const FavoriteAdCard = memo(function FavoriteAdCard({ ad, onOpen, onRemov
 export function FavoriteAdCardSkeleton() {
   return (
     <View className='flex-row gap-2.5'>
-      <View className='h-20 w-22 rounded-lg bg-gray-100' />
+      <Skeleton className='h-20 w-22 rounded-lg' />
       <View className='flex-1 gap-2'>
-        <View className='h-4 w-4/5 rounded-md bg-gray-100' />
-        <View className='h-4 w-1/3 rounded-md bg-gray-100' />
+        <Skeleton className='h-4 w-4/5 rounded-md' />
+        <Skeleton className='h-4 w-1/3 rounded-md' />
       </View>
     </View>
   )

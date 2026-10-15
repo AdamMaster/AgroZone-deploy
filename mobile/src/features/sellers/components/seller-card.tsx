@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native'
 
 import { Avatar } from '@/shared/components/avatar'
 import { Heading } from '@/shared/components/heading'
+import { Skeleton } from '@/shared/components/skeleton'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
 import { FileText } from '@/shared/icons/lucide'
 import { formatMonthYear } from '@/shared/utils/date'
@@ -56,11 +57,11 @@ export function SellerCardSkeleton() {
   return (
     <View className='flex-row justify-between gap-4'>
       <View className='flex-1 gap-3'>
-        <View className='h-6 w-2/3 rounded bg-skeleton' />
-        <View className='h-6 w-1/3 rounded-full bg-skeleton' />
-        <View className='h-4 w-1/2 rounded bg-skeleton' />
+        <Skeleton className='h-6 w-2/3 rounded' />
+        <Skeleton className='h-6 w-1/3 rounded-full' />
+        <Skeleton className='h-4 w-1/2 rounded' />
       </View>
-      <View className='size-16 rounded-full bg-skeleton' />
+      <Skeleton className='size-16 rounded-full' />
     </View>
   )
 }

@@ -4,6 +4,7 @@ import { Pressable, Text, View } from 'react-native'
 import { AD_BADGE_LABELS } from '@/features/ads/constants/ad-badges'
 
 import { AdPhoto } from '@/shared/components/ad-photo'
+import { Skeleton } from '@/shared/components/skeleton'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
 import { CircleAlert, Crown, ImageIcon, SquarePen } from '@/shared/icons/lucide'
 import { formatDayMonth, formatRelativeDay, isFutureDate } from '@/shared/utils/date'
@@ -135,10 +136,10 @@ export const MyAdCard = memo(function MyAdCard({ ad, isOwnerPremium, onOpen, onE
 export function MyAdCardSkeleton() {
   return (
     <View className='flex-row gap-2.5'>
-      <View className='h-20 w-22 rounded-lg bg-gray-100' />
+      <Skeleton className='h-20 w-22 rounded-lg' />
       <View className='flex-1 gap-2'>
-        <View className='h-4 w-4/5 rounded-md bg-gray-100' />
-        <View className='h-4 w-1/3 rounded-md bg-gray-100' />
+        <Skeleton className='h-4 w-4/5 rounded-md' />
+        <Skeleton className='h-4 w-1/3 rounded-md' />
       </View>
     </View>
   )

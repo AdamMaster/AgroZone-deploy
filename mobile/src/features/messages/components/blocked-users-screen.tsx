@@ -1,32 +1,21 @@
-import { useRouter } from 'expo-router'
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native'
 
 import { Avatar } from '@/shared/components/avatar'
+import { BackButton } from '@/shared/components/back-button'
 import { Heading } from '@/shared/components/heading'
 import { ScreenMessage } from '@/shared/components/screen-message'
-import { useThemeColor } from '@/shared/hooks/use-theme-color'
-import { ArrowLeft } from '@/shared/icons/lucide'
 
 import { useBlockedUsers, useUnblockUser } from '../hooks/use-conversations'
 
 // «Черный список» — как BlockedUsersList сайта.
 export function BlockedUsersScreen() {
-  const router = useRouter()
-  const iconColor = useThemeColor('--color-gray-900')
   const { data: blockedUsers, error, isPending, refetch } = useBlockedUsers()
   const { mutate: unblockUser, isPending: isUnblocking } = useUnblockUser()
 
   return (
-    <ScrollView contentContainerClassName='px-4 pt-3 pb-10'>
-      <View className='mb-6 flex-row items-center gap-1'>
-        <Pressable
-          accessibilityRole='button'
-          accessibilityLabel='Назад'
-          onPress={() => router.back()}
-          className='-ml-2 size-10 items-center justify-center rounded-lg active:bg-gray-100'
-        >
-          <ArrowLeft size={20} color={iconColor} />
-        </Pressable>
+    <ScrollView contentContainerClassName='px-4 pb-10'>
+      <View className='-mx-4 mb-6 flex-row items-center gap-3'>
+        <BackButton />
         <Heading level={2}>Черный список</Heading>
       </View>
 

@@ -9,11 +9,12 @@ import { useAdNavigation } from '@/features/ads/hooks/use-ad-navigation'
 import { useToggleFavorite } from '@/features/ads/hooks/use-toggle-favorite'
 import type { AdDetail } from '@/features/ads/types/ad-detail.types'
 import type { AdListItem } from '@/features/ads/types/ad.types'
-import { useProfile } from '@/features/auth/hooks/use-profile'
 import { useIsSignedIn } from '@/features/auth/hooks/use-is-signed-in'
+import { useProfile } from '@/features/auth/hooks/use-profile'
 
 import type { SheetAction } from '@/shared/components/action-sheet'
 import { ScreenMessage } from '@/shared/components/screen-message'
+import { Skeleton } from '@/shared/components/skeleton'
 import { PRICE_UNITS, WHOLE_PRICE_UNIT } from '@/shared/constants/price-units'
 import { usePaidSitePage } from '@/shared/hooks/use-paid-site-page'
 import { useRefetchOnFocus } from '@/shared/hooks/use-refetch-on-focus'
@@ -50,10 +51,10 @@ const shareAd = (ad: AdDetail) => {
 function AdDetailSkeleton() {
   return (
     <View className='px-4'>
-      <View className='mb-3 w-full rounded-xl bg-gray-100' style={{ aspectRatio: 1 / 0.76 }} />
-      <View className='mb-2 h-6 w-4/5 rounded-md bg-gray-100' />
-      <View className='mb-6 h-7 w-1/3 rounded-md bg-gray-100' />
-      <View className='h-13 w-full rounded-lg bg-gray-100' />
+      <Skeleton className='mb-3 w-full rounded-xl' style={{ aspectRatio: 1 / 0.76 }} />
+      <Skeleton className='mb-2 h-6 w-4/5 rounded-md' />
+      <Skeleton className='mb-6 h-7 w-1/3 rounded-md' />
+      <Skeleton className='h-13 w-full rounded-lg' />
     </View>
   )
 }

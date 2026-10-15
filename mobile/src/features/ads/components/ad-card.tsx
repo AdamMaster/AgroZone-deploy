@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { Pressable, Text, View } from 'react-native'
 
 import { AdPhoto } from '@/shared/components/ad-photo'
+import { Skeleton } from '@/shared/components/skeleton'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
 import { ImageIcon } from '@/shared/icons/lucide'
 import { isFutureDate } from '@/shared/utils/date'
@@ -96,10 +97,10 @@ export const AdCard = memo(function AdCard({ ad, onOpen, onToggleFavorite, isFav
 export function AdCardSkeleton() {
   return (
     <View className='gap-2'>
-      <View className='aspect-square rounded-lg bg-gray-100' />
+      <Skeleton className='aspect-square rounded-lg' />
       <View className='gap-2'>
-        <View className='h-4 w-30 rounded-md bg-gray-100' />
-        <View className='h-4 w-20 rounded-md bg-gray-100' />
+        <Skeleton className='h-4 w-30 rounded-md' />
+        <Skeleton className='h-4 w-20 rounded-md' />
       </View>
     </View>
   )

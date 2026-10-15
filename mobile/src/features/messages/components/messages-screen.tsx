@@ -7,6 +7,7 @@ import { SupportListItem } from '@/features/support/components/support-list-item
 
 import { ActionSheet } from '@/shared/components/action-sheet'
 import { ScreenMessage } from '@/shared/components/screen-message'
+import { Skeleton } from '@/shared/components/skeleton'
 
 import { useChatNavigation } from '../hooks/use-chat-navigation'
 import { useBlockUser, useConversations, useDeleteConversation } from '../hooks/use-conversations'
@@ -25,8 +26,8 @@ function ListSkeleton() {
     <View className='gap-1'>
       {Array.from({ length: SKELETON_COUNT }, (_, index) => (
         <View key={index} className='flex-row items-center gap-3'>
-          <View className='size-15 rounded-lg bg-skeleton' />
-          <View className='h-15 flex-1 rounded-lg bg-skeleton' />
+          <Skeleton className='size-15 rounded-lg' />
+          <Skeleton className='h-15 flex-1 rounded-lg' />
         </View>
       ))}
     </View>

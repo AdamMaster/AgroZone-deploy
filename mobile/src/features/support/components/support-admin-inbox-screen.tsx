@@ -9,6 +9,7 @@ import { useChatNavigation } from '@/features/messages/hooks/use-chat-navigation
 
 import { ActionSheet, type SheetAction } from '@/shared/components/action-sheet'
 import { ScreenMessage } from '@/shared/components/screen-message'
+import { Skeleton } from '@/shared/components/skeleton'
 import { useRefetchOnFocus } from '@/shared/hooks/use-refetch-on-focus'
 
 import {
@@ -32,8 +33,8 @@ function ListSkeleton() {
     <View className='gap-1'>
       {Array.from({ length: SKELETON_COUNT }, (_, index) => (
         <View key={index} className='flex-row items-center gap-3 px-2 py-2'>
-          <View className='size-10 rounded-full bg-skeleton' />
-          <View className='h-10 flex-1 rounded-lg bg-skeleton' />
+          <Skeleton className='size-10 rounded-full' />
+          <Skeleton className='h-10 flex-1 rounded-lg' />
         </View>
       ))}
     </View>

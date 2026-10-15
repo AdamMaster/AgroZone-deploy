@@ -1,13 +1,14 @@
-import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 
 import { useAdCounters, useAdViewStats } from '@/features/ads/hooks/use-ad-detail'
 
+import { BackButton } from '@/shared/components/back-button'
 import { Heading } from '@/shared/components/heading'
 import { ScreenMessage } from '@/shared/components/screen-message'
+import { Skeleton } from '@/shared/components/skeleton'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
-import { ArrowLeft, ChevronLeft, ChevronRight } from '@/shared/icons/lucide'
+import { ChevronLeft, ChevronRight } from '@/shared/icons/lucide'
 import { formatShortIsoDate } from '@/shared/utils/date'
 
 import { ViewsChart } from './views-chart'
@@ -15,7 +16,6 @@ import { ViewsChart } from './views-chart'
 // Статистика объявления для владельца — как AdStats сайта: просмотры по
 // дням с листанием недель и общие счётчики.
 export function AdStatsScreen({ id }: { id: string }) {
-  const router = useRouter()
   const [weekOffset, setWeekOffset] = useState(0)
   const stats = useAdViewStats(id, weekOffset)
   const counters = useAdCounters(id, { enabled: true })
@@ -27,14 +27,7 @@ export function AdStatsScreen({ id }: { id: string }) {
   return (
     <ScrollView contentContainerClassName='px-4 pb-8'>
       <View className='-mx-4 mb-6 flex-row items-center gap-3'>
-        <Pressable
-          accessibilityRole='button'
-          accessibilityLabel='Назад'
-          onPress={() => router.back()}
-          className='size-13 items-center justify-center'
-        >
-          <ArrowLeft size={20} color={iconColor} />
-        </Pressable>
+        <BackButton />
         <Heading level={2}>Статистика объявления</Heading>
       </View>
 
@@ -82,7 +75,7 @@ export function AdStatsScreen({ id }: { id: string }) {
               <ViewsChart days={data.days} />
             </View>
           ) : (
-            <View className='h-[180px] w-full rounded-xl bg-gray-100' />
+            <Skeleton className='h-[180px] w-full rounded-xl' />
           )}
         </View>
       )}

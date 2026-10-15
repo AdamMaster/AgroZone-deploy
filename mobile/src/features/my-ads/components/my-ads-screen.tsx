@@ -10,6 +10,7 @@ import { Button } from '@/shared/components/button'
 import { Heading } from '@/shared/components/heading'
 import { LineTabs } from '@/shared/components/line-tabs'
 import { ScreenMessage } from '@/shared/components/screen-message'
+import { Skeleton } from '@/shared/components/skeleton'
 import { useHideOnScroll } from '@/shared/hooks/use-hide-on-scroll'
 import { useRefetchOnFocus } from '@/shared/hooks/use-refetch-on-focus'
 import { isFutureDate } from '@/shared/utils/date'
@@ -102,7 +103,7 @@ export function MyAdsScreen() {
         </Heading>
         <View className='mb-5 flex-row gap-3'>
           {Array.from({ length: SKELETON_COUNT }, (_, index) => (
-            <View key={index} className='h-11 w-[150px] rounded-lg bg-gray-100' />
+            <Skeleton key={index} className='h-11 w-[150px] rounded-lg' />
           ))}
         </View>
         <CardsSkeleton />

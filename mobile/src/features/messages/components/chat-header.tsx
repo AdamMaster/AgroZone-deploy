@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router'
 import type { ReactNode } from 'react'
 import { Pressable, Text, View } from 'react-native'
 
@@ -6,8 +5,9 @@ import { useAdNavigation } from '@/features/ads/hooks/use-ad-navigation'
 
 import { AdPhoto } from '@/shared/components/ad-photo'
 import { Avatar } from '@/shared/components/avatar'
+import { BackButton } from '@/shared/components/back-button'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
-import { ArrowLeft, ImageIcon } from '@/shared/icons/lucide'
+import { ImageIcon } from '@/shared/icons/lucide'
 
 import type { ConversationAd } from '../types/message.types'
 
@@ -31,9 +31,7 @@ interface ChatHeaderProps {
 // Шапка переписки — как ChatHeader сайта: «назад», собеседник и
 // объявление, по которому идёт разговор (нажатие открывает его).
 export function ChatHeader({ counterpart, ad, isLoading = false, avatar, trailing }: ChatHeaderProps) {
-  const router = useRouter()
   const { openAd } = useAdNavigation()
-  const iconColor = useThemeColor('--color-gray-900')
   const mutedColor = useThemeColor('--color-gray-500')
   const isDeleted = !!counterpart?.deletedAt
   const name = isDeleted
@@ -43,14 +41,7 @@ export function ChatHeader({ counterpart, ad, isLoading = false, avatar, trailin
 
   return (
     <View className='flex-row items-center gap-3 rounded-lg bg-gray-100 px-3 py-3'>
-      <Pressable
-        accessibilityRole='button'
-        accessibilityLabel='Назад к диалогам'
-        onPress={() => router.back()}
-        className='size-10 items-center justify-center rounded-lg active:bg-gray-200'
-      >
-        <ArrowLeft size={20} color={iconColor} />
-      </Pressable>
+      <BackButton variant='card' label='Назад к диалогам' />
 
       {avatar ?? (
         <Avatar
