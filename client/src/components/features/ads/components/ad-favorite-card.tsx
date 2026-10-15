@@ -1,5 +1,4 @@
 import { ImageIcon } from 'lucide-react'
-import Image from 'next/image'
 import Link from 'next/link'
 
 import { Heading } from '@/components/ui'
@@ -9,6 +8,7 @@ import { formatPriceWithUnit } from '@/shared/utils'
 import { useAddFavorite, useRemoveFavorite } from '../hooks'
 import { type AdCardData, IAd } from '../types/ad.types'
 import { FavoriteButton } from './favorite-button'
+import { AdPhoto } from './ad-photo'
 
 interface AdFavoriteCardProps {
   favorite: AdCardData
@@ -29,7 +29,7 @@ export const AdFavoriteCard = ({ favorite }: AdFavoriteCardProps) => {
         className='relative flex h-20 w-22 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 sm:h-30 sm:w-40'
       >
         {favorite.images.length ? (
-          <Image
+          <AdPhoto
             src={favorite.images?.[0] || ''}
             alt={favorite.title}
             className='h-full w-full object-cover'

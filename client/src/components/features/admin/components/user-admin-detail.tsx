@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
@@ -25,6 +24,7 @@ import { SetPasswordDialog } from './set-password-dialog'
 import { SetPremiumDialog } from './set-premium-dialog'
 import { UserBadges } from './user-badges'
 import { UserSecurityEvents } from './user-security-events'
+import { AdPhoto } from '@/components/features/ads/components/ad-photo'
 
 interface UserAdminDetailProps {
   id: string
@@ -143,7 +143,7 @@ export const UserAdminDetail = ({ id }: UserAdminDetailProps) => {
           <div key={ad.id} className='flex items-center gap-3 rounded-md bg-mist-700/30 p-3 hover:bg-mist-700/40'>
             <Link href={`/ads/${ad.id}`} target='_blank' className='flex min-w-0 flex-1 items-center gap-3'>
               <div className='relative size-14 shrink-0 overflow-hidden rounded-sm bg-mist-700'>
-                {ad.images[0] && <Image src={ad.images[0]} alt={ad.title} fill className='object-cover' sizes='56px' />}
+                {ad.images[0] && <AdPhoto src={ad.images[0]} alt={ad.title} fill className='object-cover' sizes='56px' />}
               </div>
 
               <div className='min-w-0 flex-1'>

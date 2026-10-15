@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 
 import { Button, Heading } from '@/components/ui'
@@ -10,6 +9,7 @@ import { formatPhoneNumber } from '@/shared/utils'
 import { usePendingAds, usePublishAd } from '../../ads/hooks'
 import { ADMIN_BUTTON_CLASS } from '../constants/admin-ui.constants'
 import { RejectAdDialog } from './reject-ad-dialog'
+import { AdPhoto } from '@/components/features/ads/components/ad-photo'
 
 export const ModerationQueue = () => {
   const { pendingAds, isLoading } = usePendingAds()
@@ -25,7 +25,7 @@ export const ModerationQueue = () => {
         {pendingAds.map(ad => (
           <div key={ad.id} className='flex gap-4 rounded-md bg-mist-700/50 p-3'>
             <div className='relative size-20 shrink-0 overflow-hidden rounded-md'>
-              {ad.images[0] && <Image src={ad.images[0]} alt={ad.title} fill className='object-cover' sizes='200px' />}
+              {ad.images[0] && <AdPhoto src={ad.images[0]} alt={ad.title} fill className='object-cover' sizes='200px' />}
             </div>
 
             <div className='min-w-0 flex-1'>

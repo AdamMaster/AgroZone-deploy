@@ -3,7 +3,6 @@
 import { useAppModal } from '@/store'
 import { Crown, Edit, Ellipsis, Heart, ImageIcon, MapPin, Pencil, Phone, Share2 } from 'lucide-react'
 import dynamic from 'next/dynamic'
-import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -68,6 +67,8 @@ import { ReportAdDialog } from './report-ad-dialog'
 import { SimilarAdsSection } from './similar-ads-section'
 
 import 'yet-another-react-lightbox/styles.css'
+import { AdPhoto } from './ad-photo'
+import { photoVariantUrl } from '@/shared/utils/photo-variants'
 
 // Лайтбокс открывается только по клику на фото — незачем тянуть
 // yet-another-react-lightbox (+ его CSS) в основной бандл страницы
@@ -250,7 +251,7 @@ export const AdDetail = ({
     ad.bumpedAt && ad.publishedAt && new Date(ad.bumpedAt) > new Date(ad.publishedAt) ? formatDate(ad.bumpedAt) : null
   const updatedDate = bumpedDate && bumpedDate !== publishedDate ? bumpedDate : null
 
-  const slides = useMemo(() => ad.images.map(src => ({ src })), [ad.images])
+  const slides = useMemo(() => ad.images.map(src => ({ src: photoVariantUrl(src, 1280) })), [ad.images])
 
   const closeLightbox = () => {
     setIsLightboxOpen(false)
@@ -477,7 +478,7 @@ export const AdDetail = ({
                       }}
                       className='relative w-full flex-shrink-0 snap-center pt-[76%] lg:pt-[80%]'
                     >
-                      <Image
+                      <AdPhoto
                         src={image}
                         alt={`${ad.title} — фото ${index + 1}`}
                         className='h-full w-full object-cover'
@@ -507,7 +508,7 @@ export const AdDetail = ({
                       index === activeImage && 'border-primary'
                     )}
                   >
-                    <Image
+                    <AdPhoto
                       src={image}
                       alt={`${ad.title} — фото ${index + 1}`}
                       className='object-cover'

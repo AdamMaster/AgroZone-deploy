@@ -1,7 +1,6 @@
 'use client'
 
 import { ImageIcon } from 'lucide-react'
-import Image from 'next/image'
 import Link from 'next/link'
 
 import { Heading, Skeleton } from '@/components/ui'
@@ -16,6 +15,7 @@ import { useRemoveFavorite } from '../hooks/use-remove-favorite'
 import { type AdCardData } from '../types/ad.types'
 import { AdBadgeChip } from './ad-badge-chip'
 import { FavoriteButton } from './favorite-button'
+import { AdPhoto } from './ad-photo'
 
 interface AdCardProps {
   ad: AdCardData
@@ -44,7 +44,7 @@ export const AdCard = ({ ad }: AdCardProps) => {
         className='relative block overflow-hidden rounded-lg bg-gray-100 pt-[100%] sm:rounded-xl'
       >
         {ad.images.length > 0 ? (
-          <Image src={ad.images[0]} alt={ad.title} className='h-full w-full object-cover' fill sizes='310px' />
+          <AdPhoto src={ad.images[0]} alt={ad.title} className='h-full w-full object-cover' fill sizes='(min-width: 1280px) 25vw, (min-width: 640px) 33vw, 50vw' />
         ) : (
           <ImageIcon size={50} className='absolute top-[50%] left-[50%] translate-[-50%] text-gray-500' />
         )}

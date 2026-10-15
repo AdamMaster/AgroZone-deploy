@@ -2,7 +2,6 @@
 
 import { CircleAlert, Edit, Ellipsis, ImageIcon } from 'lucide-react'
 import { Crown } from 'lucide-react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Fragment, ReactNode, useState } from 'react'
@@ -19,6 +18,7 @@ import { useActivateAd, useDraftAd, useRemoveAd, useRepublishAd } from '../hooks
 import { useArchiveAd } from '../hooks/use-archive-ad'
 import { isAdRemovable } from '../utils/is-ad-removable'
 import { AdRemoveConfirmDialog } from './ad-remove-confirm-dialog'
+import { AdPhoto } from './ad-photo'
 
 // Один и тот же вид кнопки «Ещё» для всех статусов объявления.
 const MENU_TRIGGER_CLASS_NAME =
@@ -196,7 +196,7 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
             className='relative flex h-20 w-22 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 sm:h-24 sm:w-32 md:h-30 md:w-40'
           >
             {ad.images.length ? (
-              <Image
+              <AdPhoto
                 src={ad.images[0]}
                 alt={ad.title}
                 className='h-full w-full object-cover'

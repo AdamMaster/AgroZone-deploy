@@ -1,7 +1,6 @@
 'use client'
 
 import { ArrowUp, Crown, ImageIcon } from 'lucide-react'
-import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
@@ -33,6 +32,7 @@ import {
 import { useAdServicesCheckout, useMyAd } from '../hooks'
 import { AdBadge, AdServiceType } from '../types/ad.types'
 import { AdBadgeChip } from './ad-badge-chip'
+import { AdPhoto } from './ad-photo'
 
 interface PromoteAdProps {
   id: string
@@ -212,7 +212,7 @@ export const PromoteAd = ({ id }: PromoteAdProps) => {
               <p className='mb-3 text-xs font-medium text-gray-500'>Так будет выглядеть объявление</p>
               <div className='relative mb-3 overflow-hidden rounded-lg bg-gray-100 pt-[75%]'>
                 {ad.images.length > 0 ? (
-                  <Image src={ad.images[0]} alt={ad.title} className='h-full w-full object-cover' fill sizes='280px' />
+                  <AdPhoto src={ad.images[0]} alt={ad.title} className='h-full w-full object-cover' fill sizes='280px' />
                 ) : (
                   <ImageIcon size={40} className='absolute top-1/2 left-1/2 -translate-1/2 text-gray-400' />
                 )}

@@ -2,7 +2,6 @@
 
 import { ImageIcon, MapPin } from 'lucide-react'
 import dynamic from 'next/dynamic'
-import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Zoom from 'yet-another-react-lightbox/plugins/zoom'
@@ -23,6 +22,8 @@ import { cn } from '@/lib/utils'
 import { RejectAdDialog } from './reject-ad-dialog'
 
 import 'yet-another-react-lightbox/styles.css'
+import { AdPhoto } from '@/components/features/ads/components/ad-photo'
+import { photoVariantUrl } from '@/shared/utils/photo-variants'
 
 // Лайтбокс открывается только по клику на фото — незачем тянуть
 // yet-another-react-lightbox (+ его CSS) в бандл админки заранее.
@@ -57,7 +58,7 @@ export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
     slide?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
   }
 
-  const slides = useMemo(() => (ad?.images ?? []).map(src => ({ src })), [ad?.images])
+  const slides = useMemo(() => (ad?.images ?? []).map(src => ({ src: photoVariantUrl(src, 1280) })), [ad?.images])
 
   useEffect(() => {
     const container = galleryRef.current
@@ -146,7 +147,7 @@ export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
                   }}
                   className='relative w-full flex-shrink-0 snap-center pt-[66%]'
                 >
-                  <Image
+                  <AdPhoto
                     src={image}
                     alt={`${ad.title} — фото ${index + 1}`}
                     className='h-full w-full object-cover'
@@ -175,7 +176,7 @@ export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
                     index === activeImage && 'border-primary'
                   )}
                 >
-                  <Image
+                  <AdPhoto
                     src={image}
                     alt={`${ad.title} — фото ${index + 1}`}
                     className='object-cover'
