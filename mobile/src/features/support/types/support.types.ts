@@ -18,14 +18,14 @@ export interface SupportConversationClearedEvent {
 
 // Участник обращения в инбоксе администратора: вошедший пользователь или
 // анонимный гость сайта (ISupportAdminParticipant на сайте).
-export interface SupportParticipantUser {
+interface SupportParticipantUser {
   type: 'user'
   id: string
   displayName: string | null
   picture: string | null
 }
 
-export interface SupportParticipantGuest {
+interface SupportParticipantGuest {
   type: 'guest'
   id: string
   createdAt: string

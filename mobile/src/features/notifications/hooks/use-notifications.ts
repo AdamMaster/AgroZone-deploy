@@ -6,8 +6,8 @@ import { notificationsApi } from '../api/notifications.api'
 
 // Сколько уведомлений показывает раздел «Уведомления» — как на сайте.
 const NOTIFICATIONS_LIMIT = 50
-// Вебсокетов в проекте нет, поэтому счётчик непрочитанных опрашивается —
-// раз в минуту, как на сайте: уведомления не настолько срочные.
+// Счётчик непрочитанных опрашивается раз в минуту, как на сайте:
+// уведомления не настолько срочные.
 const UNREAD_COUNT_POLL_INTERVAL_MS = 60_000
 
 const notificationsQueryKey = ['notifications'] as const

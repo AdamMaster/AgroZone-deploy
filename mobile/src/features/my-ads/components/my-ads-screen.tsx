@@ -1,11 +1,12 @@
 import { FlashList, type ListRenderItem } from '@shopify/flash-list'
 import { useCallback, useState } from 'react'
-import { ActivityIndicator, RefreshControl, Text, View } from 'react-native'
+import { ActivityIndicator, Text, View } from 'react-native'
 
 import { useAdNavigation } from '@/features/ads/hooks/use-ad-navigation'
 import { useCreateAdAction } from '@/features/ads/hooks/use-create-ad-action'
 import { useProfile } from '@/features/auth/hooks/use-profile'
 
+import { AppRefreshControl } from '@/shared/components/app-refresh-control'
 import { Button } from '@/shared/components/button'
 import { Heading } from '@/shared/components/heading'
 import { LineTabs } from '@/shared/components/line-tabs'
@@ -58,7 +59,6 @@ export function MyAdsScreen() {
   const openMyAd = useCallback((ad: MyAd) => openAd(ad.id, ad.status === 'PUBLISHED' ? 'public' : 'owner'), [openAd])
   const editMyAd = useCallback((ad: MyAd) => openAdEditor(ad.id), [openAdEditor])
   const fab = useHideOnScroll()
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const { refetch: refetchTabs } = tabsQuery
   const { refetch: refetchList } = list
 
@@ -71,14 +71,7 @@ export function MyAdsScreen() {
     }, [refetchTabs, refetchList])
   )
 
-  const refresh = async () => {
-    setIsRefreshing(true)
-    try {
-      await Promise.all([tabsQuery.refetch(), list.refetch()])
-    } finally {
-      setIsRefreshing(false)
-    }
-  }
+  const refresh = () => Promise.all([tabsQuery.refetch(), list.refetch()])
 
   const renderItem: ListRenderItem<MyAd> = useCallback(
     ({ item }) => (
@@ -121,14 +114,7 @@ export function MyAdsScreen() {
     )
   }
 
-  const refreshControl = (
-    <RefreshControl
-      refreshing={isRefreshing}
-      onRefresh={() => void refresh()}
-      colorsClassName='accent-primary'
-      tintColorClassName='accent-primary'
-    />
-  )
+  const refreshControl = <AppRefreshControl onRefresh={refresh} />
 
   if (!activeTab) {
     return (

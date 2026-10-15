@@ -1,13 +1,14 @@
 import { FlashList, type ListRenderItem } from '@shopify/flash-list'
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useState } from 'react'
-import { RefreshControl, Text, View } from 'react-native'
+import { Text, View } from 'react-native'
 
 import { ChatHeader } from '@/features/messages/components/chat-header'
 import { ChatLayout } from '@/features/messages/components/chat-layout'
 import { useChatNavigation } from '@/features/messages/hooks/use-chat-navigation'
 
 import { ActionSheet, type SheetAction } from '@/shared/components/action-sheet'
+import { AppRefreshControl } from '@/shared/components/app-refresh-control'
 import { ScreenMessage } from '@/shared/components/screen-message'
 import { Skeleton } from '@/shared/components/skeleton'
 import { useRefetchOnFocus } from '@/shared/hooks/use-refetch-on-focus'
@@ -55,7 +56,6 @@ export function SupportAdminInboxScreen() {
   // закрывается, — иначе пункты пропали бы посреди анимации.
   const [menuConversation, setMenuConversation] = useState<SupportAdminConversation | null>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Список на виду — новое обращение, из-за которого он обновился, уже
   // видно (непрочитанные подсвечены в самом списке).
@@ -77,15 +77,6 @@ export function SupportAdminInboxScreen() {
     setMenuConversation(conversation)
     setIsMenuOpen(true)
   }, [])
-
-  const refresh = async () => {
-    setIsRefreshing(true)
-    try {
-      await refetch()
-    } finally {
-      setIsRefreshing(false)
-    }
-  }
 
   const renderItem: ListRenderItem<SupportAdminConversation> = useCallback(
     ({ item }) => <SupportAdminListItem conversation={item} onOpen={openConversation} onOpenMenu={openMenu} />,
@@ -129,14 +120,7 @@ export function SupportAdminInboxScreen() {
             renderItem={renderItem}
             keyExtractor={keyExtractor}
             ListEmptyComponent={listEmpty}
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefreshing}
-                onRefresh={() => void refresh()}
-                colorsClassName='accent-primary'
-                tintColorClassName='accent-primary'
-              />
-            }
+            refreshControl={<AppRefreshControl onRefresh={refetch} />}
           />
           <ActionSheet visible={isMenuOpen} onClose={() => setIsMenuOpen(false)} actions={menuActions} />
         </View>

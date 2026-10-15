@@ -24,7 +24,7 @@ const PRESENTATION_MIME_TYPES: Readonly<Record<string, string>> = {
 }
 
 // Файл не подходит под ограничения — сообщение для пользователя.
-export class InvalidFileError extends Error {
+class InvalidFileError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'InvalidFileError'

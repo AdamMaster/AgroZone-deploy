@@ -16,7 +16,7 @@ export interface UpdateProfileParams {
   type: SellerType
 }
 
-export interface UpdatePasswordParams {
+interface UpdatePasswordParams {
   // Только у аккаунта, где пароль уже есть: первый пароль (аккаунт через
   // Яндекс) ставится без него.
   currentPassword?: string
@@ -29,7 +29,7 @@ export interface RequestEmailChangeParams {
   captchaToken: string
 }
 
-export interface SecurityEventsParams {
+interface SecurityEventsParams {
   page: number
   limit: number
   types?: readonly string[]

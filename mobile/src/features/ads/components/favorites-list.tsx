@@ -1,7 +1,8 @@
 import { FlashList, type ListRenderItem } from '@shopify/flash-list'
-import { useCallback, useState } from 'react'
-import { ActivityIndicator, RefreshControl, Text, View } from 'react-native'
+import { useCallback } from 'react'
+import { ActivityIndicator, Text, View } from 'react-native'
 
+import { AppRefreshControl } from '@/shared/components/app-refresh-control'
 import { Heading } from '@/shared/components/heading'
 import { ScreenMessage } from '@/shared/components/screen-message'
 
@@ -18,18 +19,6 @@ const keyExtractor = (ad: FavoriteAd) => ad.id
 export function FavoritesList() {
   const { favorites, error, isPending, isFetchingNextPage, hasNextPage, fetchNextPage, refetch } =
     useFavoritesInfinite()
-  // Крутилка — только когда пользователь сам потянул список (фоновое
-  // обновление при возврате в приложение её не показывает).
-  const [isRefreshing, setIsRefreshing] = useState(false)
-
-  const refresh = async () => {
-    setIsRefreshing(true)
-    try {
-      await refetch()
-    } finally {
-      setIsRefreshing(false)
-    }
-  }
   const { toggleFavorite, isPending: isRemoving, pendingAdId } = useToggleFavorite()
   const { openAd } = useAdNavigation()
   const openFavorite = useCallback((ad: FavoriteAd) => openAd(ad.id), [openAd])
@@ -97,14 +86,7 @@ export function FavoritesList() {
           </View>
         ) : null
       }
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefreshing}
-          onRefresh={() => void refresh()}
-          colorsClassName='accent-primary'
-          tintColorClassName='accent-primary'
-        />
-      }
+      refreshControl={<AppRefreshControl onRefresh={refetch} />}
     />
   )
 }

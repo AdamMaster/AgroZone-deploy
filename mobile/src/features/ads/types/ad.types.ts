@@ -13,7 +13,7 @@ export type AdBadge = 'URGENT' | 'NEGOTIABLE' | 'NEW'
 // только вместе с точкой поиска (lat/lng), иначе сервер ответит 400.
 export type AdsSortBy = 'date_desc' | 'date_asc' | 'price_asc' | 'price_desc' | 'distance_asc'
 
-export interface AdListItemUser {
+interface AdListItemUser {
   id: string
   // Для выделения цены у премиум-продавцов (см. AdCard).
   premiumUntil?: string | null

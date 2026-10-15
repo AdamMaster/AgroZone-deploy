@@ -1,7 +1,7 @@
 import * as Location from 'expo-location'
 import { useCallback, useState } from 'react'
 
-export interface Coords {
+interface Coords {
   lat: number
   lng: number
 }

@@ -23,7 +23,7 @@ export interface ConversationAd {
 }
 
 // Собеседник. deletedAt — собеседник удалил аккаунт.
-export interface ConversationCounterpart {
+interface ConversationCounterpart {
   id: string
   displayName: string | null
   picture: string | null

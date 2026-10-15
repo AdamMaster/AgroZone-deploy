@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, type TextInput, View } 
 import { useFormScroll } from './form-scroll-view'
 import { Input } from './input'
 
-export interface ComboboxItem {
+interface ComboboxItem {
   key: string
   label: string
   // Пояснение мелким серым текстом рядом (например, раздел категории —

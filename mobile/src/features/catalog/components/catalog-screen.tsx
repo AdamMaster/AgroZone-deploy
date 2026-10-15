@@ -13,6 +13,7 @@ import type { RouteCatalogFilters } from '@/features/filters/hooks/use-route-cat
 import { hasOrigin, toAdsFilters } from '@/features/filters/lib/catalog-filters'
 import { SearchHeader } from '@/features/search/components/search-header'
 
+import { BackButton } from '@/shared/components/back-button'
 import { Heading } from '@/shared/components/heading'
 import { ScreenMessage } from '@/shared/components/screen-message'
 import { pluralizeRu } from '@/shared/utils/pluralize'
@@ -41,8 +42,7 @@ export function CatalogScreen({ categoryPath, search, onClearSearch, catalogFilt
   const { filters, setFilters, openCategory } = catalogFilters
   const router = useRouter()
   const { categoryMap, isPending: isCategoriesPending, error: categoriesError, refetch } = useCategories()
-  const lookup = categoryPath ? categoryMap.get(categoryPath) : undefined
-  const category = lookup?.category
+  const category = categoryPath ? categoryMap.get(categoryPath) : undefined
   const trimmedSearch = search?.trim() ?? ''
 
   // Выдачу запрашиваем, только когда известен id категории — иначе первым
@@ -54,15 +54,29 @@ export function CatalogScreen({ categoryPath, search, onClearSearch, catalogFilt
   )
   const query = useAdsInfinite(adsFilters, { enabled: !isWaitingForCategory })
 
+  // Нет категории — вместо каталога сообщение, но с «Назад», чтобы из
+  // ссылки на несуществующую категорию был выход (как у сайта: шапка и
+  // страница «не найдено» со ссылкой дальше).
   if (categoryPath && !isCategoriesPending && !category) {
-    return categoriesError ? (
-      <ScreenMessage
-        title='Не удалось загрузить категории'
-        description={categoriesError.message}
-        action={{ title: 'Повторить', onPress: () => void refetch() }}
-      />
-    ) : (
-      <ScreenMessage title='Категория не найдена' description='Возможно, её переименовали или убрали из каталога' />
+    return (
+      <View className='flex-1'>
+        <View className='flex-row'>
+          <BackButton />
+        </View>
+        {categoriesError ? (
+          <ScreenMessage
+            title='Не удалось загрузить категории'
+            description={categoriesError.message}
+            action={{ title: 'Повторить', onPress: () => void refetch() }}
+          />
+        ) : (
+          <ScreenMessage
+            title='Категория не найдена'
+            description='Возможно, её переименовали или убрали из каталога'
+            action={{ title: 'Весь каталог', onPress: () => router.replace('/catalog') }}
+          />
+        )}
+      </View>
     )
   }
 

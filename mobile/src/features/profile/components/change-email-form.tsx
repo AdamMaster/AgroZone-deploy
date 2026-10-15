@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Stack, useRouter } from 'expo-router'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
-import { ActivityIndicator, Text, View } from 'react-native'
+import { Text, View } from 'react-native'
 
 import { CaptchaCancelledError, useCaptcha } from '@/features/auth/hooks/use-captcha'
 import { useProfile } from '@/features/auth/hooks/use-profile'
@@ -11,6 +11,7 @@ import { Button } from '@/shared/components/button'
 import { FormError } from '@/shared/components/form-error'
 import { FormField } from '@/shared/components/form-field'
 import { Input, PasswordInput } from '@/shared/components/input'
+import { Loader } from '@/shared/components/loader'
 import { ScreenMessage } from '@/shared/components/screen-message'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
 import { OctagonAlert } from '@/shared/icons/lucide'
@@ -71,10 +72,10 @@ export function ChangeEmailForm() {
 
   if (!profile) {
     return (
-      <View className='items-center py-16'>
+      <>
         {screenOptions}
-        <ActivityIndicator colorClassName='accent-primary' />
-      </View>
+        <Loader />
+      </>
     )
   }
 

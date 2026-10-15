@@ -2,7 +2,7 @@ import type { AdDetailView } from '@/features/ads/hooks/use-ad-detail'
 
 // Куда ведёт уведомление в приложении. Сервер хранит ссылку на страницу
 // сайта (link), её и переводим в экран приложения.
-export type NotificationTarget =
+type NotificationTarget =
   | { kind: 'ad'; id: string; view: AdDetailView }
   | { kind: 'conversation'; id: string }
   | { kind: 'messages' }

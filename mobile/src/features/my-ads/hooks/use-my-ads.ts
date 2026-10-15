@@ -12,7 +12,7 @@ const PAGE_SIZE = 20
 
 // Под префиксом ['ads']: при входе и выходе сбрасываются вместе с
 // остальными объявлениями (см. auth-store).
-export const myAdsQueryKeyPrefix = ['ads', 'my'] as const
+const myAdsQueryKeyPrefix = ['ads', 'my'] as const
 
 // Вкладки с числом объявлений в каждой. Пустые вкладки не показываются —
 // как на сайте.

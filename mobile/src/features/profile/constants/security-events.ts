@@ -20,7 +20,7 @@ import {
 // необратимое (отключили защиту, удалили аккаунт), warning — меняет доступ
 // к аккаунту, info — действие администратора, neutral — обычная история.
 // Те же значения, что SECURITY_EVENT_META сайта.
-export type SecurityEventTone = 'neutral' | 'info' | 'warning' | 'danger'
+type SecurityEventTone = 'neutral' | 'info' | 'warning' | 'danger'
 
 export interface SecurityEventMeta {
   title: string

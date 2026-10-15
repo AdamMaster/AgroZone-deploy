@@ -18,7 +18,7 @@ export interface Category {
 
 // Характеристика товаров категории (GET /categories/:id/features) — по ним
 // строятся дополнительные фильтры каталога («Год выпуска», «Марка», ...).
-export type CategoryFeatureType = 'TEXT' | 'NUMBER' | 'SELECT' | 'MULTI_SELECT' | 'BOOLEAN'
+type CategoryFeatureType = 'TEXT' | 'NUMBER' | 'SELECT' | 'MULTI_SELECT' | 'BOOLEAN'
 
 export interface CategoryFeature {
   id: string
@@ -30,11 +30,6 @@ export interface CategoryFeature {
   // Первая единица — каноническая: в ней значения хранятся и фильтруются.
   units?: string[]
   filterable: boolean
-}
-
-export interface CategoryLookup {
-  category: Category
-  parent: Category | null
 }
 
 // Подсказка категории по тексту — GET /categories/search-suggest.

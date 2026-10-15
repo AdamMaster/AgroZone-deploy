@@ -10,7 +10,7 @@ import type { AuthSession } from '../types/auth.types'
 
 // restoring — приложение только запустилось и ещё читает ключ из
 // защищённого хранилища (в это время виден сплэш, см. app/_layout.tsx).
-export type AuthStatus = 'restoring' | 'signedIn' | 'signedOut'
+type AuthStatus = 'restoring' | 'signedIn' | 'signedOut'
 
 export const profileQueryKey = ['profile'] as const
 

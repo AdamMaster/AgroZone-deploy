@@ -1,11 +1,12 @@
 import { FlashList, type ListRenderItem } from '@shopify/flash-list'
 import { useCallback, useState } from 'react'
-import { RefreshControl, Text, View } from 'react-native'
+import { Text, View } from 'react-native'
 
 import { useProfile } from '@/features/auth/hooks/use-profile'
 import { SupportListItem } from '@/features/support/components/support-list-item'
 
 import { ActionSheet } from '@/shared/components/action-sheet'
+import { AppRefreshControl } from '@/shared/components/app-refresh-control'
 import { ScreenMessage } from '@/shared/components/screen-message'
 import { Skeleton } from '@/shared/components/skeleton'
 
@@ -47,22 +48,12 @@ export function MessagesScreen() {
   // закрывается, — иначе пункты пропали бы посреди анимации.
   const [menuConversation, setMenuConversation] = useState<Conversation | null>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
 
   const openChat = useCallback((conversation: Conversation) => openConversation(conversation.id), [openConversation])
   const openMenu = useCallback((conversation: Conversation) => {
     setMenuConversation(conversation)
     setIsMenuOpen(true)
   }, [])
-
-  const refresh = async () => {
-    setIsRefreshing(true)
-    try {
-      await refetch()
-    } finally {
-      setIsRefreshing(false)
-    }
-  }
 
   const renderItem: ListRenderItem<Conversation> = useCallback(
     ({ item }) => <ConversationListItem conversation={item} onOpen={openChat} onOpenMenu={openMenu} />,
@@ -100,14 +91,7 @@ export function MessagesScreen() {
         }
         ItemSeparatorComponent={ItemSeparator}
         ListEmptyComponent={listEmpty}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={() => void refresh()}
-            colorsClassName='accent-primary'
-            tintColorClassName='accent-primary'
-          />
-        }
+        refreshControl={<AppRefreshControl onRefresh={refetch} />}
       />
 
       <ActionSheet

@@ -8,7 +8,7 @@ import { formatPhoneForDisplay } from '@/shared/utils/phone'
 import { Button } from './button'
 import { FormError } from './form-error'
 
-export interface CallConfirmationStatus {
+interface CallConfirmationStatus {
   confirmed: boolean
   // Когда звонок подтверждён — код, который нужно передать серверу
   // следующим шагом (id проверки у провайдера звонков).
@@ -28,8 +28,8 @@ interface CallConfirmationStepProps {
 // Как часто спрашивать сервер «позвонили или нет» — как на сайте.
 const CALL_STATUS_POLL_INTERVAL_MS = 4000
 
-// Подтверждение номера звонком — общий шаг регистрации и смены телефона,
-// как на сайте: пользователь звонит на показанный номер, звонок
+// Подтверждение номера звонком — общий шаг регистрации, смены телефона и
+// сброса пароля, как на сайте: пользователь звонит на показанный номер, звонок
 // сбрасывается сам, приложение узнаёт о нём опросом сервера.
 export function CallConfirmationStep({
   phone,

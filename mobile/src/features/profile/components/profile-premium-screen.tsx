@@ -1,8 +1,9 @@
-import { ActivityIndicator, Text, View } from 'react-native'
+import { Text, View } from 'react-native'
 
 import { useProfile } from '@/features/auth/hooks/use-profile'
 
 import { Button } from '@/shared/components/button'
+import { QueryState } from '@/shared/components/query-state'
 import { usePaidSitePage } from '@/shared/hooks/use-paid-site-page'
 import { useRefetchOnFocus } from '@/shared/hooks/use-refetch-on-focus'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
@@ -40,7 +41,8 @@ const BENEFITS = [
 // браузере, после оплаты статус обновится при возвращении в приложение
 // (usePaidSitePage).
 export function ProfilePremiumScreen() {
-  const { data: profile, isPending, refetch } = useProfile()
+  const profileQuery = useProfile()
+  const { data: profile, refetch } = profileQuery
   const primaryColor = useThemeColor('--color-primary')
   const premiumUntil = isFutureDate(profile?.premiumUntil) ? profile?.premiumUntil : null
 
@@ -51,40 +53,44 @@ export function ProfilePremiumScreen() {
 
   return (
     <ProfileSectionScreen title='Премиум Аккаунт' onRefresh={refetch}>
-      {isPending ? (
-        <View className='items-center py-16'>
-          <ActivityIndicator colorClassName='accent-primary' />
-        </View>
-      ) : premiumUntil ? (
-        <View className='rounded-2xl bg-gray-100 p-8'>
-          <View className='mb-1.5 flex-row items-center gap-2'>
-            <Text className='text-base leading-tight font-medium text-gray-900'>Премиум активен</Text>
-            <Crown size={20} color={PREMIUM_COLOR} fill={PREMIUM_COLOR} />
-          </View>
-          <Text className='mb-7 text-sm text-gray-900'>Действует до {formatFullDate(premiumUntil)}</Text>
-          <Button title={`Продлить ещё на 30 дней — ${PREMIUM_PRICE_LABEL}`} size='sm' onPress={openPremiumCheckout} />
-        </View>
-      ) : (
-        <View className='rounded-xl bg-gray-50 p-6'>
-          <Text className='mb-4 text-2xl font-bold text-gray-900'>{PREMIUM_PRICE_LABEL}</Text>
-          <View className='mb-6 gap-2'>
-            {BENEFITS.map(benefit => (
-              <View key={benefit.title} className='flex-row items-start gap-2'>
-                <View className='mt-0.5'>
-                  <Check size={16} color={primaryColor} strokeWidth={3} />
-                </View>
-                <View className='flex-1'>
-                  <Text className='text-sm font-medium text-gray-700'>{benefit.title}</Text>
-                  <Text className='text-sm text-gray-500'>{benefit.description}</Text>
-                </View>
+      <QueryState query={profileQuery} errorTitle='Не удалось загрузить профиль'>
+        {() =>
+          premiumUntil ? (
+            <View className='rounded-2xl bg-gray-100 p-8'>
+              <View className='mb-1.5 flex-row items-center gap-2'>
+                <Text className='text-base leading-tight font-medium text-gray-900'>Премиум активен</Text>
+                <Crown size={20} color={PREMIUM_COLOR} fill={PREMIUM_COLOR} />
               </View>
-            ))}
-          </View>
-          <View className='self-start'>
-            <Button title='Оформить премиум' variant='premium' onPress={openPremiumCheckout} />
-          </View>
-        </View>
-      )}
+              <Text className='mb-7 text-sm text-gray-900'>Действует до {formatFullDate(premiumUntil)}</Text>
+              <Button
+                title={`Продлить ещё на 30 дней — ${PREMIUM_PRICE_LABEL}`}
+                size='sm'
+                onPress={openPremiumCheckout}
+              />
+            </View>
+          ) : (
+            <View className='rounded-xl bg-gray-50 p-6'>
+              <Text className='mb-4 text-2xl font-bold text-gray-900'>{PREMIUM_PRICE_LABEL}</Text>
+              <View className='mb-6 gap-2'>
+                {BENEFITS.map(benefit => (
+                  <View key={benefit.title} className='flex-row items-start gap-2'>
+                    <View className='mt-0.5'>
+                      <Check size={16} color={primaryColor} strokeWidth={3} />
+                    </View>
+                    <View className='flex-1'>
+                      <Text className='text-sm font-medium text-gray-700'>{benefit.title}</Text>
+                      <Text className='text-sm text-gray-500'>{benefit.description}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+              <View className='self-start'>
+                <Button title='Оформить премиум' variant='premium' onPress={openPremiumCheckout} />
+              </View>
+            </View>
+          )
+        }
+      </QueryState>
     </ProfileSectionScreen>
   )
 }

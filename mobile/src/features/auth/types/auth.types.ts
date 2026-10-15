@@ -1,7 +1,7 @@
 import type { SellerType } from '@/shared/constants/seller-types'
 
 // Номер телефона аккаунта.
-export interface UserPhone {
+interface UserPhone {
   id: string
   phone: string
   isPrimary: boolean

@@ -2,7 +2,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native'
 
 import type { SheetOption } from './options-sheet'
 
-export interface LineTab<T extends string> extends SheetOption<T> {
+interface LineTab<T extends string> extends SheetOption<T> {
   // Число в кружке справа от подписи (например, объявлений во вкладке).
   count?: number
 }

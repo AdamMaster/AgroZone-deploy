@@ -1,7 +1,7 @@
 // Адрес каталога сайта из подсказки поиска → параметры экрана каталога
 // приложения: «/catalog/agrokultury/zernovye?search=Пшеница» →
 // { category: 'agrokultury/zernovye', search: 'Пшеница' }.
-export interface CatalogLinkParams {
+interface CatalogLinkParams {
   category?: string
   search?: string
 }

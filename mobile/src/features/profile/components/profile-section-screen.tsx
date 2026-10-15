@@ -1,8 +1,9 @@
 import { type ReactNode, useState } from 'react'
-import { KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native'
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native'
 
 import { useUnreadNotificationsCount } from '@/features/notifications/hooks/use-notifications'
 
+import { AppRefreshControl } from '@/shared/components/app-refresh-control'
 import { CountBadge } from '@/shared/components/count-badge'
 import { Heading } from '@/shared/components/heading'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
@@ -24,37 +25,16 @@ interface ProfileSectionScreenProps {
 // профиля (шапка сайта в этом разделе), ниже — содержимое.
 export function ProfileSectionScreen({ title, children, onRefresh }: ProfileSectionScreenProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const unreadCount = useUnreadNotificationsCount()
   const openSection = useOpenProfileSection()
   const iconColor = useThemeColor('--color-gray-700')
-
-  const refresh = async () => {
-    if (!onRefresh) return
-
-    setIsRefreshing(true)
-    try {
-      await onRefresh()
-    } finally {
-      setIsRefreshing(false)
-    }
-  }
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className='flex-1'>
       <ScrollView
         keyboardShouldPersistTaps='handled'
         contentContainerClassName='px-4 pt-3 pb-10'
-        refreshControl={
-          onRefresh ? (
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={() => void refresh()}
-              colorsClassName='accent-primary'
-              tintColorClassName='accent-primary'
-            />
-          ) : undefined
-        }
+        refreshControl={onRefresh ? <AppRefreshControl onRefresh={onRefresh} /> : undefined}
       >
         <View className='mb-6 flex-row items-center gap-4'>
           <View className='flex-1'>

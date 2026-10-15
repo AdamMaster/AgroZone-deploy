@@ -11,9 +11,9 @@ import {
 } from './api-error'
 import { createRequestSignal } from './request-signal'
 
-export type QueryParamValue = string | number | boolean | null | undefined
+type QueryParamValue = string | number | boolean | null | undefined
 
-export type QueryParams = Record<string, QueryParamValue | readonly QueryParamValue[]>
+type QueryParams = Record<string, QueryParamValue | readonly QueryParamValue[]>
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE'
 
@@ -52,7 +52,7 @@ export function setSessionRejectedHandler(handler: (() => void) | null) {
 // null/undefined/пустые строки не отправляем вовсе — сервер трактует
 // отсутствующий параметр как «фильтр не задан», а пустую строку может
 // счесть невалидным значением.
-export function buildQueryString(params: QueryParams): string {
+function buildQueryString(params: QueryParams): string {
   const search = new URLSearchParams()
 
   for (const [key, raw] of Object.entries(params)) {

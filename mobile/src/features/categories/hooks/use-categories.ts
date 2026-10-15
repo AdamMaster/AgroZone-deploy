@@ -10,7 +10,7 @@ import { buildCategoryMap } from '../lib/category-map'
 const CATEGORIES_STALE_TIME = 60 * 60_000
 
 export function useCategories() {
-  const { data, error, isPending, refetch } = useQuery({
+  const { data, error, isPending, isFetching, refetch } = useQuery({
     queryKey: ['categories', 'tree'],
     queryFn: ({ signal }) => categoriesApi.fetchTree(signal),
     staleTime: CATEGORIES_STALE_TIME,
@@ -20,5 +20,5 @@ export function useCategories() {
   const categoryMap = useMemo(() => buildCategoryMap(data ?? []), [data])
   const roots = useMemo(() => (data ?? []).filter(category => !category.parentId), [data])
 
-  return { roots, categoryMap, error, isPending, refetch }
+  return { roots, categoryMap, error, isPending, isFetching, refetch }
 }

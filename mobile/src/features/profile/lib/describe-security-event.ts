@@ -10,7 +10,7 @@ import {
 } from '../constants/security-events'
 import type { SecurityEvent } from '../types/security-event.types'
 
-export interface SecurityEventDescription {
+interface SecurityEventDescription {
   title: string
   // Вторая строка — что именно изменилось; null, если заголовок говорит всё.
   details: string | null

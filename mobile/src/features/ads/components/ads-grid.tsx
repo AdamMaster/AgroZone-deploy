@@ -1,8 +1,9 @@
 import { FlashList, type ListRenderItem } from '@shopify/flash-list'
 import { type ReactElement, useCallback } from 'react'
-import { ActivityIndicator, RefreshControl, Text, View } from 'react-native'
+import { ActivityIndicator, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { AppRefreshControl } from '@/shared/components/app-refresh-control'
 import { Button } from '@/shared/components/button'
 import { ScreenMessage } from '@/shared/components/screen-message'
 
@@ -57,7 +58,6 @@ export function AdsGrid({ query, header, emptyMessage }: AdsGridProps) {
     isError,
     isFetchNextPageError,
     isRefetchError,
-    isRefreshing,
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
@@ -153,14 +153,7 @@ export function AdsGrid({ query, header, emptyMessage }: AdsGridProps) {
       ListEmptyComponent={listEmpty}
       ListFooterComponent={footer}
       keyboardShouldPersistTaps='handled'
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefreshing}
-          onRefresh={refresh}
-          colorsClassName='accent-primary'
-          tintColorClassName='accent-primary'
-        />
-      }
+      refreshControl={<AppRefreshControl onRefresh={refresh} />}
     />
   )
 }

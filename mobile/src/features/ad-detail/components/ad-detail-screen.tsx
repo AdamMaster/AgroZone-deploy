@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
-import { RefreshControl, ScrollView, Share, Text, View } from 'react-native'
+import { ScrollView, Share, Text, View } from 'react-native'
 
 import { SITE_URL } from '@/config/env'
 
@@ -13,6 +13,7 @@ import { useIsSignedIn } from '@/features/auth/hooks/use-is-signed-in'
 import { useProfile } from '@/features/auth/hooks/use-profile'
 
 import type { SheetAction } from '@/shared/components/action-sheet'
+import { AppRefreshControl } from '@/shared/components/app-refresh-control'
 import { ScreenMessage } from '@/shared/components/screen-message'
 import { Skeleton } from '@/shared/components/skeleton'
 import { PRICE_UNITS, WHOLE_PRICE_UNIT } from '@/shared/constants/price-units'
@@ -73,7 +74,6 @@ export function AdDetailScreen({ id, view, onSwitchToOwnerView }: AdDetailScreen
   const { openAd, openAdStats, openAdEditor } = useAdNavigation()
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false)
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
 
   useRefetchOnFocus(query.refetch)
 
@@ -141,14 +141,7 @@ export function AdDetailScreen({ id, view, onSwitchToOwnerView }: AdDetailScreen
           : [])
       ]
 
-  const refresh = async () => {
-    setIsRefreshing(true)
-    try {
-      await Promise.all([query.refetch(), isOwner && counters.refetch()])
-    } finally {
-      setIsRefreshing(false)
-    }
-  }
+  const refresh = () => Promise.all([query.refetch(), isOwner && counters.refetch()])
 
   const confirmRemove = () =>
     ownerActions.remove(undefined, {
@@ -170,17 +163,7 @@ export function AdDetailScreen({ id, view, onSwitchToOwnerView }: AdDetailScreen
         menuActions={menuActions}
       />
 
-      <ScrollView
-        contentContainerClassName='px-4 pt-4 pb-8'
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={() => void refresh()}
-            colorsClassName='accent-primary'
-            tintColorClassName='accent-primary'
-          />
-        }
-      >
+      <ScrollView contentContainerClassName='px-4 pt-4 pb-8' refreshControl={<AppRefreshControl onRefresh={refresh} />}>
         {isOwner && (
           <AdOwnerPanel
             ad={ad}

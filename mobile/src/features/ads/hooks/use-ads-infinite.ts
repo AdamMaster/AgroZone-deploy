@@ -1,5 +1,5 @@
 import { type InfiniteData, useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 
 import { uniqueById } from '@/shared/utils/unique-by-id'
 
@@ -14,7 +14,7 @@ const PAGE_SIZE = 20
 // обновляет отметку «в избранном» сразу во всех лентах и каталогах.
 export const adsListQueryKeyPrefix = ['ads', 'list'] as const
 
-export const adsListQueryKey = (filters: AdsFilters) => [...adsListQueryKeyPrefix, filters] as const
+const adsListQueryKey = (filters: AdsFilters) => [...adsListQueryKeyPrefix, filters] as const
 
 export type AdsListData = InfiniteData<AdsListResponse, number>
 
@@ -43,23 +43,12 @@ export function useAdsInfinite(filters: AdsFilters, { enabled = true }: { enable
   // десятки запросов и долгое ожидание. Пользователь, потянувший ленту вниз,
   // хочет увидеть свежий верх, поэтому сначала оставляем только первую
   // страницу, а потом обновляем её одну.
-  //
-  // Свой флаг вместо query.isRefetching: тот true и при фоновом обновлении
-  // (вернулись в приложение), а крутилку pull-to-refresh нужно показывать
-  // только когда пользователь сам потянул ленту.
-  const [isRefreshing, setIsRefreshing] = useState(false)
-
-  const refresh = useCallback(async () => {
-    setIsRefreshing(true)
+  const refresh = useCallback(() => {
     queryClient.setQueryData<AdsListData>(queryKey, data =>
       data ? { pages: data.pages.slice(0, 1), pageParams: data.pageParams.slice(0, 1) } : data
     )
 
-    try {
-      await refetch()
-    } finally {
-      setIsRefreshing(false)
-    }
+    return refetch()
   }, [queryClient, refetch, queryKey])
 
   const ads = useMemo(() => uniqueById(query.data?.pages.map(page => page.items) ?? []), [query.data])
@@ -76,7 +65,6 @@ export function useAdsInfinite(filters: AdsFilters, { enabled = true }: { enable
     isError: query.isError,
     isFetchNextPageError: query.isFetchNextPageError,
     isRefetchError: query.isRefetchError,
-    isRefreshing,
     isFetchingNextPage: query.isFetchingNextPage,
     hasNextPage: query.hasNextPage,
     fetchNextPage: query.fetchNextPage,

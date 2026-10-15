@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useCallback, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
-import { ActivityIndicator, Pressable, Text, View } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
 
 import { useProfile } from '@/features/auth/hooks/use-profile'
 import { type PhoneValues, phoneSchema } from '@/features/auth/schemas/auth.schemas'
@@ -10,6 +10,7 @@ import { Button } from '@/shared/components/button'
 import { CallConfirmationStep } from '@/shared/components/call-confirmation-step'
 import { FormField } from '@/shared/components/form-field'
 import { Input } from '@/shared/components/input'
+import { Loader } from '@/shared/components/loader'
 import { SelectField } from '@/shared/components/select-field'
 import { formatPhoneInput, phoneToApi } from '@/shared/utils/phone'
 
@@ -25,7 +26,7 @@ export type PhoneFlowStep = Step['name']
 // profile — номер для входа и связи в профиле: выбранный или добавленный
 // становится основным. ad — номер для конкретного объявления: основной не
 // меняется, номер просто подставляется в форму.
-export type PhoneFlowMode = 'profile' | 'ad'
+type PhoneFlowMode = 'profile' | 'ad'
 
 const STEP_DESCRIPTIONS: Record<Step['name'], string> = {
   select: 'Выберите один из привязанных номеров или укажите новый',
@@ -174,9 +175,7 @@ export function PhoneFlow({ mode, onDone, onStepChange }: PhoneFlowProps) {
 
       {step.name === 'call' &&
         (isConfirming ? (
-          <View className='items-center py-16'>
-            <ActivityIndicator colorClassName='accent-primary' />
-          </View>
+          <Loader />
         ) : (
           <CallConfirmationStep
             phone={step.phone}

@@ -29,7 +29,7 @@ const SCALAR_PARAMS = [
 
 const FEATURES_PARAM = 'features'
 
-export type CatalogFiltersParams = Partial<Record<(typeof SCALAR_PARAMS)[number] | typeof FEATURES_PARAM, string>>
+type CatalogFiltersParams = Partial<Record<(typeof SCALAR_PARAMS)[number] | typeof FEATURES_PARAM, string>>
 
 type RouteParams = Readonly<Record<string, string | string[] | undefined>>
 
@@ -53,7 +53,7 @@ export const CLEARED_RADIUS: Record<keyof RadiusFilterValue, undefined> = {
 export const CLEARED_PRICE = { unit: undefined, minPrice: undefined, maxPrice: undefined } as const
 
 // Пустое условие только засоряло бы адрес и запрос.
-export function isEmptyFeatureValue(value: FeatureFilterValue): boolean {
+function isEmptyFeatureValue(value: FeatureFilterValue): boolean {
   if (Array.isArray(value)) return value.length === 0
   if (typeof value === 'boolean') return !value
   return value.min === undefined && value.max === undefined
@@ -99,7 +99,7 @@ export const hasOrigin = (filters: RadiusFilterValue) => Boolean(filters.lat && 
 // Сортировка по расстоянию без точки поиска невозможна (сервер ответит
 // 400) — например, точку сняли чипом. Возвращаемся к сортировке по
 // умолчанию, как CatalogSort сайта.
-export function normalizeFilters(filters: CatalogFilters): CatalogFilters {
+function normalizeFilters(filters: CatalogFilters): CatalogFilters {
   return filters.sortBy === DISTANCE_SORT && !hasOrigin(filters) ? { ...filters, sortBy: undefined } : filters
 }
 

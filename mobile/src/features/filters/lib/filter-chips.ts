@@ -15,7 +15,7 @@ import {
 } from './catalog-filters'
 import { findLocationOption } from './locations'
 
-export interface FilterChip {
+interface FilterChip {
   key: string
   label: string
   // Фильтры без этого условия.

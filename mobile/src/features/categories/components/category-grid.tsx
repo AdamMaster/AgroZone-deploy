@@ -1,6 +1,8 @@
 import { useRouter } from 'expo-router'
 import { useCallback } from 'react'
-import { ScrollView, View } from 'react-native'
+import { ScrollView, Text, View } from 'react-native'
+
+import { Button } from '@/shared/components/button'
 
 import { useCategories } from '../hooks/use-categories'
 import type { Category } from '../types/category.types'
@@ -15,7 +17,7 @@ const GRID_WIDTH = 1120
 // них — сразу каталог.
 export function CategoryGrid() {
   const router = useRouter()
-  const { roots } = useCategories()
+  const { roots, error, isFetching, refetch } = useCategories()
 
   const openCategory = useCallback(
     (category: Category) => {
@@ -29,8 +31,16 @@ export function CategoryGrid() {
   )
 
   // Пока дерево не загрузилось, место под плитки не резервируем: лента
-  // ниже тоже ещё грузится, и экран не прыгает.
-  if (!roots.length) return null
+  // ниже тоже ещё грузится, и экран не прыгает. Если загрузка не удалась —
+  // говорим об этом, иначе главная выглядит так, будто категорий нет.
+  if (!roots.length) {
+    return error ? (
+      <View className='mb-7 flex-row items-center gap-3 rounded-xl bg-gray-100 px-4 py-3'>
+        <Text className='min-w-0 flex-1 text-sm text-gray-900'>Не удалось загрузить категории</Text>
+        <Button title='Повторить' variant='outline' size='sm' isLoading={isFetching} onPress={() => void refetch()} />
+      </View>
+    ) : null
+  }
 
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} className='mb-7'>
