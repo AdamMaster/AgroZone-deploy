@@ -1,9 +1,8 @@
-import { Square } from 'lucide-react-native'
 import { useRef, useState } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
-import { ChevronRight, Search } from '@/shared/icons/lucide'
+import { ChevronRight, Clock, Search, X } from '@/shared/icons/lucide'
 
 import type { SearchSuggestion } from '../types/search.types'
 
@@ -25,7 +24,13 @@ interface SearchFocusLayerProps {
   // Само поле — под ним, на его ширину, выпадают подсказки.
   field?: WindowRect
   suggestions: readonly SearchSuggestion[]
+  // Недавние запросы — показываются под пустым полем.
+  history: readonly string[]
+  isHistoryShown: boolean
   onSelect: (suggestion: SearchSuggestion) => void
+  onSelectHistory: (query: string) => void
+  onRemoveHistory: (query: string) => void
+  onClearHistory: () => void
   onClose: () => void
 }
 
@@ -36,7 +41,19 @@ interface SearchFocusLayerProps {
 // по странице должно закрывать поиск на весь экран, поэтому слой рисуется
 // поверх экрана (Portal), а строку обходит: нажатия ловят четыре прозрачные
 // части вокруг неё, и поле остаётся живым — с фокусом и клавиатурой.
-export function SearchFocusLayer({ isActive, bar, field, suggestions, onSelect, onClose }: SearchFocusLayerProps) {
+export function SearchFocusLayer({
+  isActive,
+  bar,
+  field,
+  suggestions,
+  history,
+  isHistoryShown,
+  onSelect,
+  onSelectHistory,
+  onRemoveHistory,
+  onClearHistory,
+  onClose
+}: SearchFocusLayerProps) {
   const rootRef = useRef<View>(null)
   // Где сам слой в окне: координаты строки переводим в его систему.
   const [origin, setOrigin] = useState<{ x: number; y: number } | null>(null)
@@ -48,6 +65,11 @@ export function SearchFocusLayer({ isActive, bar, field, suggestions, onSelect, 
   const top = origin && bar ? bar.y - origin.y : 0
   const left = origin && bar ? bar.x - origin.x : 0
   const bottom = top + (bar?.height ?? 0)
+  // Подсказки и история выпадают под полем на его ширину.
+  const dropdownStyle =
+    origin && field
+      ? { top: field.y - origin.y + field.height + 4, left: field.x - origin.x, width: field.width }
+      : undefined
 
   return (
     <View
@@ -85,8 +107,8 @@ export function SearchFocusLayer({ isActive, bar, field, suggestions, onSelect, 
 
           {suggestions.length > 0 && (
             <View
-              className='absolute max-h-64 overflow-hidden rounded-xl bg-white shadow-lg dark:bg-neutral-700'
-              style={{ top: field.y - origin.y + field.height + 4, left: field.x - origin.x, width: field.width }}
+              className='absolute max-h-64 overflow-hidden rounded-xl bg-white shadow-lg dark:bg-neutral-800'
+              style={dropdownStyle}
             >
               <ScrollView keyboardShouldPersistTaps='handled' contentContainerClassName='py-2'>
                 {suggestions.map(suggestion => (
@@ -109,6 +131,44 @@ export function SearchFocusLayer({ isActive, bar, field, suggestions, onSelect, 
               </ScrollView>
             </View>
           )}
+
+          {/* История смонтирована всегда, показывается только под пустым полем. */}
+          <View
+            className={`absolute max-h-80 overflow-hidden rounded-xl bg-white shadow-lg dark:bg-neutral-700 ${
+              isHistoryShown && history.length > 0 ? 'flex' : 'hidden'
+            }`}
+            style={dropdownStyle}
+          >
+            <View className='flex-row items-center justify-between px-4 pt-3 pb-1'>
+              <Text className='text-sm font-medium text-gray-500'>Вы искали</Text>
+              <Pressable accessibilityRole='button' onPress={onClearHistory} hitSlop={8}>
+                <Text className='text-sm font-medium text-primary'>Очистить</Text>
+              </Pressable>
+            </View>
+            <ScrollView keyboardShouldPersistTaps='handled' contentContainerClassName='pb-2'>
+              {history.map(item => (
+                <Pressable
+                  key={item}
+                  accessibilityRole='link'
+                  onPress={() => onSelectHistory(item)}
+                  className='flex-row items-center gap-3 pl-4 active:bg-gray-50'
+                >
+                  <Clock size={16} color={mutedColor} />
+                  <Text numberOfLines={1} className='flex-1 py-3 text-base text-gray-950'>
+                    {item}
+                  </Text>
+                  <Pressable
+                    accessibilityRole='button'
+                    accessibilityLabel={`Удалить запрос «${item}»`}
+                    onPress={() => onRemoveHistory(item)}
+                    className='h-11 justify-center px-4'
+                  >
+                    <X size={16} color={mutedColor} />
+                  </Pressable>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
         </>
       )}
     </View>

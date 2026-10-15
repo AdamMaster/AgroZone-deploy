@@ -1,7 +1,7 @@
 'use client'
 
-import { useFilterModal } from '@/store'
-import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from 'lucide-react'
+import { useFilterModal, useSearchHistoryStore } from '@/store'
+import { ChevronRight, History, Search, SlidersHorizontal, X } from 'lucide-react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 
@@ -26,6 +26,33 @@ export const SearchBar = ({ className }: SearchBarProps) => {
 
   const { query, setQuery, onSearch, suggestions } = useSearch()
   const { onOpen: onOpenFilterModal } = useFilterModal()
+  const {
+    queries: history,
+    add: addToHistory,
+    remove: removeFromHistory,
+    clear: clearHistory
+  } = useSearchHistoryStore()
+
+  // Недавние запросы показываем, пока поле пустое; как только человек начал
+  // печатать — вместо них подсказки.
+  const isHistoryShown = isFocus && query.trim() === '' && history.length > 0
+
+  const runSearch = (trimmedQuery: string) => {
+    // Цель "search" (F15 в ROADMAP.md) — именно тут, а не в useSearch
+    // (там же живут только подсказки-автокомплит), потому что это момент
+    // реального пользовательского действия "искать", а не каждой буквы,
+    // напечатанной в поле.
+    reachGoal(METRIKA_GOALS.SEARCH, { query: trimmedQuery })
+
+    addToHistory(trimmedQuery)
+
+    router.push(`/catalog?search=${encodeURIComponent(trimmedQuery)}`)
+
+    setIsFocus(false)
+
+    const activeElement = document.activeElement as HTMLElement
+    activeElement?.blur()
+  }
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,20 +64,7 @@ export const SearchBar = ({ className }: SearchBarProps) => {
       return
     }
 
-    // Цель "search" (F15 в ROADMAP.md) — именно тут, а не в useSearch
-    // (там же живут только подсказки-автокомплит), потому что это момент
-    // реального пользовательского действия "искать", а не каждой буквы,
-    // напечатанной в поле.
-    reachGoal(METRIKA_GOALS.SEARCH, { query: trimmedQuery })
-
-    router.push(`/catalog?search=${encodeURIComponent(trimmedQuery)}`)
-
-    setIsFocus(false)
-
-    const activeElement = document.activeElement as HTMLElement
-    activeElement?.blur()
-
-    setIsFocus(false)
+    runSearch(trimmedQuery)
   }
 
   const handleInputChange = (value: string) => {
@@ -137,6 +151,43 @@ export const SearchBar = ({ className }: SearchBarProps) => {
         >
           <SlidersHorizontal className='size-5 text-gray-500' />
         </Button>
+
+        {isHistoryShown && (
+          <div className='custom-shadow absolute top-[calc(100%+4px)] left-0 z-100 max-h-80 w-full overflow-hidden overflow-y-auto rounded-lg bg-white dark:bg-neutral-700'>
+            <div className='flex items-center justify-between px-4 pt-3 pb-1'>
+              <span className='text-sm font-medium text-gray-500'>Вы искали</span>
+              <button type='button' onClick={clearHistory} className='text-sm text-gray-500 hover:text-gray-900'>
+                Очистить
+              </button>
+            </div>
+            <ul className='pb-2'>
+              {history.map(item => (
+                <li
+                  key={item}
+                  onClick={() => {
+                    setQuery(item)
+                    runSearch(item)
+                  }}
+                  className='flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50'
+                >
+                  <History className='size-4 shrink-0 text-gray-500' />
+                  <span className='min-w-0 flex-1 truncate'>{item}</span>
+                  <button
+                    type='button'
+                    aria-label={`Удалить запрос «${item}»`}
+                    onClick={event => {
+                      event.stopPropagation()
+                      removeFromHistory(item)
+                    }}
+                    className='-mr-1 shrink-0 rounded-full p-1 text-gray-400 hover:text-gray-900'
+                  >
+                    <X className='size-4' />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {isFocus && suggestions.length > 0 && (
           <div className='custom-shadow absolute top-[calc(100%+4px)] left-0 z-100 max-h-64 w-full overflow-hidden overflow-y-auto rounded-lg bg-white dark:bg-neutral-700'>

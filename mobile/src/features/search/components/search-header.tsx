@@ -12,6 +12,7 @@ import { SlidersHorizontal, X } from '@/shared/icons/lucide'
 
 import { useSearchSuggestions } from '../hooks/use-search-suggestions'
 import { parseCatalogUrl } from '../lib/catalog-link'
+import { useSearchHistoryStore } from '../store/search-history-store'
 import type { SearchSuggestion } from '../types/search.types'
 import { SearchCancelButton } from './search-cancel-button'
 import { SearchFocusLayer, type WindowRect } from './search-focus-layer'
@@ -59,7 +60,13 @@ export function SearchHeader({
   const [layout, setLayout] = useState<{ bar: WindowRect; field: WindowRect } | null>(null)
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
   const suggestions = useSearchSuggestions(isFocused ? text : '')
-  const mutedColor = useThemeColor('--color-gray-500')
+  const {
+    queries: history,
+    add: addToHistory,
+    remove: removeFromHistory,
+    clear: clearHistory
+  } = useSearchHistoryStore()
+  const isHistoryShown = isFocused && text.trim() === ''
   const textColor = useThemeColor('--color-gray-950')
 
   // Запрос экрана сменился (новый поиск, запрос убрали) — поле показывает его.
@@ -95,10 +102,17 @@ export function SearchHeader({
 
   // Как handleSearch сайта: пустой запрос — весь каталог, иначе каталог по
   // запросу (категория при новом поиске сбрасывается).
-  const submit = () => {
-    const value = text.trim()
+  const search = (value: string) => {
+    addToHistory(value)
     close()
     router.push({ pathname: '/catalog', params: value ? { search: value } : {} })
+  }
+
+  const submit = () => search(text.trim())
+
+  const selectHistory = (value: string) => {
+    setText(value)
+    search(value)
   }
 
   const selectSuggestion = (suggestion: SearchSuggestion) => {
@@ -129,7 +143,7 @@ export function SearchHeader({
           весь экран и лежит под строкой. Нажатия по нему ловит SearchFocusLayer. */}
       <View
         pointerEvents='none'
-        className={`absolute bg-black/20 dark:bg-white/10 ${isFocused ? 'flex' : 'hidden'}`}
+        className={`absolute bg-black/20 dark:bg-black/80 ${isFocused ? 'flex' : 'hidden'}`}
         style={{ top: -windowHeight, bottom: -windowHeight, left: -windowWidth, right: -windowWidth, zIndex: 0 }}
       />
       <View
@@ -141,10 +155,10 @@ export function SearchHeader({
         <View
           ref={fieldRef}
           className={`flex-1 flex-row items-center rounded-2xl p-[2px] ${
-            isFocused ? 'bg-white dark:bg-neutral-900' : 'bg-primary dark:bg-primary'
+            isFocused ? 'bg-white dark:bg-neutral-800' : 'bg-primary dark:bg-primary'
           }`}
         >
-          <View className='flex-1 flex-row items-center rounded-[14px] bg-white dark:bg-neutral-900'>
+          <View className='flex-1 flex-row items-center rounded-[14px] bg-white dark:bg-neutral-800'>
             <TextInput
               ref={inputRef}
               value={text}
@@ -195,7 +209,12 @@ export function SearchHeader({
           bar={layout?.bar}
           field={layout?.field}
           suggestions={suggestions}
+          history={history}
+          isHistoryShown={isHistoryShown}
           onSelect={selectSuggestion}
+          onSelectHistory={selectHistory}
+          onRemoveHistory={removeFromHistory}
+          onClearHistory={clearHistory}
           onClose={close}
         />
       </Portal>
