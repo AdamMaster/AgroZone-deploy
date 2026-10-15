@@ -11,8 +11,11 @@ import {
   Bell,
   CircleQuestionMark,
   Crown,
+  FileText,
   Heart,
+  Info,
   Layers,
+  Lock,
   LogOut,
   MessageCircle,
   Palette,
@@ -56,7 +59,12 @@ const PREMIUM_ITEM: MenuItem = {
 
 const INFO_ITEMS: readonly MenuItem[] = [
   { label: 'Помощь', icon: CircleQuestionMark, target: { kind: 'site', path: '/help' } },
-  { label: 'Правила безопасности', icon: ShieldCheck, target: { kind: 'site', path: '/safety' } }
+  { label: 'Правила безопасности', icon: ShieldCheck, target: { kind: 'site', path: '/safety' } },
+  // На мобильном сайте футер скрыт, а магазины приложений требуют политику
+  // конфиденциальности и условия внутри приложения, поэтому они здесь.
+  { label: 'О компании', icon: Info, target: { kind: 'site', path: '/about' } },
+  { label: 'Политика конфиденциальности', icon: Lock, target: { kind: 'site', path: '/privacy' } },
+  { label: 'Пользовательское соглашение', icon: FileText, target: { kind: 'site', path: '/terms' } }
 ]
 
 const ICON_SIZE = 20

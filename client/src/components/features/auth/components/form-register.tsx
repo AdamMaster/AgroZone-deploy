@@ -67,14 +67,6 @@ export const FormRegister = () => {
       }
       isShowSocial
       onSwitchButtonClick={() => onOpen('login')}
-      socialsFooterNotice={
-        <>
-          Продолжая через Google или Яндекс, вы соглашаетесь на{' '}
-          <Link href='/privacy' target='_blank' className='text-primary underline'>
-            обработку персональных данных
-          </Link>
-        </>
-      }
     >
       <form id='form-rhf-demo' onSubmit={form.handleSubmit(onSubmit)}>
         <FieldGroup>

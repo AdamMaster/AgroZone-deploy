@@ -7,6 +7,7 @@ import { Heading } from '@/components/ui'
 import { cn } from '@/lib/utils'
 
 import { AuthSocials } from './auth-socials'
+import { AuthSocialsNotice } from './auth-socials-notice'
 
 export type AuthTabView = 'login' | 'register-sms'
 
@@ -29,12 +30,6 @@ interface AuthFormWrapperProps {
   // заметной опцией. Показываем только когда передан явно — часть форм
   // (сброс пароля, новый пароль) вообще не участвуют в этом переключении.
   authTabs?: AuthTabsProps
-  // Текст под кнопками входа через соцсети — используем на формах
-  // регистрации для уведомления о согласии на обработку персональных данных
-  // (152-ФЗ): у OAuth нет отдельного шага с чекбоксом, поэтому согласие
-  // подразумевается продолжением через Google/Яндекс, о чём и предупреждает
-  // этот текст (см. AuthService.extractProfileFromCode на сервере).
-  socialsFooterNotice?: ReactNode
 }
 
 export const AuthFormWrapper = ({
@@ -45,7 +40,6 @@ export const AuthFormWrapper = ({
   switchButtonLabel,
   onSwitchButtonClick,
   isShowSocial = true,
-  socialsFooterNotice,
   authTabs
 }: PropsWithChildren<AuthFormWrapperProps>) => {
   return (
@@ -93,9 +87,7 @@ export const AuthFormWrapper = ({
       )}
 
       <div>{isShowSocial && <AuthSocials />}</div>
-      {isShowSocial && socialsFooterNotice && (
-        <p className='text-muted-foreground mt-3 text-xs'>{socialsFooterNotice}</p>
-      )}
+      {isShowSocial && <AuthSocialsNotice />}
       {switchButtonLabel && (
         <button className='mt-4 block w-full text-center hover:opacity-80' onClick={onSwitchButtonClick}>
           {switchButtonLabel}
