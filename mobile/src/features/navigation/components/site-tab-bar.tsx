@@ -4,7 +4,7 @@ import { Keyboard, Platform, Pressable, Text, View } from 'react-native'
 import { useUniwind } from 'uniwind'
 
 import { useRequestSignIn } from '@/features/auth/hooks/use-request-sign-in'
-import { useAuthStore } from '@/features/auth/store/auth-store'
+import { useIsSignedIn } from '@/features/auth/hooks/use-is-signed-in'
 import { useUnreadNotificationsCount } from '@/features/notifications/hooks/use-notifications'
 import { useSupportChatStore } from '@/features/support/store/support-chat-store'
 
@@ -93,7 +93,7 @@ export function SiteTabBar({ state, navigation, insets }: TabBarProps) {
   const pathname = usePathname()
   const requestSignIn = useRequestSignIn()
   const { theme } = useUniwind()
-  const isSignedIn = useAuthStore(store => store.status === 'signedIn')
+  const isSignedIn = useIsSignedIn()
   const inactiveColor = useThemeColor('--color-gray-500')
   const activeTextColor = useThemeColor('--color-gray-950')
   const primaryColor = useThemeColor('--color-primary')

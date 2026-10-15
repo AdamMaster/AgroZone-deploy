@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { useAuthStore } from '@/features/auth/store/auth-store'
+import { useIsSignedIn } from '@/features/auth/hooks/use-is-signed-in'
 
 import { notificationsApi } from '../api/notifications.api'
 
@@ -25,7 +25,7 @@ export function useNotifications() {
 // приложение в фоне, react-query опрос не делает, а при возвращении сразу
 // обновляет (use-react-query-native-managers.ts).
 export function useUnreadNotificationsCount(): number {
-  const isSignedIn = useAuthStore(state => state.status === 'signedIn')
+  const isSignedIn = useIsSignedIn()
 
   const { data } = useQuery({
     queryKey: unreadCountQueryKey,

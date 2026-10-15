@@ -2,7 +2,7 @@ import { type InfiniteData, type QueryKey, useMutation, useQueryClient } from '@
 import { toast } from 'sonner-native'
 
 import { useRequestSignIn } from '@/features/auth/hooks/use-request-sign-in'
-import { useAuthStore } from '@/features/auth/store/auth-store'
+import { useIsSignedIn } from '@/features/auth/hooks/use-is-signed-in'
 
 import { adsApi } from '../api/ads.api'
 import type { AdDetail } from '../types/ad-detail.types'
@@ -32,7 +32,7 @@ const flagItems = (response: AdsListResponse, adId: string, isFavorite: boolean)
 export function useToggleFavorite() {
   const requestSignIn = useRequestSignIn()
   const queryClient = useQueryClient()
-  const isSignedIn = useAuthStore(state => state.status === 'signedIn')
+  const isSignedIn = useIsSignedIn()
 
   const mutation = useMutation({
     mutationFn: ({ adId, isFavorite }: ToggleFavoriteVariables) =>

@@ -3,7 +3,7 @@ import { useIsFocused } from 'expo-router'
 import { useMemo } from 'react'
 import { toast } from 'sonner-native'
 
-import { useAuthStore } from '@/features/auth/store/auth-store'
+import { useIsSignedIn } from '@/features/auth/hooks/use-is-signed-in'
 
 import { blockedUsersApi } from '../api/blocked-users.api'
 import { type MessagesPageParams, conversationsApi } from '../api/conversations.api'
@@ -27,7 +27,7 @@ export const conversationMessagesQueryKey = (conversationId: string) =>
 const showError = (error: Error) => toast.error(error.message)
 
 export function useConversations() {
-  const isSignedIn = useAuthStore(state => state.status === 'signedIn')
+  const isSignedIn = useIsSignedIn()
   const isFocused = useIsFocused()
   const isSocketConnected = useConversationsSocketStore(state => state.isConnected)
 

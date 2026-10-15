@@ -1,7 +1,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 
-import { useAuthStore } from '@/features/auth/store/auth-store'
+import { useIsSignedIn } from '@/features/auth/hooks/use-is-signed-in'
 
 import { uniqueById } from '@/shared/utils/unique-by-id'
 
@@ -16,7 +16,7 @@ export const favoritesQueryKey = ['ads', 'favorites'] as const
 // Избранное текущего пользователя. Сервер отдаёт страницу без общего числа,
 // поэтому следующая страница есть, пока приходят полные страницы.
 export function useFavoritesInfinite() {
-  const isSignedIn = useAuthStore(state => state.status === 'signedIn')
+  const isSignedIn = useIsSignedIn()
 
   const query = useInfiniteQuery({
     queryKey: favoritesQueryKey,

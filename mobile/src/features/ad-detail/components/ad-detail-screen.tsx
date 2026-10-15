@@ -10,7 +10,7 @@ import { useToggleFavorite } from '@/features/ads/hooks/use-toggle-favorite'
 import type { AdDetail } from '@/features/ads/types/ad-detail.types'
 import type { AdListItem } from '@/features/ads/types/ad.types'
 import { useProfile } from '@/features/auth/hooks/use-profile'
-import { useAuthStore } from '@/features/auth/store/auth-store'
+import { useIsSignedIn } from '@/features/auth/hooks/use-is-signed-in'
 
 import type { SheetAction } from '@/shared/components/action-sheet'
 import { ScreenMessage } from '@/shared/components/screen-message'
@@ -64,7 +64,7 @@ export function AdDetailScreen({ id, view, onSwitchToOwnerView }: AdDetailScreen
   const query = useAdDetail(id, view)
   const ad = query.data
   const { data: profile } = useProfile()
-  const isSignedIn = useAuthStore(state => state.status === 'signedIn')
+  const isSignedIn = useIsSignedIn()
   const isOwner = !!ad && !!profile && ad.userId === profile.id
   const counters = useAdCounters(id, { enabled: isOwner })
   const ownerActions = useAdOwnerActions(id)

@@ -2,7 +2,7 @@ import { Linking, Pressable, Text, View } from 'react-native'
 
 import { useRevealPhone } from '@/features/ads/hooks/use-ad-detail'
 import { useRequestSignIn } from '@/features/auth/hooks/use-request-sign-in'
-import { useAuthStore } from '@/features/auth/store/auth-store'
+import { useIsSignedIn } from '@/features/auth/hooks/use-is-signed-in'
 import { useChatNavigation } from '@/features/messages/hooks/use-chat-navigation'
 
 import { formatPhoneInput } from '@/shared/utils/phone'
@@ -15,7 +15,7 @@ interface AdContactButtonsProps {
 // вошедшим; показанный номер — ссылка «позвонить».
 export function AdContactButtons({ adId }: AdContactButtonsProps) {
   const requestSignIn = useRequestSignIn()
-  const isSignedIn = useAuthStore(state => state.status === 'signedIn')
+  const isSignedIn = useIsSignedIn()
   const revealPhone = useRevealPhone()
   const { newConversationHref, openNewConversation } = useChatNavigation()
   const phone = revealPhone.data?.phone

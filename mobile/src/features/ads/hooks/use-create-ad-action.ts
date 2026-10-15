@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router'
 import { useCallback } from 'react'
 
 import { useRequestSignIn } from '@/features/auth/hooks/use-request-sign-in'
-import { useAuthStore } from '@/features/auth/store/auth-store'
+import { useIsSignedIn } from '@/features/auth/hooks/use-is-signed-in'
 
 // «Разместить объявление» — общее для всех мест, где есть эта кнопка
 // (баннер главной, «Мои объявления»). Гостя, как и на сайте, сначала
@@ -10,7 +10,7 @@ import { useAuthStore } from '@/features/auth/store/auth-store'
 export function useCreateAdAction() {
   const router = useRouter()
   const requestSignIn = useRequestSignIn()
-  const isSignedIn = useAuthStore(state => state.status === 'signedIn')
+  const isSignedIn = useIsSignedIn()
 
   return useCallback(() => {
     if (!isSignedIn) {

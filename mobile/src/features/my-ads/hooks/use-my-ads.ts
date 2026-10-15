@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 
-import { useAuthStore } from '@/features/auth/store/auth-store'
+import { useIsSignedIn } from '@/features/auth/hooks/use-is-signed-in'
 
 import { uniqueById } from '@/shared/utils/unique-by-id'
 
@@ -17,7 +17,7 @@ export const myAdsQueryKeyPrefix = ['ads', 'my'] as const
 // Вкладки с числом объявлений в каждой. Пустые вкладки не показываются —
 // как на сайте.
 export function useMyAdsTabs() {
-  const isSignedIn = useAuthStore(state => state.status === 'signedIn')
+  const isSignedIn = useIsSignedIn()
 
   const query = useQuery({
     queryKey: [...myAdsQueryKeyPrefix, 'status-counts'],
@@ -46,7 +46,7 @@ export function useMyAdsTabs() {
 // Объявления одной вкладки. Сервер отдаёт страницу без общего числа —
 // следующая страница есть, пока приходят полные.
 export function useMyAdsList(tab: MyAdsTab | undefined) {
-  const isSignedIn = useAuthStore(state => state.status === 'signedIn')
+  const isSignedIn = useIsSignedIn()
 
   const query = useInfiniteQuery({
     queryKey: [...myAdsQueryKeyPrefix, 'list', tab?.key],

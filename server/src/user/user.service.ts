@@ -660,7 +660,12 @@ export class UserService {
   // S3 файл (контроллер вызывает FileService.uploadFile сам, с папкой
   // 'presentations', а не 'avatars'), тут только: удалить старый файл,
   // если был, и сохранить новые ссылку/имя/размер.
-  async updatePresentation(userId: string, uploadResult: { url: string; fileId: string }, originalName: string, fileSize: number) {
+  async updatePresentation(
+    userId: string,
+    uploadResult: { url: string; fileId: string },
+    originalName: string,
+    fileSize: number
+  ) {
     const user = await this.findById(userId)
 
     if (user.presentationUrl) {
@@ -748,6 +753,13 @@ export class UserService {
 
     if (!user.isVerified) {
       throw new BadRequestException('Сначала подтвердите аккаунт')
+    }
+
+    // Код второго фактора приходит на почту (AuthService.login), а без почты
+    // при входе он не запрашивается вовсе: включённая защита была бы
+    // мнимой. Выключить можно всегда — в том числе уже включённую без почты.
+    if (!user.isTwoFactorEnabled && !user.email) {
+      throw new BadRequestException('Сначала привяжите почту: код двухфакторной аутентификации приходит на неё')
     }
 
     const updated = await this.prismaService.user.update({

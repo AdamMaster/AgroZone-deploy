@@ -23,6 +23,9 @@ export function ProfileSecurityScreen() {
   const queryClient = useQueryClient()
   const { data: profile, error, isPending, refetch } = useProfile()
   const { mutate: toggleTwoFactor, isPending: isTogglingTwoFactor } = useToggleTwoFactor()
+  // Код второго фактора приходит на почту: без неё включить защиту нельзя
+  // (сервер откажет), а уже включённую без почты выключить можно.
+  const canToggleTwoFactor = !!profile?.email || !!profile?.isTwoFactorEnabled
 
   // Профиль вместе с журналом (он под тем же ключом).
   const refresh = () => queryClient.invalidateQueries({ queryKey: profileQueryKey })
@@ -58,15 +61,19 @@ export function ProfileSecurityScreen() {
           </View>
 
           <View className='gap-4'>
-            <Heading level={5}>Двух-факторная аутентификация</Heading>
+            <Heading level={5}>Двухфакторная аутентификация</Heading>
             <SettingsCard
               label='Двухфакторная аутентификация'
-              description='Включите двухфакторную аутентификацию, чтобы защитить свой аккаунт'
+              description={
+                canToggleTwoFactor
+                  ? 'Включите двухфакторную аутентификацию, чтобы защитить свой аккаунт'
+                  : 'Сначала привяжите почту в разделе «Личные данные»: код подтверждения приходит на неё'
+              }
               action={
                 <Switch
                   value={profile.isTwoFactorEnabled}
                   onValueChange={() => toggleTwoFactor()}
-                  disabled={isTogglingTwoFactor}
+                  disabled={isTogglingTwoFactor || !canToggleTwoFactor}
                   accessibilityLabel='Двухфакторная аутентификация'
                 />
               }

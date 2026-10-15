@@ -25,6 +25,9 @@ export const ContentSecurity = () => {
   const { user, isLoading } = useProfile()
   const { onOpen } = useAppModal()
   const { toggle2fa, isToggleLoading } = useTwoFactorMutation()
+  // Код второго фактора приходит на почту: без неё включить защиту нельзя
+  // (сервер откажет), а уже включённую без почты выключить можно.
+  const canToggleTwoFactor = !!user?.email || !!user?.isTwoFactorEnabled
 
   return (
     <div className=''>
@@ -51,7 +54,7 @@ export const ContentSecurity = () => {
         </div>
         <div>
           <Heading level={5} className='mb-4'>
-            Двух-факторная аутентификация
+            Двухфакторная аутентификация
           </Heading>
           {isLoading ? (
             <Skeleton className='rounded-1 h-17 w-full' />
@@ -61,13 +64,15 @@ export const ContentSecurity = () => {
                 <div className='space-y-0.5'>
                   <Label>Двухфакторная аутентификация</Label>
                   <FieldDescription>
-                    Включите двухфакторную аутентификацию, чтобы защитить свой аккаунт
+                    {canToggleTwoFactor
+                      ? 'Включите двухфакторную аутентификацию, чтобы защитить свой аккаунт'
+                      : 'Сначала привяжите почту в разделе «Личные данные»: код подтверждения приходит на неё'}
                   </FieldDescription>
                 </div>
                 <Switch
                   checked={user?.isTwoFactorEnabled ?? false}
                   onCheckedChange={() => toggle2fa()}
-                  disabled={isToggleLoading || isLoading}
+                  disabled={isToggleLoading || isLoading || !canToggleTwoFactor}
                 />
               </div>
             </Field>

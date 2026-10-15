@@ -635,11 +635,21 @@ describe('UserService', () => {
     })
 
     it('2FA: включение и выключение пишут разные типы событий', async () => {
-      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', isVerified: true, isTwoFactorEnabled: false })
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        email: 'user@example.com',
+        isVerified: true,
+        isTwoFactorEnabled: false
+      })
       prisma.user.update.mockResolvedValueOnce({ id: 'user-1', isTwoFactorEnabled: true })
       await service.toggleTwoFactor('user-1')
 
-      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', isVerified: true, isTwoFactorEnabled: true })
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        email: 'user@example.com',
+        isVerified: true,
+        isTwoFactorEnabled: true
+      })
       prisma.user.update.mockResolvedValueOnce({ id: 'user-1', isTwoFactorEnabled: false })
       await service.toggleTwoFactor('user-1')
 
@@ -648,6 +658,37 @@ describe('UserService', () => {
         type: SecurityEventType.TWO_FACTOR_ENABLED
       })
       expect(securityEventsService.record).toHaveBeenNthCalledWith(2, {
+        userId: 'user-1',
+        type: SecurityEventType.TWO_FACTOR_DISABLED
+      })
+    })
+
+    it('2FA: без почты включить нельзя — код второго фактора некуда отправлять', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        email: null,
+        isVerified: true,
+        isTwoFactorEnabled: false
+      })
+
+      await expect(service.toggleTwoFactor('user-1')).rejects.toThrow('Сначала привяжите почту')
+
+      expect(prisma.user.update).not.toHaveBeenCalled()
+      expect(securityEventsService.record).not.toHaveBeenCalled()
+    })
+
+    it('2FA: уже включённую без почты защиту выключить можно', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        email: null,
+        isVerified: true,
+        isTwoFactorEnabled: true
+      })
+      prisma.user.update.mockResolvedValueOnce({ id: 'user-1', isTwoFactorEnabled: false })
+
+      await service.toggleTwoFactor('user-1')
+
+      expect(securityEventsService.record).toHaveBeenCalledWith({
         userId: 'user-1',
         type: SecurityEventType.TWO_FACTOR_DISABLED
       })
