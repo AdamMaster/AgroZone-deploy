@@ -8,6 +8,10 @@ export interface UploadFile {
   webFile?: File
 }
 
+// Запрос с фото по мобильной сети идёт дольше обычных 15 секунд: объявление
+// (до 15 фото) и сообщение чата (до 5).
+export const UPLOAD_TIMEOUT_MS = 180_000
+
 // На телефоне fetch читает файл сам по uri: в FormData кладётся описание
 // {uri, name, type} (так устроен FormData в React Native, отсюда
 // приведение типа), в вебе — сам File.

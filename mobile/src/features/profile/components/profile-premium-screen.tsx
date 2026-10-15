@@ -3,11 +3,11 @@ import { ActivityIndicator, Text, View } from 'react-native'
 import { useProfile } from '@/features/auth/hooks/use-profile'
 
 import { Button } from '@/shared/components/button'
+import { usePaidSitePage } from '@/shared/hooks/use-paid-site-page'
 import { useRefetchOnFocus } from '@/shared/hooks/use-refetch-on-focus'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
 import { Check, Crown } from '@/shared/icons/lucide'
 import { formatFullDate, isFutureDate } from '@/shared/utils/date'
-import { openSitePage } from '@/shared/utils/open-site-page'
 
 import { ProfileSectionScreen } from './profile-section-screen'
 
@@ -35,18 +35,19 @@ const BENEFITS = [
   }
 ] as const
 
-// Оплата — на сайте (как и «Поднять объявление»): страница премиума
-// открывается во встроенном браузере, после оплаты статус обновится при
-// возвращении в приложение.
-const openPremiumCheckout = () => void openSitePage('/profile/settings/premium')
-
-// «Премиум Аккаунт» — как /profile/settings/premium сайта.
+// «Премиум Аккаунт» — как /profile/settings/premium сайта. Оплата — на сайте
+// (как и «Поднять объявление»): страница премиума открывается во встроенном
+// браузере, после оплаты статус обновится при возвращении в приложение
+// (usePaidSitePage).
 export function ProfilePremiumScreen() {
   const { data: profile, isPending, refetch } = useProfile()
   const primaryColor = useThemeColor('--color-primary')
   const premiumUntil = isFutureDate(profile?.premiumUntil) ? profile?.premiumUntil : null
 
   useRefetchOnFocus(refetch)
+
+  const openSitePage = usePaidSitePage(refetch)
+  const openPremiumCheckout = () => void openSitePage('/profile/settings/premium')
 
   return (
     <ProfileSectionScreen title='Премиум Аккаунт' onRefresh={refetch}>

@@ -3,13 +3,11 @@ import { type UploadFile, appendFile } from '@/lib/api/upload-file'
 import type { AdFormValues } from '../schemas/ad-form.schema'
 import type { AdFormPhoto } from '../types/ad-form.types'
 import { type FeatureValues } from './feature-values'
+import { normalizePrice } from './price'
 
 // Имя поля для новых фото у разных ручек сервера: создание и черновик —
 // 'files', изменение объявления (PATCH /ads/:id) — 'images'.
 export type NewPhotosField = 'files' | 'images'
-
-// Цена из поля ввода: «1 500,5» → «1500.5».
-const normalizePrice = (price: string): string => price.replace(/\s/g, '').replace(',', '.')
 
 // Тело запроса объявления — как buildAdFormData + appendImageFields сайта.
 export function buildAdFormData(

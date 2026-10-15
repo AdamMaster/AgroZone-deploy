@@ -1,7 +1,8 @@
-import { Stack, ThemeProvider, useRouter } from 'expo-router'
+import { type ErrorBoundaryProps, Stack, ThemeProvider, useRouter } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect } from 'react'
+import { View } from 'react-native'
 
 import { AppProviders } from '@/providers/app-providers'
 import { useNavigationTheme } from '@/providers/use-navigation-theme'
@@ -10,6 +11,8 @@ import { useAuthStore } from '@/features/auth/store/auth-store'
 import { ConversationsRealtime } from '@/features/messages/components/conversations-realtime'
 import { SupportRealtime } from '@/features/support/components/support-realtime'
 import { themeHydrated } from '@/features/theme/store/theme-store'
+
+import { ScreenMessage } from '@/shared/components/screen-message'
 
 import '@/global.css'
 
@@ -84,6 +87,21 @@ function RootNavigator() {
         </Stack.Protected>
       </Stack>
     </>
+  )
+}
+
+// Ошибка при отрисовке любого экрана: вместо вылета — сообщение и «Повторить».
+// Boundary заменяет весь корневой макет, поэтому здесь нет провайдеров:
+// описание ошибки показываем только в разработке.
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return (
+    <View className='flex-1 bg-background'>
+      <ScreenMessage
+        title='Что-то пошло не так'
+        description={__DEV__ ? error.message : 'Попробуйте ещё раз. Если ошибка повторится, перезапустите приложение.'}
+        action={{ title: 'Повторить', onPress: () => void retry() }}
+      />
+    </View>
   )
 }
 

@@ -1,5 +1,5 @@
 import { useFocusEffect } from 'expo-router'
-import { useCallback, useEffect } from 'react'
+import { useCallback } from 'react'
 
 import { useProfile } from '@/features/auth/hooks/use-profile'
 import { ChatHeader } from '@/features/messages/components/chat-header'
@@ -34,9 +34,11 @@ export function SupportChatScreen() {
     }, [setChatOpen, setHasUnread])
   )
 
-  useEffect(() => {
-    if (lastMessageId) markRead()
-  }, [lastMessageId, markRead])
+  useFocusEffect(
+    useCallback(() => {
+      if (lastMessageId) markRead()
+    }, [lastMessageId, markRead])
+  )
 
   const userId = profile?.id
   const isOwnMessage = useCallback((message: ChatMessage) => message.senderId === userId, [userId])

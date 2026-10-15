@@ -1,4 +1,5 @@
-import { useCallback, useEffect } from 'react'
+import { useFocusEffect } from 'expo-router'
+import { useCallback } from 'react'
 
 import { useProfile } from '@/features/auth/hooks/use-profile'
 
@@ -26,10 +27,13 @@ export function ConversationChatScreen({ conversationId }: { conversationId: str
   const lastMessageId = history.messages?.at(-1)?.id
 
   // Диалог на экране — всё, что в нём есть, прочитано: при открытии и при
-  // каждом новом сообщении.
-  useEffect(() => {
-    if (lastMessageId) markRead(conversationId)
-  }, [conversationId, lastMessageId, markRead])
+  // каждом новом сообщении. Пока поверх чата открыт другой экран (например,
+  // объявление из шапки), сообщения не прочитаны.
+  useFocusEffect(
+    useCallback(() => {
+      if (lastMessageId) markRead(conversationId)
+    }, [conversationId, lastMessageId, markRead])
+  )
 
   const userId = profile?.id
   const isOwnMessage = useCallback((message: ChatMessage) => message.senderId === userId, [userId])

@@ -17,7 +17,7 @@ export function AdContactButtons({ adId }: AdContactButtonsProps) {
   const requestSignIn = useRequestSignIn()
   const isSignedIn = useAuthStore(state => state.status === 'signedIn')
   const revealPhone = useRevealPhone()
-  const { openNewConversation } = useChatNavigation()
+  const { newConversationHref, openNewConversation } = useChatNavigation()
   const phone = revealPhone.data?.phone
 
   const handlePhonePress = () => {
@@ -35,10 +35,11 @@ export function AdContactButtons({ adId }: AdContactButtonsProps) {
   }
 
   // Переписка с продавцом открывается поверх объявления. Гостя сначала
-  // просим войти — написать анонимно нельзя, как и на сайте.
+  // просим войти — написать анонимно нельзя, как и на сайте; после входа
+  // он попадает сразу в переписку (returnTo окна входа на сайте).
   const handleWritePress = () => {
     if (!isSignedIn) {
-      requestSignIn()
+      requestSignIn(newConversationHref(adId))
       return
     }
 

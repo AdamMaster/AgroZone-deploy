@@ -18,7 +18,13 @@ export function useAdDetail(id: string, view: AdDetailView) {
   return useQuery({
     queryKey: [...adDetailQueryKey(id), view],
     queryFn: ({ signal }) =>
-      view === 'owner' ? adDetailApi.fetchForOwner(id, signal) : adDetailApi.fetchPublic(id, signal)
+      view === 'owner' ? adDetailApi.fetchForOwner(id, signal) : adDetailApi.fetchPublic(id, signal),
+    // Владелец снял объявление с публикации — страница переключается на вид
+    // владельца (публичный вид такого объявления уже недоступен). Пока он
+    // грузится, остаётся прежний экран, а не скелетон на весь экран. Между
+    // разными объявлениями прежние данные не показываются: страница
+    // пересоздаётся по id (см. маршрут ads/[id]).
+    placeholderData: keepPreviousData
   })
 }
 

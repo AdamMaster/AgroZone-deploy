@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router'
+import { type Href, useRouter } from 'expo-router'
 import { useCallback } from 'react'
 
 import { useTabStack } from '@/features/navigation/hooks/use-tab-stack'
@@ -17,9 +17,14 @@ export function useChatNavigation() {
 
   // «Написать» на странице объявления. Если диалог по нему уже есть, экран
   // нового диалога сам перейдёт в него.
+  const newConversationHref = useCallback(
+    (adId: string): Href => ({ pathname: `/(tabs)/${stack}/chat/new`, params: { adId } }),
+    [stack]
+  )
+
   const openNewConversation = useCallback(
-    (adId: string) => router.push({ pathname: `/(tabs)/${stack}/chat/new`, params: { adId } }),
-    [router, stack]
+    (adId: string) => router.push(newConversationHref(adId)),
+    [router, newConversationHref]
   )
 
   // Диалог по объявлению уже есть (или только что создан первым
@@ -37,5 +42,12 @@ export function useChatNavigation() {
     [router, stack]
   )
 
-  return { openConversation, openNewConversation, replaceWithConversation, openSupportChat, openSupportConversation }
+  return {
+    openConversation,
+    newConversationHref,
+    openNewConversation,
+    replaceWithConversation,
+    openSupportChat,
+    openSupportConversation
+  }
 }

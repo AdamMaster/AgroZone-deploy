@@ -137,7 +137,7 @@ export const SearchBar = ({ className }: SearchBarProps) => {
           type='submit'
           variant='default'
           aria-label='Найти'
-          className='text-md hidden h-12! px-5 font-normal md:flex'
+          className='text-md ml-0.5 hidden h-12! px-5 font-normal md:flex'
           onClick={() => onClickButton()}
         >
           <Search className={cn('size-5 text-white')} />

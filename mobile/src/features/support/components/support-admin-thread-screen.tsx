@@ -1,5 +1,5 @@
 import { useFocusEffect } from 'expo-router'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Pressable } from 'react-native'
 
 import { ChatHeader } from '@/features/messages/components/chat-header'
@@ -51,9 +51,11 @@ export function SupportAdminThreadScreen({ conversationId }: { conversationId: s
     }, [conversationId, setAdminView, leaveAdminView])
   )
 
-  useEffect(() => {
-    if (lastMessageId) markRead(conversationId)
-  }, [conversationId, lastMessageId, markRead])
+  useFocusEffect(
+    useCallback(() => {
+      if (lastMessageId) markRead(conversationId)
+    }, [conversationId, lastMessageId, markRead])
+  )
 
   const isOwnMessage = useCallback(
     (message: ChatMessage) => !!participant && isSupportSideMessage(participant, message),

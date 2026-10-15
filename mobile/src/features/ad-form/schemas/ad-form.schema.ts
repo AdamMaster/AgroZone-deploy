@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { isValidPhone } from '@/shared/utils/phone'
 
+import { isValidPrice } from '../lib/price'
 import type { AdFormPhoto } from '../types/ad-form.types'
 
 // Правила и тексты ошибок — как CreateAdSchema сайта.
@@ -9,7 +10,7 @@ export const adFormSchema = z.object({
   title: z.string().trim().min(3, 'Название должно быть не менее 3 символов'),
   description: z.string().trim().min(10, 'Описание должно быть не менее 10 символов'),
   // Строкой, как в поле ввода; пусто — «цена не указана».
-  price: z.string(),
+  price: z.string().refine(isValidPrice, 'Введите корректную цену'),
   unit: z.string(),
   photos: z.array(z.custom<AdFormPhoto>()),
   address: z.string().trim().min(5, 'Укажите адрес'),

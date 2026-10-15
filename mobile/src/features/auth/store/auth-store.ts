@@ -17,8 +17,17 @@ export const profileQueryKey = ['profile'] as const
 // Объявления зависят от того, кто вошёл (например, отметка «в избранном»).
 const ADS_QUERY_KEY = ['ads'] as const
 // Данные, принадлежащие пользователю целиком: при смене пользователя их
-// нельзя показывать даже мельком.
-const USER_QUERY_KEYS = [['notifications'], ['conversations'], ['blocked-users'], ['support']] as const
+// нельзя показывать даже мельком. Избранное и «Мои объявления» лежат под
+// префиксом ['ads'], но тоже чужие следующему вошедшему: их удаляем, а не
+// помечаем устаревшими (устаревшие показываются до ответа сервера).
+const USER_QUERY_KEYS = [
+  ['notifications'],
+  ['conversations'],
+  ['blocked-users'],
+  ['support'],
+  ['ads', 'favorites'],
+  ['ads', 'my']
+] as const
 
 interface AuthState {
   status: AuthStatus
@@ -35,8 +44,8 @@ interface AuthState {
 
 // При смене пользователя (вход, выход) его данные нельзя показывать из
 // кэша: профиль (вместе с журналом безопасности под тем же префиксом),
-// уведомления и переписку удаляем, объявления перезапрашиваем. Перезапрос не
-// ждём — вход и выход не должны зависеть от скорости загрузки ленты.
+// уведомления, переписку, избранное и «Мои объявления» удаляем, остальные
+// объявления перезапрашиваем. Перезапрос не ждём — вход и выход не должны зависеть от скорости загрузки ленты.
 function resetUserDependentQueries() {
   queryClient.removeQueries({ queryKey: profileQueryKey })
   for (const queryKey of USER_QUERY_KEYS) queryClient.removeQueries({ queryKey })

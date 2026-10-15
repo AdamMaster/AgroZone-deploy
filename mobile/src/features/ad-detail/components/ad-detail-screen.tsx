@@ -15,10 +15,10 @@ import { useAuthStore } from '@/features/auth/store/auth-store'
 import type { SheetAction } from '@/shared/components/action-sheet'
 import { ScreenMessage } from '@/shared/components/screen-message'
 import { PRICE_UNITS, WHOLE_PRICE_UNIT } from '@/shared/constants/price-units'
+import { usePaidSitePage } from '@/shared/hooks/use-paid-site-page'
 import { useRefetchOnFocus } from '@/shared/hooks/use-refetch-on-focus'
 import { isFutureDate } from '@/shared/utils/date'
 import { formatPrice } from '@/shared/utils/format-price'
-import { openSitePage } from '@/shared/utils/open-site-page'
 
 import { ApiError } from '@/lib/api/api-error'
 
@@ -75,6 +75,13 @@ export function AdDetailScreen({ id, view, onSwitchToOwnerView }: AdDetailScreen
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   useRefetchOnFocus(query.refetch)
+
+  // Платные услуги оплачиваются на сайте: после возвращения подтягиваем
+  // объявление (подняли, выделили) и его счётчики.
+  const openSitePage = usePaidSitePage(() => {
+    void query.refetch()
+    if (isOwner) void counters.refetch()
+  })
 
   if (!ad) {
     const isNotFound = query.error instanceof ApiError && query.error.statusCode === 404
@@ -180,7 +187,6 @@ export function AdDetailScreen({ id, view, onSwitchToOwnerView }: AdDetailScreen
             pendingAction={ownerActions.pendingAction}
             onStatusAction={changeStatus}
             onRemove={() => setIsRemoveDialogOpen(true)}
-            // Платные услуги пока оплачиваются на сайте.
             onPromote={() => void openSitePage(`/ads/${ad.id}/promote`)}
             onOpenStats={() => openAdStats(ad.id)}
           />

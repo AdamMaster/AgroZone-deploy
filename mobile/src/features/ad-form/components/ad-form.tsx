@@ -226,6 +226,7 @@ export function AdForm(props: AdFormProps) {
                 render={({ field, fieldState }) => (
                   <FormField label='Название объявления' error={fieldState.error?.message}>
                     <Input
+                      ref={field.ref}
                       value={field.value}
                       onChangeText={field.onChange}
                       onBlur={field.onBlur}
@@ -240,9 +241,10 @@ export function AdForm(props: AdFormProps) {
                   <Controller
                     control={form.control}
                     name='price'
-                    render={({ field }) => (
-                      <FormField label='Цена'>
+                    render={({ field, fieldState }) => (
+                      <FormField label='Цена' error={fieldState.error?.message}>
                         <Input
+                          ref={field.ref}
                           value={field.value}
                           onChangeText={text => field.onChange(text.replace(/[^\d.,\s]/g, ''))}
                           onBlur={field.onBlur}
@@ -277,6 +279,7 @@ export function AdForm(props: AdFormProps) {
                 render={({ field, fieldState }) => (
                   <FormField label='Описание' error={fieldState.error?.message}>
                     <Input
+                      ref={field.ref}
                       multiline
                       value={field.value}
                       onChangeText={field.onChange}

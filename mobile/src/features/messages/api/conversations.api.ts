@@ -1,5 +1,5 @@
 import { apiClient } from '@/lib/api/api-client'
-import { appendFile } from '@/lib/api/upload-file'
+import { UPLOAD_TIMEOUT_MS, appendFile } from '@/lib/api/upload-file'
 
 import type { ChatMessage, ConversationListItem, MessageDraft, StartConversationResponse } from '../types/message.types'
 
@@ -29,13 +29,17 @@ export const conversationsApi = {
   // Диалог начинает покупатель первым сообщением по объявлению; повторное
   // обращение по тому же объявлению попадает в уже существующий диалог.
   start: (adId: string, draft: MessageDraft) =>
-    apiClient.post<StartConversationResponse>('/conversations', messageForm(draft, { adId })),
+    apiClient.post<StartConversationResponse>('/conversations', messageForm(draft, { adId }), {
+      timeoutMs: UPLOAD_TIMEOUT_MS
+    }),
 
   messages: (conversationId: string, params: MessagesPageParams, signal?: AbortSignal) =>
     apiClient.get<ChatMessage[]>(`/conversations/${conversationId}/messages`, { params: { ...params }, signal }),
 
   send: (conversationId: string, draft: MessageDraft) =>
-    apiClient.post<ChatMessage>(`/conversations/${conversationId}/messages`, messageForm(draft)),
+    apiClient.post<ChatMessage>(`/conversations/${conversationId}/messages`, messageForm(draft), {
+      timeoutMs: UPLOAD_TIMEOUT_MS
+    }),
 
   markRead: (conversationId: string) =>
     apiClient.patch<void>(`/conversations/${conversationId}/read`, undefined, { expectBody: false }),
