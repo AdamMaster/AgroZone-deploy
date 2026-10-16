@@ -1,8 +1,8 @@
 import { Linking, Pressable, Text, View } from 'react-native'
 
 import { useRevealPhone } from '@/features/ads/hooks/use-ad-detail'
-import { useRequestSignIn } from '@/features/auth/hooks/use-request-sign-in'
 import { useIsSignedIn } from '@/features/auth/hooks/use-is-signed-in'
+import { useRequestSignIn } from '@/features/auth/hooks/use-request-sign-in'
 import { useChatNavigation } from '@/features/messages/hooks/use-chat-navigation'
 
 import { formatPhoneInput } from '@/shared/utils/phone'

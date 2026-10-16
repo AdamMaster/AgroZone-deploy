@@ -45,7 +45,7 @@
     }
 
     @variant dark {
-      --color-background: #262626;
+      --color-background: #171717;
       --color-foreground: #fafafa;
       --color-card: #333333;
       --color-muted: #333333;

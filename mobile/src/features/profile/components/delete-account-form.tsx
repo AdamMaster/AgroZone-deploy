@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
+import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import { Text, View } from 'react-native'
 
@@ -7,14 +8,22 @@ import { useAuthStore } from '@/features/auth/store/auth-store'
 
 import { Button } from '@/shared/components/button'
 import { FormError } from '@/shared/components/form-error'
-import { TextField } from '@/shared/components/text-field'
+import { FormField } from '@/shared/components/form-field'
+import { PasswordInput } from '@/shared/components/input'
 
 import { profileApi } from '../api/profile.api'
+import { FormIntro } from './form-intro'
+
+// Ответы сервера, относящиеся к полю «Пароль», — показываем у поля, как сайт
+// (UserService.deleteAccount).
+const PASSWORD_ERRORS = ['Неверный пароль', 'Необходимо указать пароль для подтверждения']
 
 export function DeleteAccountForm() {
+  const router = useRouter()
   const clearLocalSession = useAuthStore(state => state.clearLocalSession)
   const { data: profile } = useProfile()
   const [password, setPassword] = useState('')
+  const [passwordError, setPasswordError] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
 
   // Аккаунт только с входом через Яндекс пароля не имеет — тогда не
@@ -25,43 +34,61 @@ export function DeleteAccountForm() {
     mutationFn: () => profileApi.deleteAccount(needsPassword ? password : undefined),
     // Сессию сервер уже завершил — достаточно забыть ключ на телефоне.
     onSuccess: () => clearLocalSession(),
-    onError: error => setFormError(error.message)
+    onError: error => {
+      if (PASSWORD_ERRORS.includes(error.message)) setPasswordError(error.message)
+      else setFormError(error.message)
+    }
   })
 
   const submit = () => {
+    setFormError(null)
+
     if (needsPassword && !password) {
-      setFormError('Введите пароль для подтверждения')
+      setPasswordError('Введите пароль для подтверждения')
       return
     }
 
-    setFormError(null)
+    setPasswordError(null)
     deleteAccount()
   }
 
+  const changePassword = (value: string) => {
+    setPassword(value)
+    setPasswordError(null)
+  }
+
   return (
-    <View className='gap-5'>
-      <Text className='text-sm text-muted-foreground'>
+    <View>
+      <FormIntro>Это действие необратимо</FormIntro>
+
+      <Text className='mb-6 text-sm text-gray-500'>
         Аккаунт будет удалён без возможности восстановления. Ваши объявления пропадут из каталога и будут удалены через
         30 дней. Переписки останутся у собеседников, но будут отображаться от лица удалённого пользователя.
       </Text>
 
-      <FormError message={formError} />
+      <View className='gap-4'>
+        <FormError message={formError} />
 
-      {needsPassword && (
-        <TextField
-          label='Пароль'
-          value={password}
-          onChangeText={setPassword}
-          isPassword
-          autoCapitalize='none'
-          autoComplete='current-password'
-          textContentType='password'
-          returnKeyType='done'
-          onSubmitEditing={submit}
-        />
-      )}
+        {needsPassword && (
+          <FormField error={passwordError ?? undefined}>
+            <PasswordInput
+              value={password}
+              onChangeText={changePassword}
+              placeholder='Пароль'
+              accessibilityLabel='Пароль'
+              autoComplete='current-password'
+              textContentType='password'
+              returnKeyType='done'
+              onSubmitEditing={submit}
+            />
+          </FormField>
+        )}
+      </View>
 
-      <Button title='Удалить аккаунт' variant='destructive' isLoading={isPending} onPress={submit} />
+      <View className='mt-8 flex-row flex-wrap gap-2'>
+        <Button title='Отмена' variant='outline' disabled={isPending} onPress={() => router.back()} />
+        <Button title='Удалить аккаунт' variant='destructive' isLoading={isPending} onPress={submit} />
+      </View>
     </View>
   )
 }

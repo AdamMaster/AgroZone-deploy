@@ -30,8 +30,8 @@ const getCellStyle = (index: number) => {
   const isLeftColumn = index % NUM_COLUMNS === 0
 
   return {
-    paddingLeft: isLeftColumn ? 0 : COLUMN_GAP / 2,
-    paddingRight: isLeftColumn ? COLUMN_GAP / 2 : 0,
+    paddingLeft: isLeftColumn ? 0 : COLUMN_GAP,
+    paddingRight: isLeftColumn ? COLUMN_GAP : 0,
     paddingBottom: ROW_GAP
   }
 }
@@ -81,9 +81,6 @@ export function AdsGrid({ query, header, emptyMessage }: AdsGridProps) {
     </View>
   )
 
-  // Следующую страницу не запрашиваем, пока висит ошибка предыдущей:
-  // иначе при каждом касании конца списка уходил бы новый запрос, а
-  // пользователь видел бы мигание. Повтор — по кнопке в подвале.
   const loadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage && !isFetchNextPageError) {
       void fetchNextPage()

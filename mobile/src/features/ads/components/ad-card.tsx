@@ -81,7 +81,7 @@ export const AdCard = memo(function AdCard({ ad, onOpen, onToggleFavorite, isFav
           {distanceLabel && <Text className='text-gray-500'> · {distanceLabel}</Text>}
         </Text>
 
-        <View className='absolute -top-1.5 right-0'>
+        <View className='absolute -top-1.5 -right-0.5'>
           <FavoriteButton
             isFavorite={!!ad.isFavorite}
             isLoading={isFavoritePending}

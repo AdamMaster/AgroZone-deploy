@@ -15,7 +15,7 @@ const FAVORITE_COLOR = '#fb2c36'
 
 // Сердечко «в избранное» — как FavoriteButton сайта: серый контур или
 // красное залитое сердце.
-export function FavoriteButton({ isFavorite, isLoading = false, onPress, size = 16 }: FavoriteButtonProps) {
+export function FavoriteButton({ isFavorite, isLoading = false, onPress, size = 18 }: FavoriteButtonProps) {
   const idleColor = useThemeColor('--color-gray-400')
 
   return (
