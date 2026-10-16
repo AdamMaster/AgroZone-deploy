@@ -1,7 +1,12 @@
 import { BadRequestException } from '@nestjs/common'
 import sharp from 'sharp'
 
-import { PHOTO_VARIANT_QUALITY, type PhotoVariantSize } from './photo-variants.util'
+import {
+  PHOTO_CARD_QUALITY,
+  PHOTO_CARD_SIZE,
+  PHOTO_VARIANT_QUALITY,
+  type PhotoVariantSize
+} from './photo-variants.util'
 
 // Форматы, которые принимаем на входе. Определяются по содержимому файла
 // (sharp читает сигнатуру/заголовок), а не по имени и не по mimetype из
@@ -132,6 +137,32 @@ export async function createPhotoVariants(
     )
 
     return new Map(entries)
+  } finally {
+    release()
+  }
+}
+
+// Квадратная копия для карточек ленты (см. PHOTO_CARD_SIZE): обрезка по центру
+// — так же, как object-cover у карточки, поэтому на ленте фото выглядит так же,
+// как раньше. Меньше размера не растягивается: у маленького фото сторона
+// квадрата равна его короткой стороне. Под тем же ограничителем параллельности.
+export async function createPhotoCard(processed: Buffer): Promise<Buffer> {
+  await acquire()
+
+  try {
+    const { width, height } = await sharp(processed, { limitInputPixels: MAX_INPUT_PIXELS }).metadata()
+
+    if (!width || !height) throw new Error('Не удалось определить размер изображения')
+
+    // Короткая сторона не зависит от EXIF-ориентации (поворот на 90° лишь
+    // меняет стороны местами), поэтому считаем её до поворота.
+    const side = Math.min(PHOTO_CARD_SIZE, width, height)
+
+    return await sharp(processed, { limitInputPixels: MAX_INPUT_PIXELS })
+      .rotate()
+      .resize({ width: side, height: side, fit: 'cover', position: 'centre' })
+      .webp({ quality: PHOTO_CARD_QUALITY })
+      .toBuffer()
   } finally {
     release()
   }

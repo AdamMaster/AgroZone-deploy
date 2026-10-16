@@ -41,7 +41,7 @@ export const AdCard = memo(function AdCard({ ad, onOpen, onToggleFavorite, isFav
         {coverUrl ? (
           <AdPhoto
             url={coverUrl}
-            size={800}
+            size='card'
             className='size-full'
             contentFit='cover'
             // Без recyclingKey переиспользованная FlashList ячейка на долю

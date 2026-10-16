@@ -117,12 +117,17 @@ describe('FileService', () => {
       const variants = puts.filter(input => input !== original)
 
       expect(variants.map(input => input.Key).sort()).toEqual(
-        [`${base}_1280.webp`, `${base}_400.webp`, `${base}_800.webp`].sort()
+        [`${base}_1280.webp`, `${base}_400.webp`, `${base}_800.webp`, `${base}_card.webp`].sort()
       )
       for (const input of variants) {
         expect(input.ContentType).toBe('image/webp')
         expect((await sharp(input.Body).metadata()).format).toBe('webp')
       }
+
+      // Квадратная копия для карточек ленты.
+      const card = variants.find(input => input.Key === `${base}_card.webp`)!
+
+      expect(await sharp(card.Body).metadata()).toMatchObject({ width: 600, height: 600 })
     })
 
     it('если одна из загрузок упала — уже загруженное удаляется, ошибка уходит наверх', async () => {
@@ -135,7 +140,7 @@ describe('FileService', () => {
       await expect(service.uploadAdPhoto(multerFile(await photo(), 'field.jpg', 'image/jpeg'))).rejects.toThrow()
 
       const [cleanup] = commands('delete-many')
-      expect(cleanup.input.Delete.Objects).toHaveLength(4)
+      expect(cleanup.input.Delete.Objects).toHaveLength(5)
     })
 
     describe('фото чата', () => {
@@ -148,7 +153,7 @@ describe('FileService', () => {
 
         expect(urls).toHaveLength(2)
         for (const url of urls) expect(url).toMatch(/\/chat\/\d+-\d+\.jpg$/)
-        expect(keys).toHaveLength(8)
+        expect(keys).toHaveLength(10)
         expect(keys.every(key => key.startsWith('chat/'))).toBe(true)
       })
 
@@ -195,7 +200,8 @@ describe('FileService', () => {
         'ads/1712345678901-1.jpg',
         'ads/1712345678901-1_400.webp',
         'ads/1712345678901-1_800.webp',
-        'ads/1712345678901-1_1280.webp'
+        'ads/1712345678901-1_1280.webp',
+        'ads/1712345678901-1_card.webp'
       ])
     })
 
@@ -217,7 +223,7 @@ describe('FileService', () => {
         fetchSpy.mockRestore()
       })
 
-      it('копий нет — делает их из оригинала, самую большую последней', async () => {
+      it('копий нет — делает все из оригинала', async () => {
         const original = await photo()
         const fetchSpy = jest
           .spyOn(global, 'fetch')
@@ -236,8 +242,43 @@ describe('FileService', () => {
         expect(commands('put').map(command => command.input.Key)).toEqual([
           'ads/1712345678901-1_400.webp',
           'ads/1712345678901-1_800.webp',
-          'ads/1712345678901-1_1280.webp'
+          'ads/1712345678901-1_1280.webp',
+          'ads/1712345678901-1_card.webp'
         ])
+      })
+
+      it('нет только квадратной копии — делает её одну, остальные не трогает', async () => {
+        const original = await photo()
+        const fetchSpy = jest
+          .spyOn(global, 'fetch')
+          .mockResolvedValue(new Response(new Uint8Array(original), { status: 200 }))
+        mockSend.mockImplementation(command =>
+          command.type === 'head' && command.input.Key.endsWith('_card.webp')
+            ? Promise.reject(Object.assign(new Error('nf'), { name: 'NotFound' }))
+            : Promise.resolve({})
+        )
+
+        await expect(service.ensurePhotoVariants(url)).resolves.toBe('created')
+        fetchSpy.mockRestore()
+
+        expect(commands('put').map(command => command.input.Key)).toEqual(['ads/1712345678901-1_card.webp'])
+      })
+
+      it('нет одной из копий по размеру — делает только её, квадратная уже есть', async () => {
+        const original = await photo()
+        const fetchSpy = jest
+          .spyOn(global, 'fetch')
+          .mockResolvedValue(new Response(new Uint8Array(original), { status: 200 }))
+        mockSend.mockImplementation(command =>
+          command.type === 'head' && command.input.Key.endsWith('_800.webp')
+            ? Promise.reject(Object.assign(new Error('nf'), { name: 'NotFound' }))
+            : Promise.resolve({})
+        )
+
+        await expect(service.ensurePhotoVariants(url)).resolves.toBe('created')
+        fetchSpy.mockRestore()
+
+        expect(commands('put').map(command => command.input.Key)).toEqual(['ads/1712345678901-1_800.webp'])
       })
 
       it('оригинал не скачался — ошибка, копии не пишутся', async () => {

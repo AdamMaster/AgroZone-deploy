@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common'
 import sharp from 'sharp'
-import { createPhotoVariants, processImage } from './image-processing.util'
+import { createPhotoCard, createPhotoVariants, processImage } from './image-processing.util'
 
 const options = { maxDimension: 2000, quality: 82 }
 
@@ -128,5 +128,55 @@ describe('createPhotoVariants', () => {
     const variants = await createPhotoVariants(original, [800])
 
     expect(await sharp(variants.get(800)).metadata()).toMatchObject({ width: 600, height: 300 })
+  })
+})
+
+describe('createPhotoCard', () => {
+  it('делает квадратную WebP-копию 600 px', async () => {
+    const original = await solidImage(2000, 1500).jpeg().toBuffer()
+
+    expect(await sharp(await createPhotoCard(original)).metadata()).toMatchObject({
+      format: 'webp',
+      width: 600,
+      height: 600
+    })
+  })
+
+  it('обрезает по центру, как object-cover у карточки', async () => {
+    // 1200×600: слева и справа красные края, посередине зелёная полоса. Квадрат 600×600
+    // по центру захватывает полосу и по 100 px красного с каждой стороны.
+    const stripe = (color: { r: number; g: number; b: number }, width: number) =>
+      sharp({ create: { width, height: 600, channels: 3, background: color } })
+        .png()
+        .toBuffer()
+    const original = await sharp({
+      create: { width: 1200, height: 600, channels: 3, background: { r: 255, g: 0, b: 0 } }
+    })
+      .composite([{ input: await stripe({ r: 0, g: 255, b: 0 }, 400), left: 400, top: 0 }])
+      .jpeg({ quality: 100 })
+      .toBuffer()
+
+    const { data, info } = await sharp(await createPhotoCard(original))
+      .raw()
+      .toBuffer({ resolveWithObject: true })
+    const pixel = (x: number, y: number) => [...data.subarray((y * info.width + x) * info.channels).subarray(0, 3)]
+
+    expect(info).toMatchObject({ width: 600, height: 600 })
+    expect(pixel(300, 300)[1]).toBeGreaterThan(200) // центр — зелёная полоса
+    expect(pixel(20, 300)[0]).toBeGreaterThan(200) // край — красный
+    expect(pixel(580, 300)[0]).toBeGreaterThan(200)
+  })
+
+  it('не растягивает фото меньше 600 px: сторона квадрата — короткая сторона фото', async () => {
+    const original = await solidImage(500, 300).jpeg().toBuffer()
+
+    expect(await sharp(await createPhotoCard(original)).metadata()).toMatchObject({ width: 300, height: 300 })
+  })
+
+  it('учитывает EXIF-ориентацию старого фото', async () => {
+    // Ориентация 6: 400×200 в файле — 200×400 на экране, квадрат 200×200.
+    const original = await solidImage(400, 200).jpeg().withMetadata({ orientation: 6 }).toBuffer()
+
+    expect(await sharp(await createPhotoCard(original)).metadata()).toMatchObject({ width: 200, height: 200 })
   })
 })

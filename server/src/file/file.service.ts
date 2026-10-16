@@ -13,13 +13,16 @@ import {
   AVATAR_IMAGE_OPTIONS,
   PHOTO_IMAGE_OPTIONS,
   ProcessImageOptions,
+  createPhotoCard,
   createPhotoVariants,
   processImage
 } from './utils/image-processing.util'
 import {
   PHOTO_VARIANT_CONTENT_TYPE,
   PHOTO_VARIANT_SIZES,
+  type PhotoVariantSize,
   hasPhotoVariants,
+  photoCardKey,
   photoVariantKey,
   photoVariantKeys
 } from './utils/photo-variants.util'
@@ -111,7 +114,10 @@ export class FileService {
   private async uploadPhotoWithVariants(file: Express.Multer.File, folder: 'ads' | 'chat') {
     const processed = await processImage(file.buffer, { ...PHOTO_IMAGE_OPTIONS, fileName: file.originalname })
     const key = this.generateKey(folder, processed.extension)
-    const variants = await createPhotoVariants(processed.buffer, PHOTO_VARIANT_SIZES)
+    const [variants, card] = await Promise.all([
+      createPhotoVariants(processed.buffer, PHOTO_VARIANT_SIZES),
+      createPhotoCard(processed.buffer)
+    ])
 
     const uploads = [
       { key, body: processed.buffer, contentType: processed.mimetype },
@@ -119,7 +125,8 @@ export class FileService {
         key: photoVariantKey(key, size),
         body,
         contentType: PHOTO_VARIANT_CONTENT_TYPE
-      }))
+      })),
+      { key: photoCardKey(key), body: card, contentType: PHOTO_VARIANT_CONTENT_TYPE }
     ]
 
     const results = await Promise.allSettled(
@@ -135,25 +142,35 @@ export class FileService {
     return this.toUploadResult(key)
   }
 
-  // Делает копии фото, загруженного до их появления (scripts/
-  // generate-photo-variants.ts). Повторный запуск безопасен: если самая
-  // большая копия уже есть, фото пропускается.
+  // Делает недостающие копии фото (scripts/generate-photo-variants.ts): и для
+  // загруженного до появления копий, и для того, у кого нет только новой
+  // (например, квадратной). Каждая копия проверяется отдельно и дописывается
+  // сама — повторный запуск безопасен и добивает прерванную работу.
   async ensurePhotoVariants(url: string): Promise<EnsurePhotoVariantsResult> {
     const key = this.urlToKey(url)
 
     if (!key || !hasPhotoVariants(key)) return 'not-applicable'
 
-    const largest = photoVariantKey(key, PHOTO_VARIANT_SIZES[PHOTO_VARIANT_SIZES.length - 1])
+    const cardKey = photoCardKey(key)
+    const [sizeExists, cardExists] = await Promise.all([
+      Promise.all(PHOTO_VARIANT_SIZES.map(size => this.objectExists(photoVariantKey(key, size)))),
+      this.objectExists(cardKey)
+    ])
+    const missingSizes = PHOTO_VARIANT_SIZES.filter((_size, index) => !sizeExists[index])
 
-    if (await this.objectExists(largest)) return 'exists'
+    if (!missingSizes.length && cardExists) return 'exists'
 
-    const variants = await createPhotoVariants(await this.downloadPublicFile(url), PHOTO_VARIANT_SIZES)
+    const original = await this.downloadPublicFile(url)
+    const [variants, card] = await Promise.all([
+      missingSizes.length ? createPhotoVariants(original, missingSizes) : new Map<PhotoVariantSize, Buffer>(),
+      cardExists ? undefined : createPhotoCard(original)
+    ])
 
-    // Самая большая — последней: по ней определяется, что копии готовы, и
-    // если скрипт прервут посередине, при следующем запуске фото доделается.
     for (const [size, body] of variants) {
       await this.putObject(photoVariantKey(key, size), body, PHOTO_VARIANT_CONTENT_TYPE)
     }
+
+    if (card) await this.putObject(cardKey, card, PHOTO_VARIANT_CONTENT_TYPE)
 
     return 'created'
   }

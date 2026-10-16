@@ -1,4 +1,10 @@
-import { PHOTO_VARIANT_SIZES, hasPhotoVariants, photoVariantKey, photoVariantKeys } from './photo-variants.util'
+import {
+  PHOTO_VARIANT_SIZES,
+  hasPhotoVariants,
+  photoCardKey,
+  photoVariantKey,
+  photoVariantKeys
+} from './photo-variants.util'
 
 describe('photo-variants.util', () => {
   const key = 'ads/1712345678901-123456789.jpg'
@@ -26,7 +32,18 @@ describe('photo-variants.util', () => {
 
   it('ключ копии выводится из ключа оригинала', () => {
     expect(photoVariantKey(key, 800)).toBe('ads/1712345678901-123456789_800.webp')
-    expect(photoVariantKeys(key)).toEqual(PHOTO_VARIANT_SIZES.map(size => `ads/1712345678901-123456789_${size}.webp`))
+    expect(photoVariantKeys(key)).toEqual([
+      ...PHOTO_VARIANT_SIZES.map(size => `ads/1712345678901-123456789_${size}.webp`),
+      'ads/1712345678901-123456789_card.webp'
+    ])
+  })
+
+  it('ключ квадратной копии выводится из ключа оригинала', () => {
+    expect(photoCardKey(key)).toBe('ads/1712345678901-123456789_card.webp')
+    expect(photoCardKey('chat/1712345678901-123456789.png')).toBe('chat/1712345678901-123456789_card.webp')
+    expect(() => photoCardKey('avatars/1-2.jpg')).toThrow()
+    // Сама копия копий не имеет.
+    expect(hasPhotoVariants('ads/1712345678901-123456789_card.webp')).toBe(false)
   })
 
   it('ключ копии фото чата — в той же папке', () => {

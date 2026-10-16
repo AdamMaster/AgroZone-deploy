@@ -49,6 +49,7 @@ export const AdCard = ({ ad }: AdCardProps) => {
             alt={ad.title}
             className='h-full w-full object-cover'
             fill
+            variant='card'
             sizes='(min-width: 1440px) 261px, (min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw'
           />
         ) : (

@@ -7,6 +7,9 @@
 //   ads/1712345678901-123456789.jpg → ads/1712345678901-123456789_800.webp
 //   ads/1712345678901-123456789.png → ads/1712345678901-123456789_800.webp
 //
+// Кроме них у каждого фото есть квадратная копия для карточек ленты —
+// «…_card.webp» (см. PHOTO_CARD_SIZE).
+//
 // Клиент (мобильное приложение) строит ссылку на копию тем же правилом —
 // без отдельных полей в ответах API. Правило менять только вместе с
 // mobile/src/shared/utils/photo-variants.ts.
@@ -23,6 +26,17 @@ export type PhotoVariantSize = (typeof PHOTO_VARIANT_SIZES)[number]
 // и iOS/Android.
 export const PHOTO_VARIANT_QUALITY = 78
 export const PHOTO_VARIANT_CONTENT_TYPE = 'image/webp'
+
+// Квадратная копия для карточек ленты. Карточка квадратная и показывает фото
+// с обрезкой по центру (object-cover), поэтому копия по большей стороне
+// (400/800) ей не подходит: у кадра 3:2 по короткой стороне в ней всего 267
+// px, у 16:9 — 225, и на экране она получается мягкой. Здесь копия сразу
+// обрезана по центру до квадрата и ничего лишнего не несёт: 600 px хватает и
+// карточке 260 px на обычном мониторе, и на экране с плотностью 2–3 (карточка
+// 180–260 CSS-px). Качество выше, чем у остальных копий: файл маленький, и
+// артефакты сжатия на нём заметнее.
+export const PHOTO_CARD_SIZE = 600
+export const PHOTO_CARD_QUALITY = 82
 
 // Ключи фото объявлений и чатов: имя, которое даёт FileService
 // (время-случайное число), в папке ads или chat. Сейчас оригинал всегда JPEG, но фото, загруженные
@@ -41,6 +55,15 @@ export const photoVariantKey = (key: string, size: PhotoVariantSize): string => 
   return `${match[1]}_${size}.webp`
 }
 
-// Все копии фото; для остальных объектов — пустой список.
+export const photoCardKey = (key: string): string => {
+  const match = PHOTO_KEY_PATTERN.exec(key)
+
+  if (!match) throw new Error(`У объекта ${key} нет уменьшенных копий`)
+
+  return `${match[1]}_card.webp`
+}
+
+// Все копии фото (по размерам и квадратная); для остальных объектов —
+// пустой список.
 export const photoVariantKeys = (key: string): string[] =>
-  hasPhotoVariants(key) ? PHOTO_VARIANT_SIZES.map(size => photoVariantKey(key, size)) : []
+  hasPhotoVariants(key) ? [...PHOTO_VARIANT_SIZES.map(size => photoVariantKey(key, size)), photoCardKey(key)] : []
