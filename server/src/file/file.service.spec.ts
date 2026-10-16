@@ -127,7 +127,7 @@ describe('FileService', () => {
       // Квадратная копия для карточек ленты.
       const card = variants.find(input => input.Key === `${base}_card.webp`)!
 
-      expect(await sharp(card.Body).metadata()).toMatchObject({ width: 600, height: 600 })
+      expect(await sharp(card.Body).metadata()).toMatchObject({ width: 520, height: 520 })
     })
 
     it('если одна из загрузок упала — уже загруженное удаляется, ошибка уходит наверх', async () => {
@@ -279,6 +279,24 @@ describe('FileService', () => {
         fetchSpy.mockRestore()
 
         expect(commands('put').map(command => command.input.Key)).toEqual(['ads/1712345678901-1_800.webp'])
+      })
+
+      it('force — пересоздаёт все копии, не проверяя, есть ли они', async () => {
+        const original = await photo()
+        const fetchSpy = jest
+          .spyOn(global, 'fetch')
+          .mockResolvedValue(new Response(new Uint8Array(original), { status: 200 }))
+
+        await expect(service.ensurePhotoVariants(url, { force: true })).resolves.toBe('created')
+        fetchSpy.mockRestore()
+
+        expect(commands('head')).toHaveLength(0)
+        expect(commands('put').map(command => command.input.Key)).toEqual([
+          'ads/1712345678901-1_400.webp',
+          'ads/1712345678901-1_800.webp',
+          'ads/1712345678901-1_1280.webp',
+          'ads/1712345678901-1_card.webp'
+        ])
       })
 
       it('оригинал не скачался — ошибка, копии не пишутся', async () => {

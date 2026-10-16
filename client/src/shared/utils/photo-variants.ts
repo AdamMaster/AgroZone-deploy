@@ -16,7 +16,7 @@ const PHOTO_URL_PATTERN = /(\/(?:ads|chat)\/\d+-\d+)\.(?:jpe?g|png|webp|gif)$/i
 // не имеют.
 export const hasPhotoVariants = (url: string): boolean => PHOTO_URL_PATTERN.test(url)
 
-// Квадратная копия для карточек ленты («…_card.webp», 600×600, обрезка по
+// Квадратная копия для карточек ленты («…_card.webp», 520×520, обрезка по
 // центру, как у object-cover карточки): фото в ней уже готово к показу, поэтому
 // отдельных размеров под ширину экрана не нужно. У фото без копий — сама ссылка.
 export const photoCardUrl = (url: string): string =>

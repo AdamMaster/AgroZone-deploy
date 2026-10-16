@@ -14,6 +14,9 @@
 //     npm run images:generate-variants
 //
 // Параметры (после --):
+//   --force          пересоздать все копии, даже готовые: нужно после смены
+//                    размера или качества копий (по умолчанию готовые
+//                    пропускаются).
 //   --concurrency=N  сколько фото обрабатывать одновременно (по умолчанию 3).
 //                    sharp и так ограничен двумя задачами на процесс, большее
 //                    число только ускоряет обмен с S3.
@@ -33,6 +36,8 @@ const requireEnv = (name: string) => {
 
   return value
 }
+
+const parseForce = (args: string[]) => args.includes('--force')
 
 const parseConcurrency = (args: string[]) => {
   const raw = args.find(arg => arg.startsWith('--concurrency='))?.slice('--concurrency='.length)
@@ -72,7 +77,9 @@ async function* readAdImages(prisma: PrismaClient): AsyncGenerator<string> {
 }
 
 async function run() {
-  const concurrency = parseConcurrency(process.argv.slice(2))
+  const args = process.argv.slice(2)
+  const concurrency = parseConcurrency(args)
+  const force = parseForce(args)
   const fileService = new FileService(envConfig as never)
   const pool = new Pool({ connectionString: requireEnv('POSTGRES_URI') })
   const prisma = new PrismaClient({ adapter: new PrismaPg(pool) })
@@ -81,7 +88,7 @@ async function run() {
 
   const processOne = async (url: string) => {
     try {
-      const result = await fileService.ensurePhotoVariants(url)
+      const result = await fileService.ensurePhotoVariants(url, { force })
 
       if (result === 'created') stats.created += 1
       else if (result === 'exists') stats.exists += 1

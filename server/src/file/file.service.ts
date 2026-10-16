@@ -146,16 +146,26 @@ export class FileService {
   // загруженного до появления копий, и для того, у кого нет только новой
   // (например, квадратной). Каждая копия проверяется отдельно и дописывается
   // сама — повторный запуск безопасен и добивает прерванную работу.
-  async ensurePhotoVariants(url: string): Promise<EnsurePhotoVariantsResult> {
+  //
+  // force: пересоздать все копии, даже готовые, — нужно после смены размера
+  // или качества копий (PHOTO_CARD_SIZE и др.). Файл перезаписывается под тем
+  // же ключом; кэш браузеров (immutable) его обновит не сразу, поэтому
+  // менять копии у фото, которые уже видели посетители, стоит осознанно.
+  async ensurePhotoVariants(
+    url: string,
+    { force = false }: { force?: boolean } = {}
+  ): Promise<EnsurePhotoVariantsResult> {
     const key = this.urlToKey(url)
 
     if (!key || !hasPhotoVariants(key)) return 'not-applicable'
 
     const cardKey = photoCardKey(key)
-    const [sizeExists, cardExists] = await Promise.all([
-      Promise.all(PHOTO_VARIANT_SIZES.map(size => this.objectExists(photoVariantKey(key, size)))),
-      this.objectExists(cardKey)
-    ])
+    const [sizeExists, cardExists] = force
+      ? [PHOTO_VARIANT_SIZES.map(() => false), false]
+      : await Promise.all([
+          Promise.all(PHOTO_VARIANT_SIZES.map(size => this.objectExists(photoVariantKey(key, size)))),
+          this.objectExists(cardKey)
+        ])
     const missingSizes = PHOTO_VARIANT_SIZES.filter((_size, index) => !sizeExists[index])
 
     if (!missingSizes.length && cardExists) return 'exists'

@@ -132,19 +132,20 @@ describe('createPhotoVariants', () => {
 })
 
 describe('createPhotoCard', () => {
-  it('делает квадратную WebP-копию 600 px', async () => {
+  it('делает квадратную WebP-копию 520 px', async () => {
     const original = await solidImage(2000, 1500).jpeg().toBuffer()
 
     expect(await sharp(await createPhotoCard(original)).metadata()).toMatchObject({
       format: 'webp',
-      width: 600,
-      height: 600
+      width: 520,
+      height: 520
     })
   })
 
   it('обрезает по центру, как object-cover у карточки', async () => {
     // 1200×600: слева и справа красные края, посередине зелёная полоса. Квадрат 600×600
-    // по центру захватывает полосу и по 100 px красного с каждой стороны.
+    // по центру захватывает полосу и по 100 px красного с каждой стороны; в
+    // копии он сжат до 520×520: полоса там — примерно от 87 до 433 px.
     const stripe = (color: { r: number; g: number; b: number }, width: number) =>
       sharp({ create: { width, height: 600, channels: 3, background: color } })
         .png()
@@ -161,13 +162,13 @@ describe('createPhotoCard', () => {
       .toBuffer({ resolveWithObject: true })
     const pixel = (x: number, y: number) => [...data.subarray((y * info.width + x) * info.channels).subarray(0, 3)]
 
-    expect(info).toMatchObject({ width: 600, height: 600 })
-    expect(pixel(300, 300)[1]).toBeGreaterThan(200) // центр — зелёная полоса
-    expect(pixel(20, 300)[0]).toBeGreaterThan(200) // край — красный
-    expect(pixel(580, 300)[0]).toBeGreaterThan(200)
+    expect(info).toMatchObject({ width: 520, height: 520 })
+    expect(pixel(260, 260)[1]).toBeGreaterThan(200) // центр — зелёная полоса
+    expect(pixel(20, 260)[0]).toBeGreaterThan(200) // край — красный
+    expect(pixel(500, 260)[0]).toBeGreaterThan(200)
   })
 
-  it('не растягивает фото меньше 600 px: сторона квадрата — короткая сторона фото', async () => {
+  it('не растягивает фото меньше 520 px: сторона квадрата — короткая сторона фото', async () => {
     const original = await solidImage(500, 300).jpeg().toBuffer()
 
     expect(await sharp(await createPhotoCard(original)).metadata()).toMatchObject({ width: 300, height: 300 })
