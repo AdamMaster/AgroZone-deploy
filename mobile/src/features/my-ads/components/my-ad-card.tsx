@@ -1,12 +1,11 @@
 import { Fragment, memo, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 
+import { AdRowCover } from '@/features/ads/components/ad-row'
 import { AD_BADGE_LABELS } from '@/features/ads/constants/ad-badges'
 
-import { AdPhoto } from '@/shared/components/ad-photo'
-import { Skeleton } from '@/shared/components/skeleton'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
-import { CircleAlert, Crown, ImageIcon, SquarePen } from '@/shared/icons/lucide'
+import { CircleAlert, Crown, SquarePen } from '@/shared/icons/lucide'
 import { formatDayMonth, formatRelativeDay, isFutureDate } from '@/shared/utils/date'
 import { formatPriceWithUnit } from '@/shared/utils/format-price'
 
@@ -37,8 +36,6 @@ type HintKey = keyof typeof HINTS | 'rejected'
 export const MyAdCard = memo(function MyAdCard({ ad, isOwnerPremium, onOpen, onEdit }: MyAdCardProps) {
   const [hint, setHint] = useState<HintKey | null>(null)
   const iconColor = useThemeColor('--color-gray-950')
-  const placeholderIconColor = useThemeColor('--color-gray-400')
-  const coverUrl = ad.images[0]
   const editLabel = ad.status === 'REJECTED' ? 'Исправить' : 'Редактировать'
 
   const toggleHint = (key: HintKey) => setHint(current => (current === key ? null : key))
@@ -62,11 +59,7 @@ export const MyAdCard = memo(function MyAdCard({ ad, isOwnerPremium, onOpen, onE
           onPress={() => onOpen(ad)}
           className='h-20 w-22 items-center justify-center overflow-hidden rounded-lg bg-slate-100'
         >
-          {coverUrl ? (
-            <AdPhoto url={coverUrl} size={400} className='size-full' contentFit='cover' recyclingKey={ad.id} />
-          ) : (
-            <ImageIcon size={32} color={placeholderIconColor} />
-          )}
+          <AdRowCover coverUrl={ad.images[0]} adId={ad.id} />
         </Pressable>
 
         <View className='flex-1'>
@@ -131,16 +124,3 @@ export const MyAdCard = memo(function MyAdCard({ ad, isOwnerPremium, onOpen, onE
     </View>
   )
 })
-
-// Заглушка строки на время загрузки — как AdShortCardSkeleton сайта.
-export function MyAdCardSkeleton() {
-  return (
-    <View className='flex-row gap-2.5'>
-      <Skeleton className='h-20 w-22 rounded-lg' />
-      <View className='flex-1 gap-2'>
-        <Skeleton className='h-4 w-4/5 rounded-md' />
-        <Skeleton className='h-4 w-1/3 rounded-md' />
-      </View>
-    </View>
-  )
-}

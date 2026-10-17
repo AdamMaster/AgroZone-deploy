@@ -5,7 +5,7 @@ import { AdsGrid } from '@/features/ads/components/ads-grid'
 import { useAdsInfinite } from '@/features/ads/hooks/use-ads-infinite'
 import { CategoryGrid } from '@/features/categories/components/category-grid'
 import { useRouteCatalogFilters } from '@/features/filters/hooks/use-route-catalog-filters'
-import { toAdsFilters } from '@/features/filters/lib/catalog-filters'
+import { EMPTY_FILTERS, hasActiveFilters, toAdsFilters } from '@/features/filters/lib/catalog-filters'
 import { SearchHeader } from '@/features/search/components/search-header'
 
 import { TabScreen } from '@/shared/components/tab-screen'
@@ -20,6 +20,7 @@ export function HomeScreen() {
   const { filters, setFilters, openCategory } = useRouteCatalogFilters()
   const adsFilters = useMemo(() => toAdsFilters({ filters }), [filters])
   const query = useAdsInfinite(adsFilters)
+  const isFiltered = hasActiveFilters(filters)
 
   return (
     <TabScreen>
@@ -32,7 +33,14 @@ export function HomeScreen() {
             <WelcomeBanner />
           </View>
         }
-        emptyMessage='В этой категории пока нет объявлений'
+        emptyMessage={
+          isFiltered ? 'Ничего не найдено — попробуйте изменить фильтры' : 'В этой категории пока нет объявлений'
+        }
+        emptyAction={
+          isFiltered
+            ? { title: 'Сбросить фильтры', onPress: () => setFilters({ ...EMPTY_FILTERS, sortBy: filters.sortBy }) }
+            : undefined
+        }
       />
     </TabScreen>
   )

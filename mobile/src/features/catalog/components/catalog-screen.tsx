@@ -10,7 +10,7 @@ import { ActiveFilterChips } from '@/features/filters/components/active-filter-c
 import { CatalogSort } from '@/features/filters/components/catalog-sort'
 import { DEFAULT_SORT } from '@/features/filters/constants/sort-options'
 import type { RouteCatalogFilters } from '@/features/filters/hooks/use-route-catalog-filters'
-import { hasOrigin, toAdsFilters } from '@/features/filters/lib/catalog-filters'
+import { EMPTY_FILTERS, hasActiveFilters, hasOrigin, toAdsFilters } from '@/features/filters/lib/catalog-filters'
 import { SearchHeader } from '@/features/search/components/search-header'
 
 import { BackButton } from '@/shared/components/back-button'
@@ -96,9 +96,17 @@ export function CatalogScreen({ categoryPath, search, onClearSearch, catalogFilt
   // Верхний уровень каталога без отступа сверху — как у сайта.
   const isTopLevelCategory = Boolean(categoryPath) && !categoryPath?.includes('/')
 
+  // Как на сайте: запрос в приоритете над общим «измените фильтры». Сброс
+  // оставляет сортировку — она не фильтр.
+  const isFiltered = hasActiveFilters(filters)
   const emptyMessage = trimmedSearch
     ? `По запросу «${formatDisplayedQuery(trimmedSearch)}» ничего не найдено`
-    : 'В этой категории пока нет объявлений'
+    : isFiltered
+      ? 'Ничего не найдено — попробуйте изменить фильтры'
+      : 'В этой категории пока нет объявлений'
+  const emptyAction = isFiltered
+    ? { title: 'Сбросить фильтры', onPress: () => setFilters({ ...EMPTY_FILTERS, sortBy: filters.sortBy }) }
+    : undefined
 
   const header = (
     <View>
@@ -132,5 +140,5 @@ export function CatalogScreen({ categoryPath, search, onClearSearch, catalogFilt
     </View>
   )
 
-  return <AdsGrid query={query} header={header} emptyMessage={emptyMessage} />
+  return <AdsGrid query={query} header={header} emptyMessage={emptyMessage} emptyAction={emptyAction} />
 }

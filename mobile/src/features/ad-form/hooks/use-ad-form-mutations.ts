@@ -2,13 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { toast } from 'sonner-native'
 
+import { showError } from '@/lib/ui/show-error'
+
 import { adFormApi } from '../api/ad-form.api'
 
 // Объявления пользователя и страницы объявлений — под префиксом ['ads']:
 // после подачи или правки всё это перезапрашивается.
 const ADS_QUERY_KEY = ['ads'] as const
-
-const showError = (error: Error) => toast.error(error.message)
 
 // Объявление для правки — всегда свежее с сервера, без кэша: форма не
 // должна начинаться с устаревших значений.

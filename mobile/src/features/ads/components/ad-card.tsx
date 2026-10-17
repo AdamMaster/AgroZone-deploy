@@ -5,10 +5,10 @@ import { AdPhoto } from '@/shared/components/ad-photo'
 import { Skeleton } from '@/shared/components/skeleton'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
 import { ImageIcon } from '@/shared/icons/lucide'
-import { isFutureDate } from '@/shared/utils/date'
 import { formatDistance } from '@/shared/utils/format-distance'
 import { formatPriceWithUnit } from '@/shared/utils/format-price'
 
+import { getActiveBadge, isPriceHighlighted } from '../lib/ad-promotion'
 import type { AdListItem } from '../types/ad.types'
 import { AdBadgeChip } from './ad-badge-chip'
 import { FavoriteButton } from './favorite-button'
@@ -28,10 +28,8 @@ interface AdCardProps {
 export const AdCard = memo(function AdCard({ ad, onOpen, onToggleFavorite, isFavoritePending }: AdCardProps) {
   const placeholderIconColor = useThemeColor('--color-gray-500')
   const coverUrl = ad.images[0]
-  // Цена выделяется, пока активна платная услуга или премиум у продавца —
-  // то же правило, что на сайте.
-  const isPriceHighlighted = isFutureDate(ad.priceHighlightUntil) || isFutureDate(ad.user?.premiumUntil)
-  const badge = ad.badge && isFutureDate(ad.badgeUntil) ? ad.badge : null
+  const isHighlighted = isPriceHighlighted(ad)
+  const badge = getActiveBadge(ad)
   const distanceLabel = formatDistance(ad.distanceKm)
   const price = formatPriceWithUnit(ad.price, ad.unit)
 
@@ -67,7 +65,7 @@ export const AdCard = memo(function AdCard({ ad, onOpen, onToggleFavorite, isFav
         <View className='flex-row'>
           <Text
             className={
-              isPriceHighlighted
+              isHighlighted
                 ? 'overflow-hidden rounded bg-price-highlight px-1.5 text-[15px] font-bold text-price-highlight-foreground'
                 : 'text-[15px] font-bold text-gray-950'
             }

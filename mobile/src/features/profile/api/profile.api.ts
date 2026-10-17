@@ -75,9 +75,10 @@ export const profileApi = {
   // Уже подтверждённый номер делается основным без повторного звонка.
   setPrimaryPhone: (phone: string) => apiClient.patch<{ success: boolean }>('/users/profile/phones/primary', { phone }),
 
-  // Капчу сервер ждёт в заголовке recaptcha, как при входе.
+  // Капчу сервер ждёт в заголовке recaptcha, как при входе. Ответ — голое
+  // `true` (не JSON), поэтому тело не ждём: как у сброса пароля по почте.
   requestEmailChange: ({ captchaToken, ...body }: RequestEmailChangeParams) =>
-    apiClient.post<{ success: boolean }>('/auth/email-change', body, { headers: { recaptcha: captchaToken } }),
+    apiClient.post<boolean>('/auth/email-change', body, { headers: { recaptcha: captchaToken }, expectBody: false }),
 
   securityEvents: ({ page, limit, types }: SecurityEventsParams, signal?: AbortSignal) =>
     apiClient.get<SecurityEventsPage>('/users/profile/security-events', { params: { page, limit, types }, signal }),

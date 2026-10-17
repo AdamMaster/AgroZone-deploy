@@ -42,11 +42,14 @@ interface AdsGridProps {
   // вместе с лентой, как на сайте.
   header?: ReactElement
   emptyMessage: string
+  // Действие под сообщением «ничего не найдено» — например, «Сбросить
+  // фильтры». Нет — только сообщение.
+  emptyAction?: { title: string; onPress: () => void }
 }
 
 // Сетка объявлений с бесконечной подгрузкой и pull-to-refresh — общая для
 // главной и каталога (AdsGrid + AdsClient сайта).
-export function AdsGrid({ query, header, emptyMessage }: AdsGridProps) {
+export function AdsGrid({ query, header, emptyMessage, emptyAction }: AdsGridProps) {
   const { bottom } = useSafeAreaInsets()
   const { toggleFavorite, isPending: isFavoritePending, pendingAdId } = useToggleFavorite()
   const { openAd } = useAdNavigation()
@@ -118,7 +121,10 @@ export function AdsGrid({ query, header, emptyMessage }: AdsGridProps) {
       action={{ title: 'Повторить', onPress: () => void refetch() }}
     />
   ) : (
-    <Text className='py-10 text-center text-[15px] text-gray-500'>{emptyMessage}</Text>
+    <View className='items-center gap-4 py-10'>
+      <Text className='text-center text-[15px] text-gray-500'>{emptyMessage}</Text>
+      {emptyAction && <Button title={emptyAction.title} variant='outline' onPress={emptyAction.onPress} />}
+    </View>
   )
 
   const footer = isFetchingNextPage ? (

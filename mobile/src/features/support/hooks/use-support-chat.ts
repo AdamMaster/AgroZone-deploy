@@ -1,9 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner-native'
 
 import { useChatHistory } from '@/features/messages/hooks/use-chat-history'
 import { appendMessage } from '@/features/messages/lib/chat-history'
 import type { ChatHistory } from '@/features/messages/types/message.types'
+
+import { showError } from '@/lib/ui/show-error'
 
 import { supportApi } from '../api/support.api'
 
@@ -22,7 +23,7 @@ export function useSendSupportMessage() {
     mutationFn: (text: string) => supportApi.send(text),
     onSuccess: message =>
       queryClient.setQueryData<ChatHistory>(supportMessagesQueryKey, current => appendMessage(current, message)),
-    onError: error => toast.error(error.message)
+    onError: showError
   })
 }
 

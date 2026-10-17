@@ -7,11 +7,10 @@ import type { UserProfile } from '@/features/auth/types/auth.types'
 import { SELLER_TYPE_LABELS, type SellerType } from '@/shared/constants/seller-types'
 
 import type { UploadFile } from '@/lib/api/upload-file'
+import { showError } from '@/lib/ui/show-error'
 
 import { type RequestEmailChangeParams, type UpdateProfileParams, profileApi } from '../api/profile.api'
 import { securityEventsQueryKeyPrefix } from './use-security-events'
-
-const showError = (error: Error) => toast.error(error.message)
 
 // Профиль после изменения: кладём ответ сервера в кэш (сервер возвращает
 // актуальный профиль) и обновляем журнал безопасности — изменение могло

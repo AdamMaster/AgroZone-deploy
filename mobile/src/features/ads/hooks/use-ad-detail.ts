@@ -1,6 +1,8 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner-native'
 
+import { showError } from '@/lib/ui/show-error'
+
 import { adDetailApi } from '../api/ad-detail.api'
 import type { AdDetail, AdReportReason } from '../types/ad-detail.types'
 
@@ -60,7 +62,7 @@ export function useAdViewStats(id: string, weekOffset: number) {
 export function useRevealPhone() {
   return useMutation({
     mutationFn: (id: string) => adDetailApi.fetchPhone(id),
-    onError: error => toast.error(error.message)
+    onError: showError
   })
 }
 
@@ -69,7 +71,7 @@ export function useReportAd() {
     mutationFn: ({ id, reason, comment }: { id: string; reason: AdReportReason; comment?: string }) =>
       adDetailApi.report(id, reason, comment),
     onSuccess: () => toast.success('Жалоба отправлена, спасибо — мы её рассмотрим'),
-    onError: error => toast.error(error.message)
+    onError: showError
   })
 }
 
@@ -100,7 +102,7 @@ export function useAdOwnerActions(id: string) {
       toast.success(title, { description })
       void refreshAds()
     },
-    onError: error => toast.error(error.message)
+    onError: showError
   })
 
   const remove = useMutation({
@@ -115,7 +117,7 @@ export function useAdOwnerActions(id: string) {
         predicate: query => !(query.queryKey[1] === scope && query.queryKey[2] === detailId)
       })
     },
-    onError: error => toast.error(error.message)
+    onError: showError
   })
 
   return {

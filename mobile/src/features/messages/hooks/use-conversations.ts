@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useIsFocused } from 'expo-router'
 import { useMemo } from 'react'
-import { toast } from 'sonner-native'
 
 import { useIsSignedIn } from '@/features/auth/hooks/use-is-signed-in'
+
+import { showError } from '@/lib/ui/show-error'
 
 import { blockedUsersApi } from '../api/blocked-users.api'
 import { type MessagesPageParams, conversationsApi } from '../api/conversations.api'
@@ -23,8 +24,6 @@ const blockedUsersQueryKey = ['blocked-users'] as const
 
 export const conversationMessagesQueryKey = (conversationId: string) =>
   [...conversationsQueryKey, conversationId, 'messages'] as const
-
-const showError = (error: Error) => toast.error(error.message)
 
 export function useConversations() {
   const isSignedIn = useIsSignedIn()

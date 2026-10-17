@@ -2,6 +2,7 @@ import { FlashList, type ListRenderItem } from '@shopify/flash-list'
 import { useCallback, useState } from 'react'
 import { ActivityIndicator, Text, View } from 'react-native'
 
+import { AdRowSkeleton } from '@/features/ads/components/ad-row'
 import { useAdNavigation } from '@/features/ads/hooks/use-ad-navigation'
 import { useCreateAdAction } from '@/features/ads/hooks/use-create-ad-action'
 import { useProfile } from '@/features/auth/hooks/use-profile'
@@ -20,7 +21,7 @@ import type { MyAdsTabKey } from '../constants/my-ads-tabs'
 import { useMyAdsList, useMyAdsTabs } from '../hooks/use-my-ads'
 import type { MyAd } from '../types/my-ad.types'
 import { CreateAdFab } from './create-ad-fab'
-import { MyAdCard, MyAdCardSkeleton } from './my-ad-card'
+import { MyAdCard } from './my-ad-card'
 import { MyAdsEmpty } from './my-ads-empty'
 
 const SKELETON_COUNT = 3
@@ -34,7 +35,7 @@ function CardsSkeleton() {
   return (
     <View className='gap-6'>
       {Array.from({ length: SKELETON_COUNT }, (_, index) => (
-        <MyAdCardSkeleton key={index} />
+        <AdRowSkeleton key={index} />
       ))}
     </View>
   )

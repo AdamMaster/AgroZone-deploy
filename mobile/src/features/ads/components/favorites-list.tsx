@@ -10,7 +10,8 @@ import { useAdNavigation } from '../hooks/use-ad-navigation'
 import { useFavoritesInfinite } from '../hooks/use-favorites-infinite'
 import { useToggleFavorite } from '../hooks/use-toggle-favorite'
 import type { FavoriteAd } from '../types/ad.types'
-import { FavoriteAdCard, FavoriteAdCardSkeleton } from './favorite-ad-card'
+import { AdRowSkeleton } from './ad-row'
+import { FavoriteAdCard } from './favorite-ad-card'
 
 const keyExtractor = (ad: FavoriteAd) => ad.id
 
@@ -42,7 +43,7 @@ export function FavoritesList() {
   const listEmpty = isPending ? (
     <View className='gap-4'>
       {Array.from({ length: 3 }, (_, index) => (
-        <FavoriteAdCardSkeleton key={index} />
+        <AdRowSkeleton key={index} />
       ))}
     </View>
   ) : error ? (

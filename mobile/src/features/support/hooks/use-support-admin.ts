@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo } from 'react'
-import { toast } from 'sonner-native'
 
 import { useChatHistory } from '@/features/messages/hooks/use-chat-history'
 import { appendMessage, removeMessage } from '@/features/messages/lib/chat-history'
 import type { ChatHistory } from '@/features/messages/types/message.types'
+
+import { showError } from '@/lib/ui/show-error'
 
 import { supportApi } from '../api/support.api'
 import type { SupportAdminConversation } from '../types/support.types'
@@ -13,8 +14,6 @@ export const supportAdminConversationsQueryKey = ['support', 'admin', 'conversat
 
 export const supportAdminMessagesQueryKey = (conversationId: string) =>
   ['support', 'admin', 'messages', conversationId] as const
-
-const showError = (error: Error) => toast.error(error.message)
 
 // Список обновляется по сокету (useSupportRealtime), а при возвращении на
 // экран — перезапросом.

@@ -7,6 +7,7 @@ import { SITE_URL } from '@/config/env'
 import { type AdDetailView, useAdCounters, useAdDetail, useAdOwnerActions } from '@/features/ads/hooks/use-ad-detail'
 import { useAdNavigation } from '@/features/ads/hooks/use-ad-navigation'
 import { useToggleFavorite } from '@/features/ads/hooks/use-toggle-favorite'
+import { getActiveBadge, isPriceHighlighted } from '@/features/ads/lib/ad-promotion'
 import type { AdDetail } from '@/features/ads/types/ad-detail.types'
 import type { AdListItem } from '@/features/ads/types/ad.types'
 import { useIsSignedIn } from '@/features/auth/hooks/use-is-signed-in'
@@ -19,7 +20,6 @@ import { Skeleton } from '@/shared/components/skeleton'
 import { PRICE_UNITS, WHOLE_PRICE_UNIT } from '@/shared/constants/price-units'
 import { usePaidSitePage } from '@/shared/hooks/use-paid-site-page'
 import { useRefetchOnFocus } from '@/shared/hooks/use-refetch-on-focus'
-import { isFutureDate } from '@/shared/utils/date'
 import { formatPrice } from '@/shared/utils/format-price'
 
 import { ApiError } from '@/lib/api/api-error'
@@ -111,8 +111,8 @@ export function AdDetailScreen({ id, view, onSwitchToOwnerView }: AdDetailScreen
   const isPublished = ad.status === 'PUBLISHED'
   // Статистика есть, если объявление уже показывалось покупателям.
   const hasViewStats = isPublished || ad.status === 'ARCHIVED' || ad.status === 'EXPIRED'
-  const isPriceHighlighted = isFutureDate(ad.priceHighlightUntil) || isFutureDate(ad.user?.premiumUntil)
-  const badge = ad.badge && isFutureDate(ad.badgeUntil) ? ad.badge : null
+  const isHighlighted = isPriceHighlighted(ad)
+  const badge = getActiveBadge(ad)
   const unitLabel = ad.price && ad.unit !== WHOLE_PRICE_UNIT ? PRICE_UNITS[ad.unit] : undefined
 
   const changeStatus = (action: OwnerStatusAction | 'draft') =>
@@ -184,7 +184,7 @@ export function AdDetailScreen({ id, view, onSwitchToOwnerView }: AdDetailScreen
         <View className='mb-4 items-start'>
           <Text
             className={`text-xl font-bold text-gray-950 ${
-              isPriceHighlighted ? 'overflow-hidden rounded bg-amber-200 px-1.5 dark:text-neutral-900' : ''
+              isHighlighted ? 'overflow-hidden rounded bg-amber-200 px-1.5 dark:text-neutral-900' : ''
             }`}
           >
             {formatPrice(ad.price)}
