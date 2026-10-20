@@ -61,7 +61,7 @@ export function PhotoLightbox({ visible, images, index, title, onIndexChange, on
       onShow={() => setIsZoomed(false)}
     >
       {/* Жесты внутри Modal на Android работают только со своим корнем. */}
-      <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#000000' }}>
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#171717' }}>
         <FlatList
           data={images}
           renderItem={renderItem}
@@ -79,10 +79,10 @@ export function PhotoLightbox({ visible, images, index, title, onIndexChange, on
           accessibilityLabel='Закрыть'
           onPress={onClose}
           hitSlop={12}
-          className='absolute right-3 size-11 items-center justify-center'
+          className='absolute right-3 size-11 items-center justify-center rounded-xl bg-neutral-100'
           style={{ top: top + 8 }}
         >
-          <X size={26} color='#ffffff' />
+          <X size={26} color='#171717' />
         </Pressable>
       </GestureHandlerRootView>
     </Modal>

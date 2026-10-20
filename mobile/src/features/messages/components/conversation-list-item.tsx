@@ -34,7 +34,7 @@ export const ConversationListItem = memo(function ConversationListItem({
       accessibilityRole='button'
       accessibilityLabel={`${isUnread ? 'Есть новые сообщения. ' : ''}${name}, ${ad.title}`}
       onPress={() => onOpen(conversation)}
-      className='flex-row items-center gap-3 border-b border-gray-100 py-2 active:bg-gray-100'
+      className='items flex-row gap-3 border-b border-gray-100 py-2 active:bg-gray-100'
     >
       <View className='size-15 items-center justify-center overflow-hidden rounded-lg bg-gray-100'>
         {ad.images[0] ? (
@@ -45,7 +45,7 @@ export const ConversationListItem = memo(function ConversationListItem({
       </View>
 
       <View className='min-w-0 flex-1'>
-        <View className='flex-row items-center justify-between gap-2'>
+        <View className='flex-row items-start justify-between gap-2'>
           <Text
             numberOfLines={1}
             className={`flex-1 text-base leading-5 font-semibold ${isDeleted ? 'text-gray-400' : 'text-gray-900'}`}
@@ -74,7 +74,7 @@ export const ConversationListItem = memo(function ConversationListItem({
         accessibilityLabel='Ещё'
         hitSlop={4}
         onPress={() => onOpenMenu(conversation)}
-        className='absolute right-3 bottom-3 size-9 items-center justify-center rounded-lg bg-white active:bg-gray-100 dark:bg-neutral-800'
+        className='absolute right-0 bottom-2 size-9 items-center justify-center rounded-lg bg-white active:bg-gray-100 dark:bg-neutral-800'
       >
         <Ellipsis size={20} color={menuIconColor} />
       </Pressable>
