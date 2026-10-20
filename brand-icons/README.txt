@@ -1,4 +1,4 @@
-Иконки AgroZone (монограмма AZ). Исходник — svg/agrozone-icon.svg.
+Иконки AgroZone (монограмма AZ). Исходник — svg/logo-new.svg (новый логотип от 20.10.2026; svg/agrozone-icon*.svg собраны из него).
 
 САЙТ (client/public)
   favicon.ico                16, 32, 48 px, скруглённый, прозрачные углы
@@ -17,3 +17,6 @@
 
 google-play-icon-512.png     512x512 для карточки приложения в Google Play
 svg/                         исходные SVG (со скруглением и квадратный)
+
+
+Обновление 20.10.2026: приложение (mobile/assets/images), google-play-icon-512.png и svg/agrozone-icon*.svg перегенерированы из logo-new.svg. Набор для сайта лежит в brand-icons/client/public (в живой client/public пока не копировался). Прежние файлы приложения — в _to_delete/icons-backup-20261020 (вне git).

@@ -18,6 +18,9 @@
     },
     "production": {
       "autoIncrement": true,
+      "android": {
+        "buildType": "apk"
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.agro-zone.ru",
         "EXPO_PUBLIC_SITE_URL": "https://agro-zone.ru",

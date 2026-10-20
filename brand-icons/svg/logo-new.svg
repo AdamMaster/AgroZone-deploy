@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 259.01639 259.01639">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #fff;
+      }
+
+      .cls-2 {
+        fill: url(#linear-gradient);
+      }
+    </style>
+    <linearGradient id="linear-gradient" x1="129.50819" y1="257.48057" x2="129.50819" y2="-1.53582" gradientTransform="translate(0 262) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#78b000"/>
+      <stop offset="1" stop-color="#3b9900"/>
+    </linearGradient>
+  </defs>
+  <rect class="cls-2" width="259.01639" height="259.01639"/>
+  <polygon class="cls-1" points="198.13543 154.28852 198.13543 172.01599 129.75789 172.01599 129.75789 157.20133 170.93477 104.73618 130.12955 104.73618 130.12955 87 197.77242 87 197.77242 101.81472 156.60413 154.28852 198.13543 154.28852"/>
+  <path class="cls-1" d="M125.74736,118.25439l-7.45057-17.73617-5.67868-13.51821h-15.91239l-35.8267,85.01599h20.1563l5.83426-14.33064h34.01157l13.95038-17.78804-9.08417-21.64293Zm-31.71246,22.18746l10.68317-26.11158,10.69182,26.11158h-21.37499Z"/>
+</svg>
