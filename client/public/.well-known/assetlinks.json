@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "ru.agrozone.app",
+      "sha256_cert_fingerprints": [
+        "84:83:4B:7F:A1:94:1C:57:47:E8:3E:36:A9:92:58:FD:D7:4D:12:50:75:45:4B:57:34:EF:97:B7:FD:FF:D5:9D"
+      ]
+    }
+  }
+]
