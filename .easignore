@@ -1,0 +1,42 @@
+# Что НЕ попадает в архив для EAS Build (сборка мобильного приложения).
+# Репозиторий — монорепо, а приложению нужна только папка mobile/.
+# Без этого файла в архив уезжали client/.next (~1.6 ГБ), node_modules и т.д.
+# (лимит EAS — 2 ГБ). Когда есть .easignore, .gitignore для архива не
+# используется, поэтому секреты и мусор перечислены здесь явно.
+
+# Другие части проекта
+/client
+/server
+/nginx
+/scripts
+/compiled-scripts
+/brand-icons
+/Claude outputs
+/_to_delete
+/temp
+/.git
+
+# Секреты и заметки
+.env
+.env.*
+!.env.example
+/ROADMAP.md
+/TODO-messages.md
+/правки.txt
+*.csv
+*.sql
+*.pem
+*.key
+*.jks
+*.p12
+*.p8
+*.mobileprovision
+
+# Зависимости и артефакты сборки (EAS поставит зависимости сам)
+node_modules/
+.expo/
+dist/
+web-build/
+.next/
+.DS_Store
+*.tsbuildinfo
