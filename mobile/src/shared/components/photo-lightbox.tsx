@@ -79,10 +79,10 @@ export function PhotoLightbox({ visible, images, index, title, onIndexChange, on
           accessibilityLabel='Закрыть'
           onPress={onClose}
           hitSlop={12}
-          className='absolute right-3 size-11 items-center justify-center rounded-xl bg-neutral-100'
+          className='absolute right-3 size-11 items-center justify-center rounded-xl bg-neutral-700'
           style={{ top: top + 8 }}
         >
-          <X size={26} color='#171717' />
+          <X size={26} color='#fff' />
         </Pressable>
       </GestureHandlerRootView>
     </Modal>
