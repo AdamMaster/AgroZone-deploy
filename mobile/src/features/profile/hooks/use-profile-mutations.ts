@@ -141,6 +141,21 @@ export function useRequestEmailChange() {
   })
 }
 
+// Подтверждение смены почты по ссылке из письма (экран confirm-email). Ссылку
+// может открыть и гость — тогда профиля в кэше нет, обновлять нечего.
+export function useConfirmEmailChange() {
+  const refreshProfile = useRefreshProfile()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (token: string) => profileApi.confirmEmailChange(token),
+    onSuccess: async () => {
+      await refreshProfile()
+      void queryClient.invalidateQueries({ queryKey: securityEventsQueryKeyPrefix })
+    }
+  })
+}
+
 export function useRequestPhone() {
   return useMutation({
     mutationFn: (phone: string) => profileApi.requestPhone(phone),

@@ -33,6 +33,11 @@
               "scheme": "https",
               "host": "agro-zone.ru",
               "pathPrefix": "/new-password"
+            },
+            {
+              "scheme": "https",
+              "host": "agro-zone.ru",
+              "pathPrefix": "/change-email"
             }
           ],
           "category": [

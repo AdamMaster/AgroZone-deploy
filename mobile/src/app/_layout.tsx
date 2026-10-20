@@ -58,6 +58,9 @@ function RootNavigator() {
         {/* Ссылка из письма о сбросе пароля: открывается и гостем, и вошедшим
             (пароль мог забыть другой аккаунт), поэтому вне Stack.Protected. */}
         <Stack.Screen name='new-password' options={{ headerShown: true, title: 'Новый пароль' }} />
+        {/* Ссылка из письма о смене почты (её сюда направляет +native-intent):
+            тоже открывается и гостем, и вошедшим. */}
+        <Stack.Screen name='confirm-email' options={{ headerShown: true, title: 'Подтверждение почты' }} />
 
         <Stack.Protected guard={!isSignedIn}>
           <Stack.Screen name='login' options={{ headerShown: true, title: 'Вход', presentation: 'modal' }} />

@@ -80,6 +80,11 @@ export const profileApi = {
   requestEmailChange: ({ captchaToken, ...body }: RequestEmailChangeParams) =>
     apiClient.post<boolean>('/auth/email-change', body, { headers: { recaptcha: captchaToken }, expectBody: false }),
 
+  // Подтверждение почты по ссылке из письма: токен — в адресе запроса, вход не
+  // нужен (защита — сам токен). Ответ — голое `true`.
+  confirmEmailChange: (token: string) =>
+    apiClient.post<boolean>('/auth/email-change/confirm', undefined, { params: { token }, expectBody: false }),
+
   securityEvents: ({ page, limit, types }: SecurityEventsParams, signal?: AbortSignal) =>
     apiClient.get<SecurityEventsPage>('/users/profile/security-events', { params: { page, limit, types }, signal }),
 
