@@ -13,6 +13,10 @@ export class SearchService {
         return []
       }
 
+      // Для ILIKE спецсимволы запроса (% _ \) экранируем, иначе «20%» или «а_б»
+      // превращаются в шаблоны.
+      const qLike = q.replace(/[\\%_]/g, '\\$&')
+
       const [categories, ads] = await Promise.all([
         this.prisma.$queryRaw<any[]>`
         SELECT
@@ -41,10 +45,13 @@ export class SearchService {
             a.title,
             a.slug,
             c.full_path AS category_full_path,
-            similarity(a.title, ${q}) *
+            GREATEST(
+              similarity(lower(a.title), ${q}),
+              word_similarity(${q}, lower(a.title))
+            ) *
             CASE
-              WHEN a.title ILIKE ${q + '%'} THEN 1.5
-              WHEN a.title ILIKE ${'%' + q + '%'} THEN 1.0
+              WHEN a.title ILIKE ${qLike + '%'} THEN 1.5
+              WHEN a.title ILIKE ${'%' + qLike + '%'} THEN 1.0
               ELSE 0.7
             END AS score
           FROM ads a
@@ -52,7 +59,10 @@ export class SearchService {
           WHERE
             a.status = 'PUBLISHED'
             AND (a.expires_at IS NULL OR a.expires_at > NOW())
-            AND a.title % ${q}
+            -- Подстрока (ILIKE) ловит «сметан» в длинном названии, где триграммное
+            -- сходство всего заголовка с коротким запросом ниже порога %;
+            -- % оставлен для опечаток. Оба условия обслуживает GIN ads_title_trgm.
+            AND (a.title ILIKE ${'%' + qLike + '%'} OR lower(a.title) % ${q})
           ORDER BY a.title, score DESC
         ) AS unique_ads
         ORDER BY score DESC -- ⚡ Вот теперь итоговый результат сортируется строго по качеству совпадения!
