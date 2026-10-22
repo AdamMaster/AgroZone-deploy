@@ -163,7 +163,7 @@ export function AdDetailScreen({ id, view, onSwitchToOwnerView }: AdDetailScreen
         menuActions={menuActions}
       />
 
-      <ScrollView contentContainerClassName='px-4 pt-4 pb-8' refreshControl={<AppRefreshControl onRefresh={refresh} />}>
+      <ScrollView contentContainerClassName='px-4 pt-0 pb-8' refreshControl={<AppRefreshControl onRefresh={refresh} />}>
         {isOwner && (
           <AdOwnerPanel
             ad={ad}
@@ -176,14 +176,14 @@ export function AdDetailScreen({ id, view, onSwitchToOwnerView }: AdDetailScreen
           />
         )}
 
-        <View className='mb-3'>
+        <View className='-mx-4 mb-3'>
           <AdGallery images={ad.images} title={ad.title} badge={badge} />
         </View>
 
         <Text className='mb-2 text-lg leading-tight font-bold text-gray-900'>{ad.title}</Text>
         <View className='mb-4 items-start'>
           <Text
-            className={`text-xl font-bold text-gray-950 ${
+            className={`text-2xl font-bold text-gray-950 ${
               isHighlighted ? 'overflow-hidden rounded bg-amber-200 px-1.5 dark:text-neutral-900' : ''
             }`}
           >

@@ -5,7 +5,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
-  ScrollView,
+  Text,
   View
 } from 'react-native'
 
@@ -27,8 +27,8 @@ interface AdGalleryProps {
 // Высота фото к ширине — как pt-[76%] у галереи сайта на телефоне.
 const PHOTO_ASPECT = 0.76
 
-// Галерея объявления — как на сайте: фото листаются свайпом, под ними —
-// миниатюры с рамкой у текущего, нажатие открывает фото на весь экран.
+// Галерея объявления: фото листаются свайпом, в углу — счётчик «1/3»,
+// нажатие открывает фото на весь экран.
 export function AdGallery({ images, title, badge }: AdGalleryProps) {
   const listRef = useRef<FlatList<string>>(null)
   const [width, setWidth] = useState(0)
@@ -69,7 +69,7 @@ export function AdGallery({ images, title, badge }: AdGalleryProps) {
   if (!images.length) {
     return (
       <View
-        className='mb-2 items-center justify-center overflow-hidden rounded-xl bg-gray-100'
+        className='mb-2 items-center justify-center overflow-hidden bg-gray-100'
         style={{ aspectRatio: 1 / PHOTO_ASPECT }}
       >
         <ImageIcon size={64} color={placeholderIconColor} />
@@ -80,7 +80,7 @@ export function AdGallery({ images, title, badge }: AdGalleryProps) {
   return (
     <View>
       <View
-        className='mb-0.5 overflow-hidden rounded-xl bg-gray-100'
+        className='mb-0.5 overflow-hidden bg-gray-100'
         style={{ aspectRatio: 1 / PHOTO_ASPECT }}
         onLayout={event => setWidth(event.nativeEvent.layout.width)}
       >
@@ -103,26 +103,16 @@ export function AdGallery({ images, title, badge }: AdGalleryProps) {
             <AdBadgeChip badge={badge} />
           </View>
         )}
+        {images.length > 1 && (
+          <View pointerEvents='none' className='absolute inset-x-0 bottom-2 items-center'>
+            <View className='rounded-full bg-black/50 px-2.5 py-1'>
+              <Text className='text-xs font-medium text-white'>
+                {activeIndex + 1}/{images.length}
+              </Text>
+            </View>
+          </View>
+        )}
       </View>
-
-      {images.length > 1 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName='gap-0.5'>
-          {images.map((image, index) => (
-            <Pressable
-              key={`${index}-${image}`}
-              accessibilityRole='button'
-              accessibilityLabel={`Фото ${index + 1}`}
-              accessibilityState={{ selected: index === activeIndex }}
-              onPress={() => showPhoto(index, false)}
-              className={`size-16 overflow-hidden rounded-md border bg-gray-100 ${
-                index === activeIndex ? 'border-primary' : 'border-transparent'
-              }`}
-            >
-              <AdPhoto url={image} size={400} className='size-full' contentFit='cover' />
-            </Pressable>
-          ))}
-        </ScrollView>
-      )}
 
       <PhotoLightbox
         visible={isLightboxOpen}

@@ -61,7 +61,7 @@ export function AdContactButtons({ adId }: AdContactButtonsProps) {
         onPress={handlePhonePress}
         className='h-13 flex-1 items-center justify-center rounded-lg bg-primary px-8 active:opacity-90 disabled:opacity-50'
       >
-        <Text className='text-sm font-medium text-white' numberOfLines={1}>
+        <Text className='text-base font-medium text-white' numberOfLines={1}>
           {phoneTitle}
         </Text>
       </Pressable>
@@ -70,7 +70,7 @@ export function AdContactButtons({ adId }: AdContactButtonsProps) {
         onPress={handleWritePress}
         className='h-13 items-center justify-center rounded-lg bg-secondary px-8 active:opacity-90'
       >
-        <Text className='text-sm font-medium text-white'>Написать</Text>
+        <Text className='text-base font-medium text-white'>Написать</Text>
       </Pressable>
     </View>
   )

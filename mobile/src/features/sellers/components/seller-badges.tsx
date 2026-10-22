@@ -32,7 +32,7 @@ export function SellerBadges({ seller, className = '' }: SellerBadgesProps) {
     <View className={`flex-row flex-wrap gap-2 ${className}`}>
       {typeLabel && <Text className='rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600'>{typeLabel}</Text>}
       {isPremium && (
-        <View className='flex-row items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1'>
+        <View className='flex-row items-center gap-1 rounded-full bg-amber-200 px-2.5 py-1'>
           <Crown size={11} color='#b45309' />
           <Text className='text-xs text-amber-700'>Премиум</Text>
         </View>

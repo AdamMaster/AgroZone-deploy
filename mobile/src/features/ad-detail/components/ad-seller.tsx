@@ -36,7 +36,7 @@ export function AdSeller({ seller, publishedAt, bumpedAt }: AdSellerProps) {
       >
         <Avatar name={seller.displayName} pictureUrl={seller.picture} size='md' colorSeed={seller.id} />
         <View className='flex-1'>
-          <Text className='font-medium text-gray-950'>{seller.displayName ?? 'Пользователь'}</Text>
+          <Text className='text-base font-medium text-gray-950'>{seller.displayName ?? 'Пользователь'}</Text>
           {publishedDate && <Text className='text-xs text-gray-500'>Опубликовано {publishedDate}</Text>}
           {updatedDate && <Text className='text-xs text-gray-500'>Обновлено {updatedDate}</Text>}
           {seller.adsCount > 0 && (

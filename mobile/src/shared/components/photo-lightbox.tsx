@@ -6,13 +6,16 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
+  StyleSheet,
+  Text,
   View,
   useWindowDimensions
 } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import Animated, { interpolate, useAnimatedStyle, useSharedValue } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import { X } from '@/shared/icons/lucide'
+import { ArrowLeft } from '@/shared/icons/lucide'
 
 import { ZoomableImage } from './zoomable-image'
 
@@ -26,11 +29,18 @@ interface PhotoLightboxProps {
 }
 
 // Фото на весь экран — как лайтбокс сайта на телефоне: чёрный фон, фото во
-// всю ширину, листание свайпом, увеличение щипком, только крестик.
+// всю ширину, листание свайпом, увеличение щипком, закрытие стрелкой «Назад» или
+// свайпом фото вверх/вниз.
 export function PhotoLightbox({ visible, images, index, title, onIndexChange, onClose }: PhotoLightboxProps) {
   const { width, height } = useWindowDimensions()
   const { top } = useSafeAreaInsets()
   const [isZoomed, setIsZoomed] = useState(false)
+  // Насколько фото смахнули по вертикали: чем дальше, тем прозрачнее фон.
+  const dragY = useSharedValue(0)
+
+  const fadeStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(Math.abs(dragY.get()), [0, height / 2], [1, 0], 'clamp')
+  }))
 
   const handleMomentumEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     onIndexChange(Math.round(event.nativeEvent.contentOffset.x / width))
@@ -44,24 +54,31 @@ export function PhotoLightbox({ visible, images, index, title, onIndexChange, on
           width={width}
           height={height}
           onZoomChange={setIsZoomed}
+          dragY={dragY}
+          onDismiss={onClose}
           accessibilityLabel={`${title} — фото ${itemIndex + 1}`}
         />
       </View>
     ),
-    [width, height, title]
+    [width, height, title, dragY, onClose]
   )
 
   return (
     <Modal
       visible={visible}
       animationType='fade'
+      transparent
       statusBarTranslucent
       navigationBarTranslucent
       onRequestClose={onClose}
-      onShow={() => setIsZoomed(false)}
+      onShow={() => {
+        setIsZoomed(false)
+        dragY.set(0)
+      }}
     >
       {/* Жесты внутри Modal на Android работают только со своим корнем. */}
-      <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#171717' }}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <Animated.View pointerEvents='none' style={[StyleSheet.absoluteFill, { backgroundColor: '#171717' }, fadeStyle]} />
         <FlatList
           data={images}
           renderItem={renderItem}
@@ -74,16 +91,25 @@ export function PhotoLightbox({ visible, images, index, title, onIndexChange, on
           getItemLayout={(_data, itemIndex) => ({ length: width, offset: width * itemIndex, index: itemIndex })}
           onMomentumScrollEnd={handleMomentumEnd}
         />
-        <Pressable
-          accessibilityRole='button'
-          accessibilityLabel='Закрыть'
-          onPress={onClose}
-          hitSlop={12}
-          className='absolute right-3 size-11 items-center justify-center rounded-xl bg-neutral-700'
-          style={{ top: top + 8 }}
+        {/* Шапка как у страницы объявления: «Назад» слева, номер фото справа. */}
+        <Animated.View
+          className='absolute inset-x-0 top-0 flex-row items-center justify-between'
+          style={[{ paddingTop: top }, fadeStyle]}
         >
-          <X size={26} color='#fff' />
-        </Pressable>
+          <Pressable
+            accessibilityRole='button'
+            accessibilityLabel='Назад'
+            onPress={onClose}
+            className='size-13 items-center justify-center'
+          >
+            <ArrowLeft size={20} color='#fff' />
+          </Pressable>
+          {images.length > 1 && (
+            <Text className='px-4 text-base text-white'>
+              {index + 1} из {images.length}
+            </Text>
+          )}
+        </Animated.View>
       </GestureHandlerRootView>
     </Modal>
   )
