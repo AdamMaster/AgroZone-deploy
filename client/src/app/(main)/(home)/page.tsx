@@ -46,8 +46,7 @@ export default async function Home() {
 
   return (
     <div className='pt-0 sm:pt-4'>
-      {/* Organization + WebSite (с SearchAction для строки поиска в выдаче
-      Google) — только на главной, как и просил аудит (S5 в ROADMAP.md):
+      {/* Organization + WebSite — только на главной, как и просил аудит (S5 в ROADMAP.md):
       это сведения о сайте в целом, а не о конкретной странице,
       дублировать их на каждой странице незачем и не рекомендуется самим
       Google. */}

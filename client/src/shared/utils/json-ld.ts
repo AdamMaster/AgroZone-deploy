@@ -23,26 +23,16 @@ export function buildOrganizationJsonLd() {
   }
 }
 
-// WebSite + SearchAction — даёт Google основание показать под сайтом в
-// выдаче встроенную строку поиска ("Sitelinks search box"). Целевой шаблон
-// URL — ровно то, что реально делает SearchBar при сабмите (см.
-// search-bar.tsx: router.push(`/catalog?search=${...}`)) — если когда-нибудь
-// поменяется параметр или маршрут поиска, поправить нужно синхронно в обоих
-// местах.
+// WebSite — название и адрес сайта для Google. SearchAction (строка поиска в
+// сниппете) убран: Google отказался от Sitelinks search box, а робот читал
+// шаблон `/catalog?search={search_term_string}` как обычную страницу и
+// заносил её в отчёт индексирования.
 export function buildWebSiteJsonLd() {
   return {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: LEGAL_DETAILS.siteName,
-    url: SITE_URL,
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: {
-        '@type': 'EntryPoint',
-        urlTemplate: `${SITE_URL}/catalog?search={search_term_string}`
-      },
-      'query-input': 'required name=search_term_string'
-    }
+    url: SITE_URL
   }
 }
 
