@@ -59,15 +59,26 @@ export const AboutHero = () => {
             </p>
 
             <div className='mt-8 flex flex-wrap gap-1 sm:flex-row md:gap-3'>
-              <Button render={<Link href='/ads/create' />} size='lg' className='rounded-md sm:w-auto sm:rounded-lg'>
+              <Button
+                render={<Link href='/ads/create' />}
+                nativeButton={false}
+                size='lg'
+                className='rounded-md sm:w-auto sm:rounded-lg'
+              >
                 <Plus />
                 Разместить объявление
               </Button>
-              <Button render={<Link href='/catalog' />} size='lg' className='rounded-md sm:w-auto sm:rounded-lg'>
+              <Button
+                render={<Link href='/catalog' />}
+                nativeButton={false}
+                size='lg'
+                className='rounded-md sm:w-auto sm:rounded-lg'
+              >
                 Перейти в каталог
               </Button>
               <Button
                 render={<Link href='/help' />}
+                nativeButton={false}
                 variant='outline'
                 size='lg'
                 className='rounded-md sm:w-auto sm:rounded-lg'

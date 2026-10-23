@@ -12,7 +12,7 @@ export const AboutContact = () => {
           <p className='mt-3 text-gray-500'>
             Загляните в раздел «Помощь» — там собраны ответы на частые вопросы о работе с площадкой.
           </p>
-          <Button render={<Link href='/help' />} size='lg' className='mt-6 w-full sm:w-auto'>
+          <Button render={<Link href='/help' />} nativeButton={false} size='lg' className='mt-6 w-full sm:w-auto'>
             Перейти в Помощь
           </Button>
         </div>

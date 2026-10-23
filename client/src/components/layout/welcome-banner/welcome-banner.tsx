@@ -50,7 +50,12 @@ export const WelcomeBanner = () => {
           <span className='font-semibold text-gray-900 dark:text-white'>AgroZone</span>.
         </p>
         {user ? (
-          <Button render={<Link href='/ads/create' />} size='lg' className='w-full shrink-0 sm:w-auto'>
+          <Button
+            render={<Link href='/ads/create' />}
+            nativeButton={false}
+            size='lg'
+            className='w-full shrink-0 sm:w-auto'
+          >
             Разместить объявление
           </Button>
         ) : (
