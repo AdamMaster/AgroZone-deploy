@@ -19,7 +19,7 @@ export function SupportListItem({ isAdmin, onPress }: SupportListItemProps) {
     <Pressable
       accessibilityRole='button'
       onPress={onPress}
-      className='flex-row items-center gap-3 border-b border-gray-100 py-2 active:bg-gray-100'
+      className='flex-row items-center gap-3 border-gray-100 py-2 active:bg-gray-100'
     >
       <View className='size-15 items-center justify-center rounded-lg bg-primary'>
         <Headset size={24} color='#ffffff' />

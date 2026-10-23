@@ -19,7 +19,7 @@ export function MyAdsEmpty({ onCreateAd }: { onCreateAd: () => void }) {
       <View className='mb-8'>
         <Button size='sm' title='Разместить объявление' onPress={onCreateAd} />
       </View>
-      <Image source={EMPTY_BOX} style={{ width: 250, height: 250 }} accessibilityLabel='Нет объявлений' />
+      <Image source={EMPTY_BOX} style={{ width: 260, height: 250 }} accessibilityLabel='Нет объявлений' />
     </View>
   )
 }
