@@ -71,6 +71,7 @@ export const AboutHero = () => {
               <Button
                 render={<Link href='/catalog' />}
                 nativeButton={false}
+                variant='outline'
                 size='lg'
                 className='rounded-md sm:w-auto sm:rounded-lg'
               >
