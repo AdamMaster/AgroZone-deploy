@@ -1,20 +1,16 @@
 import type { Metadata } from 'next'
 
-import { StaticPagePlaceholder } from '@/components/layout'
+import { HelpContent } from '@/components/features/help/components'
 
 import { buildPageMetadata } from '@/shared/utils/metadata'
 
-const DESCRIPTION =
-  'Мы готовим раздел с ответами на частые вопросы: как разместить объявление, как работают платные услуги продвижения и премиум, как связаться с поддержкой.'
-
 export const metadata: Metadata = buildPageMetadata({
   title: 'Помощь',
-  description: DESCRIPTION,
+  description:
+    'Справка AgroZone: как разместить объявление, пройти модерацию, продвинуть объявление и оформить Премиум, подтвердить компанию по ИНН и безопасно совершить сделку.',
   path: '/help'
 })
 
 export default function HelpPage() {
-  return (
-    <StaticPagePlaceholder title='Помощь' description={DESCRIPTION} />
-  )
+  return <HelpContent />
 }

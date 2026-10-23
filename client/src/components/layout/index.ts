@@ -1,6 +1,8 @@
 export { Header } from './header/header'
 export { Footer } from './footer/footer'
 export { StaticPagePlaceholder } from './static-page/static-page-placeholder'
+export { GuidePage, SupportContacts } from './static-page/guide-page'
+export type { GuideItem, GuideSection } from './static-page/guide-page'
 export { Container } from './container'
 export { CookieConsentBanner } from './cookie-consent/cookie-consent-banner'
 export { WelcomeBanner } from './welcome-banner/welcome-banner'
