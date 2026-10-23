@@ -29,11 +29,11 @@ export const AboutMission = () => {
               level={2}
               className='text-xl leading-tight font-bold tracking-tight text-gray-900 md:text-2xl lg:text-4xl dark:text-neutral-50'
             >
-              Прямые сделки между тем, кто производит, и тем, кому это нужно.
+              Напрямую от производителя к покупателю.
             </Heading>
 
             <p className='mt-4 max-w-md text-base text-gray-500 sm:mt-5 sm:text-lg lg:mx-0'>
-              AgroZone существует, чтобы им было проще найти друг друга — без посредников и лишних звонков.
+              AgroZone помогает фермерам, хозяйствам и покупателям находить друг друга без посредников.
             </p>
           </div>
 

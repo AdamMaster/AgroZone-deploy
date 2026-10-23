@@ -51,11 +51,11 @@ export const AboutHero = () => {
               className='mb-2 h-auto w-48 sm:w-[260px]'
             />
             <Heading level={1} className='text-3xl leading-[1.1] text-white sm:text-4xl lg:text-5xl'>
-              агропромышленная площадка объявлений
+              Купи. Продай. Вырасти.
             </Heading>
 
             <p className='mt-4 max-w-xl text-base leading-snug text-gray-200 sm:mt-6 sm:text-lg'>
-              Купи. Продай. Вырасти
+              Агропромышленная площадка объявлений: техника, сырьё, продукция и услуги для сельского хозяйства.
             </p>
 
             <div className='mt-8 flex flex-wrap gap-1 sm:flex-row md:gap-3'>
