@@ -34,7 +34,7 @@ export const ConversationListItem = memo(function ConversationListItem({
       accessibilityRole='button'
       accessibilityLabel={`${isUnread ? 'Есть новые сообщения. ' : ''}${name}, ${ad.title}`}
       onPress={() => onOpen(conversation)}
-      className='items flex-row gap-3 border-b border-gray-100 py-2 active:bg-gray-100'
+      className='items flex-row gap-3 border-b border-gray-100 py-2 active:bg-gray-50'
     >
       <View className='size-15 items-center justify-center overflow-hidden rounded-lg bg-gray-100'>
         {ad.images[0] ? (

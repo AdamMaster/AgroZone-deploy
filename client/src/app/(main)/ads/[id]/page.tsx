@@ -4,12 +4,17 @@ import { cache } from 'react'
 
 import { AdDetail } from '@/components/features/ads/components'
 import { adsService } from '@/components/features/ads/services'
+import {
+  buildAdMetaDescription,
+  buildAdMetaTitle,
+  isServiceCategory
+} from '@/components/features/ads/utils/build-ad-meta'
 import { buildCategoryPath } from '@/components/features/ads/utils/build-category-path'
 import { categoriesService } from '@/components/features/categories/services'
 import { Container, JsonLd } from '@/components/layout'
 
 import { JsonLdBreadcrumbItem, buildBreadcrumbListJsonLd, buildProductJsonLd } from '@/shared/utils/json-ld'
-import { buildPageMetadata, truncateForMeta } from '@/shared/utils/metadata'
+import { buildPageMetadata } from '@/shared/utils/metadata'
 
 interface AdPageProps {
   params: Promise<{ id: string }>
@@ -27,6 +32,11 @@ const getAd = cache(async (id: string) => {
   }
 })
 
+// Дерево категорий нужно и для мета-данных (определить, услуга это или
+// товар), и для самой страницы (хлебные крошки) — cache() отдаёт один и тот
+// же запрос обоим, как и getAd выше.
+const getCategories = cache(() => categoriesService.findAll().catch(() => []))
+
 export async function generateMetadata({ params }: AdPageProps): Promise<Metadata> {
   const { id } = await params
   const ad = await getAd(id)
@@ -40,12 +50,16 @@ export async function generateMetadata({ params }: AdPageProps): Promise<Metadat
     })
   }
 
+  const categories = await getCategories()
+
+  // Цена и город — то, по чему ищут («... цена краснодар») и что сразу видно
+  // в сниппете. Для услуг без «купить» — см. build-ad-meta.ts. Бренд в
+  // конец заголовка дописывает общий template из app/layout.tsx.
   return buildPageMetadata({
-    title: `${ad.title} — купить на AgroZone`,
-    description: truncateForMeta(ad.description, 160),
+    title: buildAdMetaTitle(ad, isServiceCategory(categories, ad.categoryId)),
+    description: buildAdMetaDescription(ad),
     path: `/ads/${ad.id}`,
-    images: ad.images,
-    brandInTitle: true
+    images: ad.images
   })
 }
 
@@ -59,7 +73,7 @@ export default async function AdPage({ params }: AdPageProps) {
   }
 
   const [categories, categoryFeatures, similarAds] = await Promise.all([
-    categoriesService.findAll().catch(() => []),
+    getCategories(),
     categoriesService.findFeatures(ad.categoryId).catch(() => []),
     adsService
       .findAll({ categoryId: ad.categoryId, excludeAdId: ad.id, limit: 8 }, { next: { revalidate: 120 } })
