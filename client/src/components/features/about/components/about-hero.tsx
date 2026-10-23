@@ -28,7 +28,10 @@ const CATEGORIES_STRIP = [
 export const AboutHero = () => {
   return (
     <>
-      <section className='relative isolate overflow-hidden'>
+      {/* На телефоне блок занимает всю видимую высоту: экран минус шапка (--header-height — реальная высота <header>, её
+      выставляет CategoryMenu; до гидрации запасные 4rem) и нижняя панель (h-14 = 3.5rem + безопасная зона). Полоса категорий внизу входит в эту высоту: основной блок растянут
+      (flex-1), а она прижата к низу. С md шапка и панель другие — высота по содержимому. */}
+      <section className='relative isolate flex flex-col overflow-hidden md:min-h-0'>
         <Image
           src='/images/about-hero.jpg'
           alt='Уборка урожая на закате — вид с воздуха'
@@ -37,29 +40,43 @@ export const AboutHero = () => {
           sizes='100vw'
           className='object-cover'
         />
-        <Container className=''>
-          <div className='relative flex min-h-[520px] max-w-xl flex-col justify-center py-20 sm:min-h-[580px]'>
-            <Image src='/images/logo-white.svg' alt='' width={260} height={40} className='mb-2' />
-            <Heading level={1} className='leading-[1.1] text-white md:text-5xl'>
+        <div className='pointer-events-none absolute inset-0 bg-black/35 md:hidden' />
+        <Container className='flex w-full flex-1 flex-col'>
+          <div className='relative flex min-h-[calc(100svh-var(--header-height,4rem)-3.5rem-env(safe-area-inset-bottom))] max-w-xl flex-1 flex-col justify-center py-12 sm:py-20 md:min-h-[580px] md:flex-none'>
+            <Image
+              src='/images/logo-white.svg'
+              alt=''
+              width={260}
+              height={40}
+              className='mb-2 h-auto w-48 sm:w-[260px]'
+            />
+            <Heading level={1} className='text-3xl leading-[1.1] text-white sm:text-4xl lg:text-5xl'>
               агропромышленная площадка объявлений
             </Heading>
 
-            <p className='mt-6 max-w-xl text-lg leading-snug text-gray-200'>Купи. Продай. Вырасти</p>
+            <p className='mt-4 max-w-xl text-base leading-snug text-gray-200 sm:mt-6 sm:text-lg'>
+              Купи. Продай. Вырасти
+            </p>
 
-            <div className='mt-8 flex flex-wrap gap-3'>
-              <Button render={<Link href='/ads/create' />} size='lg'>
+            <div className='mt-8 flex flex-wrap gap-1 sm:flex-row md:gap-3'>
+              <Button render={<Link href='/ads/create' />} size='lg' className='rounded-md sm:w-auto sm:rounded-lg'>
                 <Plus />
                 Разместить объявление
               </Button>
-              <Button render={<Link href='/catalog' />} size='lg'>
+              <Button render={<Link href='/catalog' />} size='lg' className='rounded-md sm:w-auto sm:rounded-lg'>
                 Перейти в каталог
               </Button>
-              <Button render={<Link href='/help' />} variant='outline' size='lg'>
+              <Button
+                render={<Link href='/help' />}
+                variant='outline'
+                size='lg'
+                className='rounded-md sm:w-auto sm:rounded-lg'
+              >
                 Как это работает
               </Button>
             </div>
           </div>
-          <div className='relative flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 py-4'>
+          <div className='relative hidden flex-wrap items-center justify-center gap-x-3 gap-y-1.5 py-4 sm:flex'>
             {CATEGORIES_STRIP.map((category, index) => (
               <span key={category} className='flex items-center gap-x-3'>
                 <span className='text-xs tracking-wide text-white uppercase'>{category}</span>
@@ -70,7 +87,7 @@ export const AboutHero = () => {
         </Container>
       </section>
 
-      <div className='dark:bg-background bg-white py-5'></div>
+      <div className='dark:bg-background bg-white py-0 lg:py-5'></div>
     </>
   )
 }

@@ -17,28 +17,28 @@ import { Heading } from '@/components/ui'
 // странице — новых цветов/паттернов в проект не добавляется.
 export const AboutMission = () => {
   return (
-    <section className='dark:bg-background bg-white py-24'>
+    <section className='dark:bg-background bg-white py-14 pb-0 sm:py-24'>
       <Container>
-        <div className='grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-16'>
-          <div className='text-center lg:text-left'>
+        <div className='grid gap-8 md:grid-cols-[1.1fr_1fr] lg:gap-16'>
+          <div>
             <span className='bg-primary/10 text-primary mb-5 inline-block rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase'>
               Наша миссия
             </span>
 
             <Heading
               level={2}
-              className='text-3xl leading-tight font-bold tracking-tight text-gray-900 sm:text-4xl dark:text-neutral-50'
+              className='text-xl leading-tight font-bold tracking-tight text-gray-900 md:text-2xl lg:text-4xl dark:text-neutral-50'
             >
               Прямые сделки между тем, кто производит, и тем, кому это нужно.
             </Heading>
 
-            <p className='mx-auto mt-5 max-w-md text-lg text-gray-500 lg:mx-0'>
+            <p className='mt-4 max-w-md text-base text-gray-500 sm:mt-5 sm:text-lg lg:mx-0'>
               AgroZone существует, чтобы им было проще найти друг друга — без посредников и лишних звонков.
             </p>
           </div>
 
-          <div className='relative mx-auto h-[340px] w-full max-w-md'>
-            <div className='custom-shadow relative h-full w-full overflow-hidden rounded-[42px]'>
+          <div className='relative -mx-4 aspect-[1.4] h-auto sm:mx-auto sm:h-[340px] sm:w-full md:max-w-md'>
+            <div className='custom-shadow relative h-full w-full overflow-hidden sm:rounded-4xl lg:rounded-[42px]'>
               <Image
                 src='/images/armsnake.jpg'
                 alt='Рукопожатие в поле — сделка между продавцом и покупателем напрямую'

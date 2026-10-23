@@ -159,7 +159,7 @@ docker compose -f docker-compose.prod.yml --env-file .env up -d nginx
 docker compose -f docker-compose.prod.yml --env-file .env run --rm certbot \
   certonly --webroot -w /var/www/certbot \
   -d agro-zone.ru -d www.agro-zone.ru -d api.agro-zone.ru \
-  --email support@agro-zone.ru --agree-tos --no-eff-email
+  --email agrozone.support@gmail.com --agree-tos --no-eff-email
 
 # 5.3 — возвращаем боевой (HTTPS) конфиг и перечитываем nginx
 mv nginx/conf.d/app.conf.bak nginx/conf.d/app.conf

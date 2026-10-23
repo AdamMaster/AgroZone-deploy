@@ -11,8 +11,8 @@
 // текстах документов (см. раздел «Оператор» в privacy/page.tsx).
 export const LEGAL_DETAILS = {
   operatorName: 'Лампежев Адам Аскербиевич',
-  contactEmail: 'privacy@agro-zone.ru',
-  supportEmail: 'support@agro-zone.ru',
+  contactEmail: 'agrozone.support@gmail.com',
+  supportEmail: 'agrozone.support@gmail.com',
   siteName: 'AgroZone',
   // Реальный домен, который планируется купить — agro-zone.ru (через
   // дефис), а не agrozone.ru. Поправлено здесь один раз, чтобы везде на

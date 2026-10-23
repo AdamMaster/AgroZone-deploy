@@ -5,14 +5,14 @@ import { Button, Heading } from '@/components/ui'
 
 export const AboutContact = () => {
   return (
-    <section className='py-20'>
+    <section className='py-14 sm:py-20'>
       <Container>
         <div className='mx-auto max-w-xl text-center'>
           <Heading level={2}>Остались вопросы?</Heading>
           <p className='mt-3 text-gray-500'>
             Загляните в раздел «Помощь» — там собраны ответы на частые вопросы о работе с площадкой.
           </p>
-          <Button render={<Link href='/help' />} size='lg' className='mt-6'>
+          <Button render={<Link href='/help' />} size='lg' className='mt-6 w-full sm:w-auto'>
             Перейти в Помощь
           </Button>
         </div>
