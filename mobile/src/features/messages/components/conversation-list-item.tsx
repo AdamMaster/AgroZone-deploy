@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics'
 import { memo } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { Platform, Pressable, Text, View } from 'react-native'
 
 import { AdPhoto } from '@/shared/components/ad-photo'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
@@ -37,7 +37,15 @@ export const ConversationListItem = memo(function ConversationListItem({
   const name = isDeleted ? 'Пользователь удалил аккаунт' : (counterpart.displayName ?? 'Пользователь')
 
   const handleLongPress = () => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    // На Android — системный отклик долгого нажатия: производитель настраивает
+    // его под вибромотор конкретной модели (короткий «щелчок»), тогда как
+    // impactAsync там даёт одинаковое для всех устройств «жжж» по фиксированной
+    // форме волны. На iOS impactAsync и есть системный тап.
+    if (Platform.OS === 'android') {
+      void Haptics.performAndroidHapticsAsync(Haptics.AndroidHaptics.Long_Press)
+    } else {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    }
     onOpenMenu(conversation)
   }
 
