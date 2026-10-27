@@ -124,6 +124,20 @@ model User {
   siteSettingsUpdated SiteSetting[]
   siteSettingChanges  SiteSettingChange[]
 
+  // Отзывы о продавце: полученные и написанные этим пользователем — см.
+  // SellerReview.
+  sellerReviewsReceived SellerReview[] @relation("SellerReviewSeller")
+  sellerReviewsWritten  SellerReview[] @relation("SellerReviewAuthor")
+
+  // Рейтинг продавца — денормализованный результат по опубликованным
+  // отзывам, чтобы карточки и профили не считали его на лету. Пересчитывается
+  // только в SellerRatingService.recalculate, больше нигде не пишется.
+  // ratingAverage — взвешенное среднее (вес у каждого отзыва свой, см.
+  // SellerReview.weight), null пока нет ни одного отзыва; ratingCount —
+  // число опубликованных отзывов (не сумма весов).
+  ratingAverage Float? @map("rating_average")
+  ratingCount   Int    @default(0) @map("rating_count")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -261,6 +275,78 @@ model AdPhoneReveal {
   @@index([sellerId])
   @@index([adId])
   @@map("ad_phone_reveals")
+}
+
+// Как у автора отзыва появилось право оценить продавца. DEAL_CONFIRMED —
+// продавец сам отметил сделку состоявшейся в диалоге с этим покупателем
+// (Conversation.dealConfirmedAt): отзыв получает значок «Сделка
+// подтверждена» и полный вес. CONTACT — подтверждения нет, но контакт был
+// (достаточная переписка либо показанный номер телефона и выдержка по
+// времени): значок «Не подтверждено продавцом» и малый вес.
+enum SellerReviewContactType {
+  DEAL_CONFIRMED
+  CONTACT
+}
+
+// PUBLISHED — виден всем и входит в рейтинг; HIDDEN — скрыт модератором;
+// PENDING — ждёт решения модератора (автофильтр, жалобы). Модерация
+// появляется на следующем этапе, пока создаются только PUBLISHED.
+enum SellerReviewStatus {
+  PUBLISHED
+  HIDDEN
+  PENDING
+}
+
+// Отзыв покупателя о продавце. Один отзыв на пару «автор — продавец»
+// (@@unique): повторная оценка — это правка прежнего отзыва, а не новая
+// запись, иначе рейтинг можно было бы накручивать числом отзывов.
+//
+// weight — вес отзыва в рейтинге БЕЗ учёта взаимности: базовый вес по
+// contactType, умноженный на коэффициент доверия к автору (новый аккаунт без
+// другой активности весит меньше). Взаимные отзывы (А оценил Б, Б оценил А)
+// ослабляются при пересчёте рейтинга, а не записываются сюда, потому что
+// зависят от чужого отзыва, который может появиться или исчезнуть позже —
+// см. SellerRatingService.recalculate.
+//
+// conversationId — диалог, из которого возникло право на отзыв (nullable:
+// право может дать и показанный телефон, а диалог — быть удалён).
+// По отзыву с DEAL_CONFIRMED сделку в этом диалоге отменить нельзя.
+model SellerReview {
+  id String @id @default(uuid())
+
+  sellerId String @map("seller_id")
+  seller   User   @relation("SellerReviewSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+
+  authorId String @map("author_id")
+  author   User   @relation("SellerReviewAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  conversationId String?       @map("conversation_id")
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+
+  contactType SellerReviewContactType @map("contact_type")
+
+  // 1–5; границы дублирует CHECK в миграции.
+  rating Int
+  text   String? @db.Text
+  weight Float
+
+  status SellerReviewStatus @default(PUBLISHED)
+
+  // Ответ продавца: один на отзыв, редактируется; sellerReplyAt — время
+  // последнего сохранения ответа.
+  sellerReply   String?   @map("seller_reply") @db.Text
+  sellerReplyAt DateTime? @map("seller_reply_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([authorId, sellerId])
+  // Список отзывов продавца и пересчёт его рейтинга.
+  @@index([sellerId, status, createdAt])
+  // Лимит отзывов в сутки на автора.
+  @@index([authorId, createdAt])
+  @@index([conversationId])
+  @@map("seller_reviews")
 }
 
 // Переключатели возможностей сайта и приложения (feature flags), которыми
@@ -1117,6 +1203,9 @@ model Conversation {
   seller   User?   @relation("ConversationsAsSeller", fields: [sellerId], references: [id], onDelete: Cascade)
 
   messages Message[]
+
+  // Отзывы, оставленные покупателем по этому диалогу (см. SellerReview).
+  sellerReviews SellerReview[]
 
   lastMessageAt DateTime? @map("last_message_at")
 

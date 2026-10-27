@@ -33,6 +33,7 @@ import { DealerFeedsModule } from './dealer-feeds/dealer-feeds.module'
 import { SecurityEventsModule } from './security-events/security-events.module'
 import { AdminDashboardModule } from './admin-dashboard/admin-dashboard.module'
 import { SiteSettingsModule } from './site-settings/site-settings.module'
+import { SellerReviewsModule } from './seller-reviews/seller-reviews.module'
 
 @Module({
   imports: [
@@ -96,7 +97,8 @@ import { SiteSettingsModule } from './site-settings/site-settings.module'
     SupportModule,
     DealerFeedsModule,
     AdminDashboardModule,
-    SiteSettingsModule
+    SiteSettingsModule,
+    SellerReviewsModule
   ]
 })
 export class AppModule {}

@@ -9,6 +9,7 @@ import { AdStateMachineService } from './ad-state-machine.service'
 import { CategoriesService } from '@/categories/categories.service'
 import { UserService } from '@/user/user.service'
 import { NotificationsService } from '@/notifications/notifications.service'
+import { SiteSettingsService } from '@/site-settings/site-settings.service'
 
 // AdsService — большой сервис с семью зависимостями (см. конструктор), но
 // на момент написания этого файла у него не было ни одного теста вообще.
@@ -26,6 +27,7 @@ describe('AdsService', () => {
   let categoriesService: any
   let fileService: any
   let userService: any
+  let siteSettingsService: any
 
   beforeEach(async () => {
     prisma = {
@@ -54,6 +56,8 @@ describe('AdsService', () => {
       deleteFileByUrl: jest.fn().mockResolvedValue(undefined)
     }
     userService = { findById: jest.fn() }
+    // Рейтинги по умолчанию выключены — как у владельца до включения в админке.
+    siteSettingsService = { getFlags: jest.fn().mockResolvedValue({ sellerRatings: false }) }
 
     categoriesService = {
       getFeatures: jest.fn().mockResolvedValue([]),
@@ -70,7 +74,8 @@ describe('AdsService', () => {
         { provide: AdStateMachineService, useValue: { canTransition: jest.fn(), transition: jest.fn() } },
         { provide: CategoriesService, useValue: categoriesService },
         { provide: UserService, useValue: userService },
-        { provide: NotificationsService, useValue: {} }
+        { provide: NotificationsService, useValue: {} },
+        { provide: SiteSettingsService, useValue: siteSettingsService }
       ]
     }).compile()
 
@@ -540,6 +545,43 @@ describe('AdsService', () => {
 
       expect(result).not.toHaveProperty('phone')
       expect(result.user).toEqual({ id: 'user-1', displayName: 'Адам', adsCount: 2 })
+    })
+
+    describe('рейтинг продавца', () => {
+      const publishedAd = (seller: object) => ({
+        id: 'ad-1',
+        userId: 'user-1',
+        status: 'PUBLISHED',
+        expiresAt: new Date(now + 86_400_000),
+        phone: '79990001122',
+        user: { id: 'user-1', displayName: 'Адам', _count: { ads: 2 }, ...seller }
+      })
+
+      it('пока рейтинги выключены, в ответе нет ни rating, ни сырых полей', async () => {
+        prisma.ad.findUnique.mockResolvedValue(publishedAd({ ratingAverage: 4.5, ratingCount: 7 }))
+
+        const { user } = await service.findOne('ad-1')
+
+        expect(user).toEqual({ id: 'user-1', displayName: 'Адам', adsCount: 2 })
+      })
+
+      it('при включённых рейтингах отдаёт rating с порогом показа вместо сырых полей', async () => {
+        siteSettingsService.getFlags.mockResolvedValue({ sellerRatings: true })
+        prisma.ad.findUnique.mockResolvedValue(publishedAd({ ratingAverage: 4.5, ratingCount: 7 }))
+
+        const { user } = await service.findOne('ad-1')
+
+        expect(user).toEqual({ id: 'user-1', displayName: 'Адам', adsCount: 2, rating: { average: 4.5, count: 7 } })
+      })
+
+      it('меньше трёх отзывов: количество есть, среднего нет — «Пока нет оценок»', async () => {
+        siteSettingsService.getFlags.mockResolvedValue({ sellerRatings: true })
+        prisma.ad.findUnique.mockResolvedValue(publishedAd({ ratingAverage: 5, ratingCount: 2 }))
+
+        const { user } = await service.findOne('ad-1')
+
+        expect(user.rating).toEqual({ average: null, count: 2 })
+      })
     })
 
     it.each(['DRAFT', 'PENDING', 'REJECTED', 'ARCHIVED', 'EXPIRED'])(

@@ -1,7 +1,7 @@
 import { EventEmitter2 } from '@nestjs/event-emitter'
 import 'multer'
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common'
-import { AdStatus, ConversationType } from '@/generated/prisma/enums'
+import { AdStatus, ConversationType, SellerReviewContactType } from '@/generated/prisma/enums'
 import type { Message } from '@/generated/prisma/client'
 
 import { BlockedUsersService } from '@/blocked-users/blocked-users.service'
@@ -233,6 +233,42 @@ export class ConversationsService {
     return new Set(replies.map(reply => reply.conversationId))
   }
 
+  // Меняет отметку и читает итог в одной транзакции вместе с проверкой
+  // отзывов. UPDATE берёт блокировку строки диалога, а создание отзыва с
+  // подтверждением сделки берёт на ту же строку FOR SHARE (см.
+  // SellerReviewsService.create): отзыв и отмена сделки не могут разминуться —
+  // что бы ни началось раньше, второе увидит результат первого.
+  // Отзыв с «подтверждённой сделкой» держится на этой отметке: снять её
+  // задним числом значило бы оставить отзыв без основания.
+  private writeDealState(conversationId: string, confirmed: boolean) {
+    return this.prisma.$transaction(async tx => {
+      // Условие в самом UPDATE, а не проверка по уже прочитанной строке: два
+      // одновременных запроса не затрут друг друга и не разошлют событие дважды.
+      const { count } = await tx.conversation.updateMany({
+        where: { id: conversationId, dealConfirmedAt: confirmed ? null : { not: null } },
+        data: { dealConfirmedAt: confirmed ? new Date() : null }
+      })
+
+      if (!confirmed && count > 0) {
+        const review = await tx.sellerReview.findFirst({
+          where: { conversationId, contactType: SellerReviewContactType.DEAL_CONFIRMED },
+          select: { id: true }
+        })
+
+        if (review) {
+          throw new BadRequestException('Отменить нельзя: по этой сделке уже оставлен отзыв')
+        }
+      }
+
+      const { dealConfirmedAt } = await tx.conversation.findUniqueOrThrow({
+        where: { id: conversationId },
+        select: { dealConfirmedAt: true }
+      })
+
+      return { count, dealConfirmedAt }
+    })
+  }
+
   // Продавец отмечает, что сделка с покупателем этого диалога состоялась,
   // или снимает отметку. Покупатель отметить себя не может — иначе
   // подтверждение ничего бы не подтверждало (см. dealConfirmedAt в
@@ -240,7 +276,8 @@ export class ConversationsService {
   // ответил в диалоге: иначе одно «привет» со второго аккаунта давало бы
   // «подтверждённую сделку» и отзыв с полным весом. Первое сообщение в
   // диалоге всегда от покупателя (см. startConversation), поэтому
-  // проверять нужно только ответ продавца. Снять отметку можно всегда.
+  // проверять нужно только ответ продавца. Снять отметку можно, пока по
+  // сделке нет отзыва с подтверждением (см. SellerReview).
   // Повтор с тем же значением — не изменение: время первой отметки
   // сохраняется, событие участникам не рассылается.
   async setDealConfirmed(conversationId: string, userId: string, confirmed: boolean) {
@@ -254,17 +291,7 @@ export class ConversationsService {
       throw new BadRequestException('Сначала ответьте покупателю в этом диалоге')
     }
 
-    // Условие в самом UPDATE, а не проверка по уже прочитанной строке: два
-    // одновременных запроса не затрут друг друга и не разошлют событие дважды.
-    const { count } = await this.prisma.conversation.updateMany({
-      where: { id: conversationId, dealConfirmedAt: confirmed ? null : { not: null } },
-      data: { dealConfirmedAt: confirmed ? new Date() : null }
-    })
-
-    const { dealConfirmedAt } = await this.prisma.conversation.findUniqueOrThrow({
-      where: { id: conversationId },
-      select: { dealConfirmedAt: true }
-    })
+    const { count, dealConfirmedAt } = await this.writeDealState(conversationId, confirmed)
 
     if (count > 0) {
       // buyerId/sellerId у диалога по объявлению обязательны (см.

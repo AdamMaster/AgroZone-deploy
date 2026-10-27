@@ -20,6 +20,8 @@ import slugify from 'slugify'
 import { UserService } from '@/user/user.service'
 import { normalizePhone } from '@/libs/common/utils/phone.util'
 import { NotificationsService } from '@/notifications/notifications.service'
+import { StoredSellerRating, publicRatingFields } from '@/seller-reviews/utils/public-rating.util'
+import { SiteSettingsService } from '@/site-settings/site-settings.service'
 
 // Города федерального значения — у них DaData отдаёт city == region, из-за
 // чего city_fias_id/city_with_type в ответе DaData пустые (см.
@@ -123,7 +125,8 @@ export class AdsService {
     private readonly adStateMachine: AdStateMachineService,
     private readonly categoriesService: CategoriesService,
     private readonly userService: UserService,
-    private readonly notificationsService: NotificationsService
+    private readonly notificationsService: NotificationsService,
+    private readonly siteSettingsService: SiteSettingsService
   ) {}
 
   async create(
@@ -870,7 +873,7 @@ export class AdsService {
 
     return {
       ...rest,
-      user: user ? this.withSellerAdsCount(user) : null,
+      user: user ? await this.toPublicSeller(user) : null,
       isFavorite: userId ? (favorites?.length ?? 0) > 0 : false
     }
   }
@@ -900,6 +903,11 @@ export class AdsService {
       // утилита серверная, фронту нужна своя копия проверки — см.
       // isPremiumActive в client/src/shared/utils/user.util.ts).
       premiumUntil: true,
+      // Рейтинг продавца — готовые денормализованные поля (см. User.ratingAverage);
+      // наружу они уходят только через toPublicSeller и только при
+      // включённых рейтингах.
+      ratingAverage: true,
+      ratingCount: true,
       // Считаем ДРУГИЕ активные объявления продавца прямо в этом же запросе
       // (filtered relation count), без отдельного round-trip к базе. Фильтр
       // совпадает с условием "объявление видно публично": опубликовано и не
@@ -920,11 +928,17 @@ export class AdsService {
   }
 
   // Prisma отдаёт счётчик вложенным `_count.ads` — фронту нужен плоский
-  // `adsCount` (см. IAdUser).
-  private withSellerAdsCount<T extends { _count: { ads: number } }>(user: T) {
-    const { _count, ...userRest } = user
+  // `adsCount` (см. IAdUser). Сырые поля рейтинга заменяются готовым
+  // `rating` (с порогом показа) либо пропадают, пока рейтинги выключены.
+  private async toPublicSeller<T extends StoredSellerRating & { _count: { ads: number } }>(user: T) {
+    const { _count, ratingAverage, ratingCount, ...userRest } = user
+    const { sellerRatings } = await this.siteSettingsService.getFlags()
 
-    return { ...userRest, adsCount: _count.ads }
+    return {
+      ...userRest,
+      adsCount: _count.ads,
+      ...publicRatingFields({ ratingAverage, ratingCount }, sellerRatings)
+    }
   }
 
   // B2 в ROADMAP.md: единственное место, откуда публично можно получить
@@ -1203,7 +1217,7 @@ export class AdsService {
 
     const { user, ...rest } = ad
 
-    return { ...rest, user: user ? this.withSellerAdsCount(user) : null }
+    return { ...rest, user: user ? await this.toPublicSeller(user) : null }
   }
 
   private async getUserAdOrThrow(id: string, userId: string) {

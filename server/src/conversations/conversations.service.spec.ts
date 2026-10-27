@@ -2,7 +2,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 import type { EventEmitter2 } from '@nestjs/event-emitter'
 
 import { FileService } from '@/file/file.service'
-import { ConversationType } from '@/generated/prisma/enums'
+import { ConversationType, SellerReviewContactType } from '@/generated/prisma/enums'
 
 import {
   CONVERSATION_DEAL_CHANGED_EVENT,
@@ -43,9 +43,10 @@ describe('ConversationsService: живые события', () => {
         delete: jest.fn().mockResolvedValue({})
       },
       ad: { findUnique: jest.fn().mockResolvedValue({ id: 'ad1', userId: 'seller', title: 'Трактор' }) },
+      sellerReview: { findFirst: jest.fn().mockResolvedValue(null) },
       message: { create: jest.fn().mockReturnValue(message), findMany: jest.fn().mockResolvedValue([]) },
       user: { findUnique: jest.fn().mockResolvedValue({ displayName: 'Иван' }) },
-      $transaction: jest.fn().mockResolvedValue([message])
+      $transaction: jest.fn((arg: unknown) => (typeof arg === 'function' ? arg(prisma) : Promise.resolve([message])))
     }
     blockedUsersService = { isBlocked: jest.fn().mockResolvedValue(false) }
     notificationsService = { notifyNewMessage: jest.fn().mockResolvedValue(undefined) }
@@ -199,6 +200,18 @@ describe('ConversationsService: живые события', () => {
         select: { conversationId: true }
       })
       expect(prisma.conversation.updateMany).not.toHaveBeenCalled()
+      expect(eventEmitter.emit).not.toHaveBeenCalled()
+    })
+
+    it('отметку с оставленным отзывом снять нельзя: транзакция откатывается, события нет', async () => {
+      prisma.sellerReview.findFirst.mockResolvedValue({ id: 'r1' })
+
+      await expect(service.setDealConfirmed('c1', 'seller', false)).rejects.toBeInstanceOf(BadRequestException)
+
+      expect(prisma.sellerReview.findFirst).toHaveBeenCalledWith({
+        where: { conversationId: 'c1', contactType: SellerReviewContactType.DEAL_CONFIRMED },
+        select: { id: true }
+      })
       expect(eventEmitter.emit).not.toHaveBeenCalled()
     })
 

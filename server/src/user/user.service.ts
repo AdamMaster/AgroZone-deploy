@@ -27,6 +27,8 @@ import { AdminSetPasswordDto } from './dto/admin-set-password.dto'
 import { AdminSetEmailDto } from './dto/admin-set-email.dto'
 import { MailService } from '@/libs/mail/mail.service'
 import { SecurityEventsService } from '@/security-events/security-events.service'
+import { publicRatingFields } from '@/seller-reviews/utils/public-rating.util'
+import { SiteSettingsService } from '@/site-settings/site-settings.service'
 import { maskEmail, maskPhone } from '@/security-events/utils/mask.util'
 
 @Injectable()
@@ -37,7 +39,8 @@ export class UserService {
     private readonly configService: ConfigService,
     private readonly phoneConfirmationService: PhoneConfirmationService,
     private readonly mailService: MailService,
-    private readonly securityEventsService: SecurityEventsService
+    private readonly securityEventsService: SecurityEventsService,
+    private readonly siteSettingsService: SiteSettingsService
   ) {}
 
   async findById(id: string) {
@@ -122,6 +125,8 @@ export class UserService {
         deletedAt: true,
         presentationUrl: true,
         presentationFileName: true,
+        ratingAverage: true,
+        ratingCount: true,
         _count: {
           select: {
             ads: {
@@ -139,9 +144,11 @@ export class UserService {
       throw new NotFoundException('Продавец не найден')
     }
 
-    const { _count, deletedAt, ...rest } = user
+    const { _count, deletedAt, ratingAverage, ratingCount, ...rest } = user
+    const { sellerRatings } = await this.siteSettingsService.getFlags()
 
-    return { ...rest, adsCount: _count.ads }
+    // rating — только при включённых рейтингах; сырые поля User наружу не идут.
+    return { ...rest, adsCount: _count.ads, ...publicRatingFields({ ratingAverage, ratingCount }, sellerRatings) }
   }
 
   async findByPhone(phone: string) {

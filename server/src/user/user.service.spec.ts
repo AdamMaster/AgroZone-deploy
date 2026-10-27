@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config'
 import { PhoneConfirmationService } from '@/libs/phone-confirmation/phone-confirmation.service'
 import { MailService } from '@/libs/mail/mail.service'
 import { SecurityEventsService } from '@/security-events/security-events.service'
+import { SiteSettingsService } from '@/site-settings/site-settings.service'
 import { SecurityEventType, TokenType } from '@/generated/prisma/enums'
 
 jest.mock('argon2')
@@ -24,6 +25,7 @@ describe('UserService', () => {
   let phoneConfirmationService: any
   let mailService: any
   let securityEventsService: any
+  let siteSettingsService: any
 
   beforeEach(async () => {
     prisma = {
@@ -68,6 +70,7 @@ describe('UserService', () => {
       sendEmailChangedByAdminEmail: jest.fn().mockResolvedValue(true)
     }
     securityEventsService = { record: jest.fn().mockResolvedValue(undefined) }
+    siteSettingsService = { getFlags: jest.fn().mockResolvedValue({ sellerRatings: false }) }
 
     mockedVerify.mockReset()
     mockedHash.mockReset()
@@ -80,7 +83,8 @@ describe('UserService', () => {
         { provide: ConfigService, useValue: configService },
         { provide: PhoneConfirmationService, useValue: phoneConfirmationService },
         { provide: MailService, useValue: mailService },
-        { provide: SecurityEventsService, useValue: securityEventsService }
+        { provide: SecurityEventsService, useValue: securityEventsService },
+        { provide: SiteSettingsService, useValue: siteSettingsService }
       ]
     }).compile()
 
@@ -484,6 +488,43 @@ describe('UserService', () => {
       await service.searchByAdmin({ page: 2, limit: 500 })
 
       expect(prisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 100, take: 100 }))
+    })
+  })
+
+  describe('getPublicProfile', () => {
+    const row = (rating: object = {}) => ({
+      id: 'u1',
+      displayName: 'Адам',
+      deletedAt: null,
+      ratingAverage: 4.6,
+      ratingCount: 12,
+      _count: { ads: 4 },
+      ...rating
+    })
+
+    it('пока рейтинги выключены, rating в ответе нет и сырые поля не утекают', async () => {
+      prisma.user.findUnique.mockResolvedValue(row())
+
+      const profile = await service.getPublicProfile('u1')
+
+      expect(profile).toEqual({ id: 'u1', displayName: 'Адам', adsCount: 4 })
+    })
+
+    it('при включённых рейтингах отдаёт rating', async () => {
+      siteSettingsService.getFlags.mockResolvedValue({ sellerRatings: true })
+      prisma.user.findUnique.mockResolvedValue(row())
+
+      const profile = await service.getPublicProfile('u1')
+
+      expect(profile.rating).toEqual({ average: 4.6, count: 12 })
+      expect(profile).not.toHaveProperty('ratingAverage')
+      expect(profile).not.toHaveProperty('ratingCount')
+    })
+
+    it('удалённый продавец — 404', async () => {
+      prisma.user.findUnique.mockResolvedValue(row({ deletedAt: new Date() }))
+
+      await expect(service.getPublicProfile('u1')).rejects.toThrow(NotFoundException)
     })
   })
 
