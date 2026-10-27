@@ -7,6 +7,7 @@ import { Socket, io } from 'socket.io-client'
 
 import {
   IConversationListItem,
+  IConversationSocketDealEvent,
   IConversationSocketEvent,
   IConversationSocketMessageEvent,
   IMessage
@@ -46,6 +47,14 @@ export function useConversationsSocket(enabled: boolean) {
     socket.on('conversations:read', ({ conversationId }: IConversationSocketEvent) => {
       queryClient.setQueryData<IConversationListItem[]>(['conversations'], old =>
         old?.map(item => (item.id === conversationId ? { ...item, isUnread: false } : item))
+      )
+    })
+
+    // Продавец отметил (или снял) «сделка состоялась» — на другом устройстве
+    // или у собеседника.
+    socket.on('conversations:deal', ({ conversationId, dealConfirmedAt }: IConversationSocketDealEvent) => {
+      queryClient.setQueryData<IConversationListItem[]>(['conversations'], old =>
+        old?.map(item => (item.id === conversationId ? { ...item, dealConfirmedAt } : item))
       )
     })
 

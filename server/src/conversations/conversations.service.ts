@@ -10,9 +10,11 @@ import { NotificationsService } from '@/notifications/notifications.service'
 import { PrismaService } from '@/prisma/prisma.service'
 
 import {
+  CONVERSATION_DEAL_CHANGED_EVENT,
   CONVERSATION_MESSAGE_CREATED_EVENT,
   CONVERSATION_READ_EVENT,
   CONVERSATION_REMOVED_EVENT,
+  ConversationDealChangedPayload,
   ConversationMessageCreatedPayload,
   ConversationUserPayload
 } from './conversations.events'
@@ -135,6 +137,11 @@ export class ConversationsService {
       }
     })
 
+    const repliedConversationIds = await this.findRepliedAsSeller(
+      userId,
+      conversations.filter(conversation => conversation.sellerId === userId).map(conversation => conversation.id)
+    )
+
     return conversations.map(conversation => {
       const isBuyer = conversation.buyerId === userId
       const counterpart = isBuyer ? conversation.seller : conversation.buyer
@@ -166,7 +173,13 @@ export class ConversationsService {
               },
         counterpart,
         lastMessage,
-        dealConfirmed: conversation.dealConfirmed,
+        // Нужны клиенту, чтобы показать продавцу кнопку «Сделка состоялась», а
+        // покупателю — отметку продавца (см. setDealConfirmed).
+        // canConfirmDeal — то же условие, что проверяет сервер при отметке:
+        // клиент не дублирует правило, а только показывает его результат.
+        isSeller: !isBuyer,
+        canConfirmDeal: repliedConversationIds.has(conversation.id),
+        dealConfirmedAt: conversation.dealConfirmedAt,
         // Своё же сообщение не считается непрочитанным.
         isUnread:
           !!lastMessage && lastMessage.senderId !== userId && (!lastReadAt || lastMessage.createdAt > lastReadAt),
@@ -204,6 +217,66 @@ export class ConversationsService {
     })
 
     this.eventEmitter.emit(CONVERSATION_READ_EVENT, { conversationId, userId } satisfies ConversationUserPayload)
+  }
+
+  // Из переданных диалогов, где пользователь продавец, — те, где он сам хоть
+  // раз написал. Одним запросом на весь список, а не по запросу на диалог.
+  private async findRepliedAsSeller(sellerId: string, conversationIds: string[]): Promise<Set<string>> {
+    if (conversationIds.length === 0) return new Set()
+
+    const replies = await this.prisma.message.findMany({
+      where: { conversationId: { in: conversationIds }, senderId: sellerId },
+      distinct: ['conversationId'],
+      select: { conversationId: true }
+    })
+
+    return new Set(replies.map(reply => reply.conversationId))
+  }
+
+  // Продавец отмечает, что сделка с покупателем этого диалога состоялась,
+  // или снимает отметку. Покупатель отметить себя не может — иначе
+  // подтверждение ничего бы не подтверждало (см. dealConfirmedAt в
+  // schema.prisma). Отметить можно только после того, как продавец сам
+  // ответил в диалоге: иначе одно «привет» со второго аккаунта давало бы
+  // «подтверждённую сделку» и отзыв с полным весом. Первое сообщение в
+  // диалоге всегда от покупателя (см. startConversation), поэтому
+  // проверять нужно только ответ продавца. Снять отметку можно всегда.
+  // Повтор с тем же значением — не изменение: время первой отметки
+  // сохраняется, событие участникам не рассылается.
+  async setDealConfirmed(conversationId: string, userId: string, confirmed: boolean) {
+    const conversation = await this.getConversationForParticipant(conversationId, userId)
+
+    if (conversation.sellerId !== userId) {
+      throw new ForbiddenException('Отметить сделку состоявшейся может только продавец')
+    }
+
+    if (confirmed && (await this.findRepliedAsSeller(userId, [conversationId])).size === 0) {
+      throw new BadRequestException('Сначала ответьте покупателю в этом диалоге')
+    }
+
+    // Условие в самом UPDATE, а не проверка по уже прочитанной строке: два
+    // одновременных запроса не затрут друг друга и не разошлют событие дважды.
+    const { count } = await this.prisma.conversation.updateMany({
+      where: { id: conversationId, dealConfirmedAt: confirmed ? null : { not: null } },
+      data: { dealConfirmedAt: confirmed ? new Date() : null }
+    })
+
+    const { dealConfirmedAt } = await this.prisma.conversation.findUniqueOrThrow({
+      where: { id: conversationId },
+      select: { dealConfirmedAt: true }
+    })
+
+    if (count > 0) {
+      // buyerId/sellerId у диалога по объявлению обязательны (см.
+      // getConversationForParticipant).
+      this.eventEmitter.emit(CONVERSATION_DEAL_CHANGED_EVENT, {
+        conversationId,
+        dealConfirmedAt,
+        participantIds: [conversation.buyerId!, conversation.sellerId]
+      } satisfies ConversationDealChangedPayload)
+    }
+
+    return { dealConfirmedAt }
   }
 
   // "Удаление" диалога — по умолчанию скрывает его только у того, кто нажал

@@ -29,3 +29,15 @@ export interface ConversationUserPayload {
   conversationId: string
   userId: string
 }
+
+// Продавец отметил сделку состоявшейся или снял отметку — обоим участникам:
+// у покупателя в открытом диалоге должна появиться (или пропасть) плашка, у
+// продавца — обновиться на его других устройствах.
+export const CONVERSATION_DEAL_CHANGED_EVENT = 'conversation.deal.changed'
+
+export interface ConversationDealChangedPayload {
+  conversationId: string
+  // null — отметка снята.
+  dealConfirmedAt: Date | null
+  participantIds: [buyerId: string, sellerId: string]
+}

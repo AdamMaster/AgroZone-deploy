@@ -5,6 +5,7 @@ import { FileService } from '@/file/file.service'
 import { ConversationType } from '@/generated/prisma/enums'
 
 import {
+  CONVERSATION_DEAL_CHANGED_EVENT,
   CONVERSATION_MESSAGE_CREATED_EVENT,
   CONVERSATION_READ_EVENT,
   CONVERSATION_REMOVED_EVENT
@@ -35,7 +36,10 @@ describe('ConversationsService: живые события', () => {
         upsert: jest.fn().mockResolvedValue(conversation),
         findUnique: jest.fn().mockResolvedValue(conversation),
         findFirst: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
+        findUniqueOrThrow: jest.fn().mockResolvedValue({ dealConfirmedAt: null }),
         update: jest.fn().mockResolvedValue({}),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         delete: jest.fn().mockResolvedValue({})
       },
       ad: { findUnique: jest.fn().mockResolvedValue({ id: 'ad1', userId: 'seller', title: 'Трактор' }) },
@@ -134,6 +138,151 @@ describe('ConversationsService: живые события', () => {
 
     await expect(service.deleteConversation('c1', 'stranger')).rejects.toBeInstanceOf(ForbiddenException)
     expect(eventEmitter.emit).not.toHaveBeenCalled()
+  })
+
+  describe('отметка «сделка состоялась»', () => {
+    const CONFIRMED_AT = new Date('2026-10-26T12:00:00.000Z')
+
+    // По умолчанию продавец в диалоге уже отвечал.
+    beforeEach(() => {
+      prisma.message.findMany.mockResolvedValue([{ conversationId: 'c1' }])
+    })
+
+    it('продавец отмечает сделку: условие «ещё не отмечена» зашито в UPDATE, участникам уходит событие', async () => {
+      prisma.conversation.findUniqueOrThrow.mockResolvedValue({ dealConfirmedAt: CONFIRMED_AT })
+
+      const result = await service.setDealConfirmed('c1', 'seller', true)
+
+      expect(prisma.conversation.updateMany).toHaveBeenCalledWith({
+        where: { id: 'c1', dealConfirmedAt: null },
+        data: { dealConfirmedAt: expect.any(Date) }
+      })
+      expect(eventEmitter.emit).toHaveBeenCalledWith(CONVERSATION_DEAL_CHANGED_EVENT, {
+        conversationId: 'c1',
+        dealConfirmedAt: CONFIRMED_AT,
+        participantIds: ['buyer', 'seller']
+      })
+      expect(result).toEqual({ dealConfirmedAt: CONFIRMED_AT })
+    })
+
+    it('продавец снимает отметку: в UPDATE условие «уже отмечена», в событии null', async () => {
+      const result = await service.setDealConfirmed('c1', 'seller', false)
+
+      expect(prisma.conversation.updateMany).toHaveBeenCalledWith({
+        where: { id: 'c1', dealConfirmedAt: { not: null } },
+        data: { dealConfirmedAt: null }
+      })
+      expect(eventEmitter.emit).toHaveBeenCalledWith(CONVERSATION_DEAL_CHANGED_EVENT, {
+        conversationId: 'c1',
+        dealConfirmedAt: null,
+        participantIds: ['buyer', 'seller']
+      })
+      expect(result).toEqual({ dealConfirmedAt: null })
+    })
+
+    it('повтор с тем же значением — не изменение: время первой отметки сохраняется, события нет', async () => {
+      prisma.conversation.updateMany.mockResolvedValue({ count: 0 })
+      prisma.conversation.findUniqueOrThrow.mockResolvedValue({ dealConfirmedAt: CONFIRMED_AT })
+
+      await expect(service.setDealConfirmed('c1', 'seller', true)).resolves.toEqual({ dealConfirmedAt: CONFIRMED_AT })
+      expect(eventEmitter.emit).not.toHaveBeenCalled()
+    })
+
+    it('пока продавец сам не написал в диалоге, отметить сделку нельзя — ответ ищется среди его сообщений', async () => {
+      prisma.message.findMany.mockResolvedValue([])
+
+      await expect(service.setDealConfirmed('c1', 'seller', true)).rejects.toBeInstanceOf(BadRequestException)
+
+      expect(prisma.message.findMany).toHaveBeenCalledWith({
+        where: { conversationId: { in: ['c1'] }, senderId: 'seller' },
+        distinct: ['conversationId'],
+        select: { conversationId: true }
+      })
+      expect(prisma.conversation.updateMany).not.toHaveBeenCalled()
+      expect(eventEmitter.emit).not.toHaveBeenCalled()
+    })
+
+    it('снять отметку можно и без ответа продавца', async () => {
+      prisma.message.findMany.mockResolvedValue([])
+
+      await expect(service.setDealConfirmed('c1', 'seller', false)).resolves.toEqual({ dealConfirmedAt: null })
+      expect(prisma.message.findMany).not.toHaveBeenCalled()
+    })
+
+    it('покупатель отметить сделку не может', async () => {
+      await expect(service.setDealConfirmed('c1', 'buyer', true)).rejects.toBeInstanceOf(ForbiddenException)
+
+      expect(prisma.conversation.updateMany).not.toHaveBeenCalled()
+      expect(eventEmitter.emit).not.toHaveBeenCalled()
+    })
+
+    it('посторонний не может ни отметить, ни снять', async () => {
+      await expect(service.setDealConfirmed('c1', 'stranger', true)).rejects.toBeInstanceOf(ForbiddenException)
+      await expect(service.setDealConfirmed('c1', 'stranger', false)).rejects.toBeInstanceOf(ForbiddenException)
+
+      expect(prisma.conversation.updateMany).not.toHaveBeenCalled()
+    })
+
+    it('чат поддержки через этот метод не отмечается', async () => {
+      prisma.conversation.findUnique.mockResolvedValue({ ...conversation, type: ConversationType.SUPPORT })
+
+      await expect(service.setDealConfirmed('c1', 'seller', true)).rejects.toBeInstanceOf(NotFoundException)
+      expect(prisma.conversation.updateMany).not.toHaveBeenCalled()
+    })
+
+    it('список диалогов сообщает, кто продавец, время отметки и можно ли её поставить', async () => {
+      const row = (id: string, buyerId: string, sellerId: string, dealConfirmedAt: Date | null) => ({
+        id,
+        buyerId,
+        sellerId,
+        dealConfirmedAt,
+        buyerLastReadAt: null,
+        sellerLastReadAt: null,
+        lastMessageAt: null,
+        createdAt: CONFIRMED_AT,
+        adTitleSnapshot: 'Трактор',
+        ad: null,
+        buyer: { id: buyerId },
+        seller: { id: sellerId },
+        messages: []
+      })
+      prisma.conversation.findMany.mockResolvedValue([
+        row('as-seller', 'other', 'me', CONFIRMED_AT),
+        row('as-seller-silent', 'other', 'me', null),
+        row('as-buyer', 'me', 'other', null)
+      ])
+      prisma.message.findMany.mockResolvedValue([{ conversationId: 'as-seller' }])
+
+      const list = await service.getConversations('me')
+
+      // Один запрос ответов на весь список, и только по диалогам, где он продавец.
+      expect(prisma.message.findMany).toHaveBeenCalledTimes(1)
+      expect(prisma.message.findMany).toHaveBeenCalledWith({
+        where: { conversationId: { in: ['as-seller', 'as-seller-silent'] }, senderId: 'me' },
+        distinct: ['conversationId'],
+        select: { conversationId: true }
+      })
+      expect(
+        list.map(({ id, isSeller, canConfirmDeal, dealConfirmedAt }) => ({
+          id,
+          isSeller,
+          canConfirmDeal,
+          dealConfirmedAt
+        }))
+      ).toEqual([
+        { id: 'as-seller', isSeller: true, canConfirmDeal: true, dealConfirmedAt: CONFIRMED_AT },
+        { id: 'as-seller-silent', isSeller: true, canConfirmDeal: false, dealConfirmedAt: null },
+        { id: 'as-buyer', isSeller: false, canConfirmDeal: false, dealConfirmedAt: null }
+      ])
+    })
+
+    it('если пользователь нигде не продавец, ответы не запрашиваются', async () => {
+      prisma.conversation.findMany.mockResolvedValue([])
+
+      await service.getConversations('me')
+
+      expect(prisma.message.findMany).not.toHaveBeenCalled()
+    })
   })
 
   describe('фото в сообщениях', () => {

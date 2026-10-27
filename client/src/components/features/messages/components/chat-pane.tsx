@@ -7,6 +7,7 @@ import { adsService } from '../../ads/services'
 import { useConversationMessages, useMarkRead, useSendMessage, useStartConversation } from '../hooks'
 import { IConversationListItem } from '../types/message.types'
 import { ChatHeader } from './chat-header'
+import { DealBar } from './deal-bar'
 import { MessageComposer } from './message-composer'
 import { MessageThread } from './message-thread'
 
@@ -59,6 +60,7 @@ const ExistingConversation = ({ conversationId, conversations, onBack }: Existin
   return (
     <div className='flex min-w-0 flex-1 flex-col'>
       <ChatHeader ad={conversation?.ad} counterpart={conversation?.counterpart} onBack={onBack} />
+      {conversation && <DealBar conversation={conversation} />}
       <MessageThread messages={messages} isLoading={isLoading} counterpart={conversation?.counterpart} />
       <MessageComposer allowPhotos onSend={(text, photos) => sendMessage({ text, photos })} isSending={isSending} />
     </div>

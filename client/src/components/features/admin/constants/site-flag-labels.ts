@@ -1,0 +1,12 @@
+import { SiteFlagKey } from '../../site-settings/types/site-settings.types'
+
+// Подписи переключателей на странице «Настройки» админки. Record по
+// SiteFlagKey: добавили флаг в реестр — TypeScript заставит описать его и
+// здесь, а не оставит в админке переключатель без названия.
+export const SITE_FLAG_LABELS: Record<SiteFlagKey, { title: string; description: string }> = {
+  [SiteFlagKey.SellerRatings]: {
+    title: 'Рейтинги продавцов',
+    description:
+      'Отзывы и оценки продавцов на сайте и в приложении: звёзды в профиле и в объявлениях, список отзывов, ответы продавцов. Включайте, когда на площадке достаточно продавцов и трафика.'
+  }
+}

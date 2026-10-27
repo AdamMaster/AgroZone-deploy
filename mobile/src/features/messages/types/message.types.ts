@@ -36,6 +36,14 @@ export interface ConversationListItem {
   ad: ConversationAd
   counterpart: ConversationCounterpart
   lastMessage: ChatMessage | null
+  // Продавец ли текущий пользователь в этом диалоге: отметить сделку
+  // состоявшейся может только он.
+  isSeller: boolean
+  // Можно ли сейчас отметить сделку: продавец уже отвечал в диалоге. Правило
+  // считает сервер, клиент его только показывает.
+  canConfirmDeal: boolean
+  // Когда продавец отметил сделку состоявшейся; null — не отмечена.
+  dealConfirmedAt: string | null
   isUnread: boolean
   updatedAt: string
 }
@@ -45,6 +53,11 @@ export interface ConversationListItem {
 export interface MessageDraft {
   text: string
   photos: UploadFile[]
+}
+
+// Ответ PATCH /conversations/:id/deal.
+export interface DealConfirmation {
+  dealConfirmedAt: string | null
 }
 
 export interface StartConversationResponse {
@@ -75,4 +88,8 @@ export interface ConversationMessageEvent {
 
 export interface ConversationEvent {
   conversationId: string
+}
+
+export interface ConversationDealEvent extends ConversationEvent {
+  dealConfirmedAt: string | null
 }

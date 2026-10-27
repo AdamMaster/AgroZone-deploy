@@ -7,9 +7,11 @@ import { SessionData } from 'express-session'
 import { UserService } from '@/user/user.service'
 
 import {
+  CONVERSATION_DEAL_CHANGED_EVENT,
   CONVERSATION_MESSAGE_CREATED_EVENT,
   CONVERSATION_READ_EVENT,
   CONVERSATION_REMOVED_EVENT,
+  ConversationDealChangedPayload,
   ConversationMessageCreatedPayload,
   ConversationUserPayload
 } from './conversations.events'
@@ -73,5 +75,10 @@ export class ConversationsGateway implements OnGatewayConnection {
   @OnEvent(CONVERSATION_REMOVED_EVENT)
   handleRemoved({ conversationId, userId }: ConversationUserPayload) {
     this.server.to(userRoom(userId)).emit('conversations:removed', { conversationId })
+  }
+
+  @OnEvent(CONVERSATION_DEAL_CHANGED_EVENT)
+  handleDealChanged({ conversationId, dealConfirmedAt, participantIds }: ConversationDealChangedPayload) {
+    this.server.to(participantIds.map(userRoom)).emit('conversations:deal', { conversationId, dealConfirmedAt })
   }
 }

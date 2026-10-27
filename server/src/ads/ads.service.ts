@@ -965,7 +965,29 @@ export class AdsService {
     // номер какого объявления, сам номер в лог не пишем.
     this.logger.log(`Раскрыт телефон объявления ${id} (viewerKey=${viewerKey})`)
 
+    // Свой номер «раскрывать» нечем — в журнал контактов попадают только
+    // чужие.
+    if (ad.userId !== userId) {
+      await this.recordPhoneReveal(id, userId, ad.userId)
+    }
+
     return { phone: ad.phone }
+  }
+
+  // Запись в AdPhoneReveal: контакт с продавцом, на котором строится право
+  // оставить отзыв (см. модель). Как и лог выше, не блокирует ответ — сбой
+  // записи не должен лишить покупателя номера. createMany + skipDuplicates,
+  // как в recordView: повторный показ того же номера — штатный случай, и
+  // пусть дубликат тихо не вставляется, а не ловится ошибкой.
+  private async recordPhoneReveal(adId: string, viewerId: string, sellerId: string) {
+    try {
+      await this.prisma.adPhoneReveal.createMany({
+        data: [{ userId: viewerId, sellerId, adId }],
+        skipDuplicates: true
+      })
+    } catch (error) {
+      this.logger.error(`Не удалось записать показ телефона объявления ${adId}: ${(error as Error).message}`)
+    }
   }
 
   private async recordView(adId: string, viewerKey: string) {

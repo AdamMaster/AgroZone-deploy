@@ -9,6 +9,7 @@ import { useNavigationTheme } from '@/providers/use-navigation-theme'
 
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { ConversationsRealtime } from '@/features/messages/components/conversations-realtime'
+import { prefetchSiteFlags } from '@/features/site-settings/lib/prefetch-site-flags'
 import { SupportRealtime } from '@/features/support/components/support-realtime'
 import { themeHydrated } from '@/features/theme/store/theme-store'
 
@@ -30,7 +31,7 @@ function RootNavigator() {
   const isSignedIn = status === 'signedIn'
 
   useEffect(() => {
-    void Promise.all([restore(), themeHydrated]).finally(() => SplashScreen.hideAsync())
+    void Promise.all([restore(), themeHydrated, prefetchSiteFlags()]).finally(() => SplashScreen.hideAsync())
   }, [restore])
 
   // Гость нажал вкладку, требующую входа, вошёл — открываем эту вкладку

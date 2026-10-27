@@ -1,7 +1,13 @@
 import { apiClient } from '@/lib/api/api-client'
 import { UPLOAD_TIMEOUT_MS, appendFile } from '@/lib/api/upload-file'
 
-import type { ChatMessage, ConversationListItem, MessageDraft, StartConversationResponse } from '../types/message.types'
+import type {
+  ChatMessage,
+  ConversationListItem,
+  DealConfirmation,
+  MessageDraft,
+  StartConversationResponse
+} from '../types/message.types'
 
 export interface MessagesPageParams {
   // createdAt самого старого уже загруженного сообщения — сервер отдаёт
@@ -43,6 +49,11 @@ export const conversationsApi = {
 
   markRead: (conversationId: string) =>
     apiClient.patch<void>(`/conversations/${conversationId}/read`, undefined, { expectBody: false }),
+
+  // Продавец отмечает сделку состоявшейся (confirmed = true) или снимает
+  // отметку. Идемпотентно: повторный вызов вернёт то же состояние.
+  setDeal: (conversationId: string, confirmed: boolean) =>
+    apiClient.patch<DealConfirmation>(`/conversations/${conversationId}/deal`, { confirmed }),
 
   // Скрывает диалог только у себя: переписка принадлежит обоим участникам.
   remove: (conversationId: string) => apiClient.delete<void>(`/conversations/${conversationId}`, { expectBody: false })

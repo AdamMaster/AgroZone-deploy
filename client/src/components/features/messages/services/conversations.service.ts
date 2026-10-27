@@ -1,6 +1,12 @@
 import { api } from '@/shared/api'
 
-import { IConversationListItem, IMessage, IMessageDraft, IStartConversationResponse } from '../types/message.types'
+import {
+  IConversationListItem,
+  IDealConfirmation,
+  IMessage,
+  IMessageDraft,
+  IStartConversationResponse
+} from '../types/message.types'
 import { buildMessageFormData } from '../utils/build-message-form-data'
 
 class ConversationsService {
@@ -24,6 +30,12 @@ class ConversationsService {
 
   async markRead(conversationId: string): Promise<void> {
     await api.patch(`${this.URL}/${conversationId}/read`, {})
+  }
+
+  // Продавец отмечает сделку состоявшейся (confirmed = true) или снимает
+  // отметку (false). Идемпотентно: повторный вызов вернёт то же состояние.
+  async setDeal(conversationId: string, confirmed: boolean): Promise<IDealConfirmation> {
+    return api.patch<IDealConfirmation>(`${this.URL}/${conversationId}/deal`, { confirmed })
   }
 
   // Скрывает диалог только у текущего пользователя — не физическое удаление

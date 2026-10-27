@@ -14,6 +14,7 @@ import {
 import type { ChatMessage } from '../types/message.types'
 import { ChatHeader } from './chat-header'
 import { ChatLayout } from './chat-layout'
+import { DealBanner } from './deal-banner'
 import { MessageComposer } from './message-composer'
 import { MessageThread } from './message-thread'
 
@@ -48,6 +49,7 @@ export function ConversationChatScreen({ conversationId }: { conversationId: str
   return (
     <ChatLayout
       header={<ChatHeader counterpart={counterpart} ad={conversation?.ad} isLoading={isConversationPending} />}
+      banner={conversation && <DealBanner conversation={conversation} />}
       thread={
         <MessageThread
           messages={history.messages}

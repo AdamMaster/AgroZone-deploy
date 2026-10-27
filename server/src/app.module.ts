@@ -32,6 +32,7 @@ import { SessionModule } from './session/session.module'
 import { DealerFeedsModule } from './dealer-feeds/dealer-feeds.module'
 import { SecurityEventsModule } from './security-events/security-events.module'
 import { AdminDashboardModule } from './admin-dashboard/admin-dashboard.module'
+import { SiteSettingsModule } from './site-settings/site-settings.module'
 
 @Module({
   imports: [
@@ -94,7 +95,8 @@ import { AdminDashboardModule } from './admin-dashboard/admin-dashboard.module'
     NotificationsModule,
     SupportModule,
     DealerFeedsModule,
-    AdminDashboardModule
+    AdminDashboardModule,
+    SiteSettingsModule
   ]
 })
 export class AppModule {}

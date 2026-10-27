@@ -11,6 +11,7 @@ import { appendMessage } from '../lib/chat-history'
 import { useConversationsSocketStore } from '../store/conversations-socket-store'
 import type {
   ChatHistory,
+  ConversationDealEvent,
   ConversationEvent,
   ConversationListItem,
   ConversationMessageEvent
@@ -38,6 +39,12 @@ function createHandlers(queryClient: QueryClient) {
     onRead: ({ conversationId }: ConversationEvent) =>
       queryClient.setQueryData<ConversationListItem[]>(conversationsQueryKey, current =>
         current?.map(item => (item.id === conversationId ? { ...item, isUnread: false } : item))
+      ),
+    // Продавец отметил (или снял) «сделка состоялась» — на другом устройстве
+    // или у собеседника.
+    onDeal: ({ conversationId, dealConfirmedAt }: ConversationDealEvent) =>
+      queryClient.setQueryData<ConversationListItem[]>(conversationsQueryKey, current =>
+        current?.map(item => (item.id === conversationId ? { ...item, dealConfirmedAt } : item))
       ),
     // Удалено на другом устройстве.
     onRemoved: ({ conversationId }: ConversationEvent) =>
@@ -70,6 +77,7 @@ export function useConversationsRealtime(enabled: boolean) {
 
     socket.on('conversations:message', handlers.onMessage)
     socket.on('conversations:read', handlers.onRead)
+    socket.on('conversations:deal', handlers.onDeal)
     socket.on('conversations:removed', handlers.onRemoved)
 
     socket.on('connect', () => {

@@ -22,6 +22,7 @@ import { CHAT_MAX_FILE_SIZE, CHAT_MAX_PHOTOS } from './constants/conversations.c
 import { ConversationsService } from './conversations.service'
 import { FindMessagesQueryDto } from './dto/find-messages-query.dto'
 import { SendMessageDto } from './dto/send-message.dto'
+import { SetDealConfirmationDto } from './dto/set-deal-confirmation.dto'
 import { StartConversationDto } from './dto/start-conversation.dto'
 
 // Весь модуль — только для авторизованных: в отличие от просмотра
@@ -70,6 +71,17 @@ export class ConversationsController {
   @Patch(':id/read')
   markRead(@Param('id', ParseUUIDPipe) id: string, @CurrentUser('id') userId: string) {
     return this.conversationsService.markRead(id, userId)
+  }
+
+  // Продавец отмечает сделку с этим покупателем состоявшейся (или снимает
+  // отметку). Идемпотентно: повтор с тем же значением ничего не меняет.
+  @Patch(':id/deal')
+  setDeal(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: SetDealConfirmationDto
+  ) {
+    return this.conversationsService.setDealConfirmed(id, userId, dto.confirmed)
   }
 
   // Обычно скрывает диалог только у вызывающего (не физическое удаление) —

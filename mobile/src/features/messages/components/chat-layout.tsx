@@ -5,6 +5,8 @@ import { MessagesHeading } from './messages-heading'
 
 interface ChatLayoutProps {
   header: ReactNode
+  // Полоса под шапкой (отметка «сделка состоялась»); её нет у чата поддержки.
+  banner?: ReactNode
   thread: ReactNode
   // Нет у списка обращений поддержки — там писать некуда.
   composer?: ReactNode
@@ -16,12 +18,13 @@ interface ChatLayoutProps {
 // реально перекрывает экран, поэтому и там, где Android сам сжимает окно,
 // и там, где не сжимает (edge-to-edge), отступ получается верным. Нижняя
 // панель на Android на время набора прячется — см. SiteTabBar.
-export function ChatLayout({ header, thread, composer }: ChatLayoutProps) {
+export function ChatLayout({ header, banner, thread, composer }: ChatLayoutProps) {
   return (
     <KeyboardAvoidingView behavior='padding' className='flex-1'>
       <View className='flex-1 px-4 pt-3 pb-3'>
         <MessagesHeading />
         {header}
+        {banner}
         {thread}
         {composer}
       </View>

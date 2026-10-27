@@ -46,7 +46,7 @@ export interface IConversation {
   lastMessageAt: string | null
   buyerLastReadAt: string | null
   sellerLastReadAt: string | null
-  dealConfirmed: boolean
+  dealConfirmedAt: string | null
   createdAt: string
   updatedAt: string
 }
@@ -56,7 +56,14 @@ export interface IConversationListItem {
   ad: IMessageAd
   counterpart: IMessageUser
   lastMessage: IMessage | null
-  dealConfirmed: boolean
+  // Продавец ли текущий пользователь в этом диалоге — отметить сделку
+  // состоявшейся может только он (см. DealBar).
+  isSeller: boolean
+  // Можно ли сейчас отметить сделку: продавец уже отвечал в диалоге. Правило
+  // считает сервер, клиент его только показывает.
+  canConfirmDeal: boolean
+  // Когда продавец отметил сделку состоявшейся; null — не отмечена.
+  dealConfirmedAt: string | null
   isUnread: boolean
   updatedAt: string
 }
@@ -66,8 +73,17 @@ export interface IConversationSocketEvent {
   conversationId: string
 }
 
+export interface IConversationSocketDealEvent extends IConversationSocketEvent {
+  dealConfirmedAt: string | null
+}
+
 export interface IConversationSocketMessageEvent extends IConversationSocketEvent {
   message: IMessage
+}
+
+// Ответ PATCH /conversations/:id/deal.
+export interface IDealConfirmation {
+  dealConfirmedAt: string | null
 }
 
 export interface IStartConversationResponse {

@@ -115,6 +115,15 @@ model User {
 
   notifications Notification[]
 
+  // Показы телефонов: те, что этот пользователь открывал, и те, что
+  // открывали у него — см. AdPhoneReveal.
+  phoneRevealsMade     AdPhoneReveal[] @relation("PhoneRevealViewer")
+  phoneRevealsReceived AdPhoneReveal[] @relation("PhoneRevealSeller")
+
+  // Кто из администраторов менял настройки сайта — см. SiteSetting.
+  siteSettingsUpdated SiteSetting[]
+  siteSettingChanges  SiteSettingChange[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -215,6 +224,89 @@ model UserSecurityEvent {
   @@index([userId, type])
   @@index([createdAt])
   @@map("user_security_events")
+}
+
+// Факт показа телефона продавца: покупатель нажал «Показать телефон» (см.
+// AdsService.getPhone). Нужен системе отзывов: связаться с продавцом можно и
+// звонком, мимо чата, — такой контакт тоже даёт право оставить отзыв (с
+// меньшим весом, чем при подтверждённой сделке). Одна запись на пару
+// «пользователь — объявление»: повторные показы того же номера по тому же
+// объявлению не пишутся, createdAt остаётся временем ПЕРВОГО показа — от
+// него считается выдержка до права на отзыв. Сам номер не хранится, ровно
+// как и в журнале сервера.
+//
+// sellerId продублирован из объявления намеренно: объявление может быть
+// физически удалено (adId тогда обнуляется, SetNull), а контакт с продавцом
+// при этом был, и для отзывов нужен именно он, а не судьба объявления.
+model AdPhoneReveal {
+  id String @id @default(uuid())
+
+  userId String @map("user_id")
+  user   User   @relation("PhoneRevealViewer", fields: [userId], references: [id], onDelete: Cascade)
+
+  sellerId String @map("seller_id")
+  seller   User   @relation("PhoneRevealSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+
+  adId String? @map("ad_id")
+  ad   Ad?     @relation(fields: [adId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Дедуп повторных показов (createMany + skipDuplicates). У строк с
+  // обнулённым adId (объявление удалено) уникальность не действует — в
+  // Postgres NULL не равен NULL, а повторов такие строки и не порождают.
+  @@unique([userId, adId])
+  // «Когда этот пользователь впервые открыл телефон этого продавца».
+  @@index([userId, sellerId, createdAt])
+  @@index([sellerId])
+  @@index([adId])
+  @@map("ad_phone_reveals")
+}
+
+// Переключатели возможностей сайта и приложения (feature flags), которыми
+// владелец управляет из админки без деплоя: например, выключенная до поры
+// система рейтингов продавцов. Строка здесь — только ПЕРЕОПРЕДЕЛЕНИЕ: набор
+// допустимых ключей и значение по умолчанию живут в коде
+// (site-settings/constants/site-flags.constants.ts), поэтому флаг, которого
+// в таблице ещё нет, просто имеет значение по умолчанию, а новый флаг не
+// требует ни миграции, ни записи в базу. Читается через SiteSettingsService
+// (кеш в Redis), напрямую из других модулей эту таблицу не читаем.
+model SiteSetting {
+  key   String  @id
+  value Boolean
+
+  // SetNull, а не Cascade: настройка не должна исчезать вместе с аккаунтом
+  // администратора, который её последним менял.
+  updatedById String? @map("updated_by_id")
+  updatedBy   User?   @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("site_settings")
+}
+
+// Журнал переключений: кто, что и когда включил или выключил. Дописывается
+// только при реальной смене значения, записи не меняются и не удаляются —
+// ответ на вопрос «почему вдруг пропала/появилась функция на сайте».
+// Это не журнал безопасности аккаунта (см. UserSecurityEvent): у того узкий
+// набор событий и ограниченный срок хранения, а здесь история действий
+// администраторов над самим сайтом, и она небольшая по объёму.
+model SiteSettingChange {
+  id String @id @default(uuid())
+
+  key   String
+  // Значение, установленное этим изменением (прежнее — значение предыдущей
+  // записи по тому же ключу).
+  value Boolean
+
+  changedById String? @map("changed_by_id")
+  changedBy   User?   @relation(fields: [changedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([key, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@map("site_setting_changes")
 }
 
 model UserPhone {
@@ -450,6 +542,7 @@ model Ad {
   bumps         AdBump[]
   views         AdView[]
   viewsDaily    AdViewDaily[]
+  phoneReveals  AdPhoneReveal[]
 
   status AdStatus @default(PENDING)
 
@@ -965,11 +1058,12 @@ model DealerSubscription {
 // требует ни отдельной таблицы статусов чтения, ни массового UPDATE по всем
 // сообщениям диалога при открытии чата — обновляется одна строка.
 //
-// dealConfirmed — отметка "сделка состоялась", которую смогут ставить
-// участники диалога; задел на будущее: когда дойдём до отзывов о продавце,
-// оставить отзыв можно будет только там, где dealConfirmed = true — так
-// отзыв нельзя написать, просто зайдя на страницу объявления, не пообщавшись
-// с продавцом по-настоящему.
+// dealConfirmedAt — отметка "сделка состоялась": её ставит ПРОДАВЕЦ кнопкой
+// в чате (ConversationsService.setDealConfirmed), null — не отмечена. Диалог
+// по объявлению всегда один на пару "покупатель — объявление", так что
+// отметка привязана к конкретному покупателю. Основа системы отзывов:
+// отзыв после подтверждённой сделки имеет полный вес, а отзыв по простому
+// контакту — меньший (см. claude/seller-ratings-plan.md).
 //
 // type различает два физически разных сценария в одной таблице:
 //   AD      — обычный диалог покупатель/продавец по объявлению, как описано
@@ -1029,7 +1123,7 @@ model Conversation {
   buyerLastReadAt  DateTime? @map("buyer_last_read_at")
   sellerLastReadAt DateTime? @map("seller_last_read_at")
 
-  dealConfirmed Boolean @default(false) @map("deal_confirmed")
+  dealConfirmedAt DateTime? @map("deal_confirmed_at")
 
   // "Удаление" диалога — per-user, не физическое: переписка принадлежит
   // ОБОИМ участникам, и стереть её из базы по воле одного из них означало

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ConflictException, Logger, NotFoundException } from '@nestjs/common'
 
 import { AdsService } from './ads.service'
 import { PrismaService } from '@/prisma/prisma.service'
@@ -43,6 +43,9 @@ describe('AdsService', () => {
       },
       user: {
         findUnique: jest.fn().mockResolvedValue({ premiumUntil: null })
+      },
+      adPhoneReveal: {
+        createMany: jest.fn().mockResolvedValue({ count: 1 })
       }
     }
 
@@ -553,6 +556,64 @@ describe('AdsService', () => {
         await expect(service.findOne('ad-1')).rejects.toThrow(NotFoundException)
       }
     )
+  })
+
+  describe('getPhone', () => {
+    const publishedAd = (overrides: Record<string, unknown> = {}) => ({
+      phone: '79990001122',
+      status: 'PUBLISHED',
+      expiresAt: new Date(Date.now() + 86_400_000),
+      userId: 'seller-1',
+      ...overrides
+    })
+
+    it('отдаёт номер и записывает контакт: кто, чей номер и по какому объявлению', async () => {
+      prisma.ad.findUnique.mockResolvedValue(publishedAd())
+
+      await expect(service.getPhone('ad-1', 'buyer-1', 'user:buyer-1')).resolves.toEqual({ phone: '79990001122' })
+
+      expect(prisma.adPhoneReveal.createMany).toHaveBeenCalledWith({
+        data: [{ userId: 'buyer-1', sellerId: 'seller-1', adId: 'ad-1' }],
+        skipDuplicates: true
+      })
+    })
+
+    it('свой номер владелец видит всегда, но в журнал контактов он не попадает', async () => {
+      prisma.ad.findUnique.mockResolvedValue(publishedAd({ status: 'ARCHIVED' }))
+
+      await expect(service.getPhone('ad-1', 'seller-1', 'user:seller-1')).resolves.toEqual({ phone: '79990001122' })
+
+      expect(prisma.adPhoneReveal.createMany).not.toHaveBeenCalled()
+    })
+
+    it('сбой записи контакта не лишает покупателя номера', async () => {
+      prisma.ad.findUnique.mockResolvedValue(publishedAd())
+      prisma.adPhoneReveal.createMany.mockRejectedValue(new Error('db down'))
+      const loggerError = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
+
+      await expect(service.getPhone('ad-1', 'buyer-1', 'user:buyer-1')).resolves.toEqual({ phone: '79990001122' })
+      expect(loggerError).toHaveBeenCalledTimes(1)
+
+      loggerError.mockRestore()
+    })
+
+    it.each([
+      ['объявления нет', null],
+      ['объявление не опубликовано', publishedAd({ status: 'ARCHIVED' })],
+      ['срок объявления истёк', publishedAd({ expiresAt: new Date(Date.now() - 1000) })]
+    ])('%s — 404, контакт не пишется', async (_name, ad) => {
+      prisma.ad.findUnique.mockResolvedValue(ad)
+
+      await expect(service.getPhone('ad-1', 'buyer-1', 'user:buyer-1')).rejects.toThrow(NotFoundException)
+      expect(prisma.adPhoneReveal.createMany).not.toHaveBeenCalled()
+    })
+
+    it('у объявления без телефона — 404, контакт не пишется', async () => {
+      prisma.ad.findUnique.mockResolvedValue(publishedAd({ phone: null }))
+
+      await expect(service.getPhone('ad-1', 'buyer-1', 'user:buyer-1')).rejects.toThrow(NotFoundException)
+      expect(prisma.adPhoneReveal.createMany).not.toHaveBeenCalled()
+    })
   })
 
   describe('findOneForOwner', () => {

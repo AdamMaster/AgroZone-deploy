@@ -2,6 +2,8 @@ import { Suspense } from 'react'
 
 import { CatalogBreadcrumbs, CategoryGrid, CategoryMenu } from '@/components/features/categories/components'
 import { categoriesService } from '@/components/features/categories/services'
+import { SiteFlagsProvider } from '@/components/features/site-settings/components'
+import { siteSettingsService } from '@/components/features/site-settings/services'
 import { Footer, Header, MobileTabBar } from '@/components/layout'
 
 export default async function MainLayout({
@@ -9,10 +11,10 @@ export default async function MainLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const categories = await categoriesService.findAll()
+  const [categories, siteFlags] = await Promise.all([categoriesService.findAll(), siteSettingsService.getPublicFlags()])
 
   return (
-    <>
+    <SiteFlagsProvider flags={siteFlags}>
       <Suspense fallback={null}>
         <Header />
       </Suspense>
@@ -22,6 +24,6 @@ export default async function MainLayout({
       <main className='flex-1 pb-[calc(3.5rem+env(safe-area-inset-bottom)_+_40px)] sm:pb-0 sm:pb-14'>{children}</main>
       <Footer />
       <MobileTabBar />
-    </>
+    </SiteFlagsProvider>
   )
 }

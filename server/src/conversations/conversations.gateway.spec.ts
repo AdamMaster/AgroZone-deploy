@@ -86,6 +86,15 @@ describe('ConversationsGateway', () => {
     expect(emit).toHaveBeenCalledWith('conversations:message', { conversationId: 'c1', message })
   })
 
+  it('смена отметки сделки уходит в комнаты покупателя и продавца', () => {
+    const dealConfirmedAt = new Date('2026-10-26T12:00:00.000Z')
+
+    gateway.handleDealChanged({ conversationId: 'c1', dealConfirmedAt, participantIds: ['buyer', 'seller'] })
+
+    expect(to).toHaveBeenCalledWith(['conversations:user:buyer', 'conversations:user:seller'])
+    expect(emit).toHaveBeenCalledWith('conversations:deal', { conversationId: 'c1', dealConfirmedAt })
+  })
+
   it('«прочитано» и «убрано» уходят только в комнату самого пользователя', () => {
     gateway.handleRead({ conversationId: 'c1', userId: 'u1' })
     gateway.handleRemoved({ conversationId: 'c2', userId: 'u1' })

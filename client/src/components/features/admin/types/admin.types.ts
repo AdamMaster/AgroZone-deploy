@@ -1,5 +1,6 @@
 import { AdReportReason } from '@/components/features/ads/types/ad.types'
 import { UserRole, UserType } from '@/components/features/auth/types'
+import { SiteFlagKey } from '@/components/features/site-settings/types/site-settings.types'
 
 // Значения — строго как в enum AdReportStatus на бэкенде (prisma/schema.prisma).
 export enum AdReportStatus {
@@ -93,4 +94,33 @@ export interface IAdminUserDetail {
   createdAt: string
   phones: Array<{ id: string; phone: string; isPrimary: boolean; isVerified: boolean }>
   accounts: IAdminUserAccount[]
+}
+
+// --- Настройки сайта (/admin/settings) ---
+
+export interface ISiteSettingActor {
+  id: string
+  displayName: string | null
+}
+
+export interface IAdminSiteFlag {
+  key: SiteFlagKey
+  value: boolean
+  // null — флаг ещё ни разу не переключали, действует значение по умолчанию.
+  updatedAt: string | null
+  updatedBy: ISiteSettingActor | null
+}
+
+export interface IAdminSiteFlagChange {
+  id: string
+  key: SiteFlagKey
+  value: boolean
+  createdAt: string
+  // null — аккаунт администратора с тех пор удалён.
+  changedBy: ISiteSettingActor | null
+}
+
+export interface IAdminSiteSettings {
+  flags: IAdminSiteFlag[]
+  changes: IAdminSiteFlagChange[]
 }

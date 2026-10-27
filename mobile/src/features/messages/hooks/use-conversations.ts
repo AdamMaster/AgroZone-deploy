@@ -103,6 +103,23 @@ export function useMarkConversationRead() {
   })
 }
 
+// Продавец отмечает сделку состоявшейся или снимает отметку. Состояние берём
+// из ответа сервера, а не из нажатой кнопки: запрос идемпотентен, и если
+// отметка уже поставлена с другого устройства, на экране будет реальное
+// значение.
+export function useSetDeal(conversationId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (confirmed: boolean) => conversationsApi.setDeal(conversationId, confirmed),
+    onSuccess: ({ dealConfirmedAt }) =>
+      queryClient.setQueryData<ConversationListItem[]>(conversationsQueryKey, current =>
+        current?.map(item => (item.id === conversationId ? { ...item, dealConfirmedAt } : item))
+      ),
+    onError: showError
+  })
+}
+
 // Удалить переписку и заблокировать — диалог сразу пропадает из списка, не
 // дожидаясь опроса.
 export function useDeleteConversation() {
