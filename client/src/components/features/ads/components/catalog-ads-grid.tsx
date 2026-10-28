@@ -1,14 +1,13 @@
 'use client'
 
-import { useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 import { useMemo } from 'react'
 
+import { findCategoryIdBySlug } from '@/components/features/categories/utils/category-utils'
 import { Button } from '@/components/ui'
 
 import { pluralizeRu } from '@/shared/utils'
-
-import { findCategoryIdBySlug } from '@/components/features/categories/utils/category-utils'
 
 import { useCategories } from '../../categories/hooks/use-categories'
 import { useCatalogFilters } from '../../filter/hooks/use-catalog-filters'
@@ -16,6 +15,7 @@ import { useAdsInfinite } from '../hooks'
 import { IAdsListResponse } from '../types/ad.types'
 import { buildAdsQueryParams } from '../utils/build-ads-query-params'
 import { AdsGrid } from './ads-grid'
+import { EmptyAdsCta } from './empty-ads-cta'
 
 // Ограничение длины поискового запроса в сообщении пустого состояния — на
 // случай, если в URL руками (или ботом) подставили аномально длинную
@@ -25,9 +25,7 @@ const MAX_DISPLAYED_QUERY_LENGTH = 80
 
 function formatDisplayedQuery(query: string): string {
   const trimmed = query.trim()
-  return trimmed.length > MAX_DISPLAYED_QUERY_LENGTH
-    ? `${trimmed.slice(0, MAX_DISPLAYED_QUERY_LENGTH)}…`
-    : trimmed
+  return trimmed.length > MAX_DISPLAYED_QUERY_LENGTH ? `${trimmed.slice(0, MAX_DISPLAYED_QUERY_LENGTH)}…` : trimmed
 }
 
 interface CatalogAdsGridProps {
@@ -64,7 +62,21 @@ export function CatalogAdsGrid({ serverSlug, layout, className, initialAds }: Ca
   const params = useMemo(
     () => buildAdsQueryParams({ categoryId, search: searchQuery, filters }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [categoryId, searchQuery, filters.sortBy, filters.unit, filters.minPrice, filters.maxPrice, filters.regionIsoCode, filters.localityFiasId, filters.sellerType, filters.lat, filters.lng, filters.radiusKm, filters.features]
+    [
+      categoryId,
+      searchQuery,
+      filters.sortBy,
+      filters.unit,
+      filters.minPrice,
+      filters.maxPrice,
+      filters.regionIsoCode,
+      filters.localityFiasId,
+      filters.sellerType,
+      filters.lat,
+      filters.lng,
+      filters.radiusKm,
+      filters.features
+    ]
   )
 
   const { ads, total, isFetchingNextPage, hasNextPage, fetchNextPage } = useAdsInfinite(params, initialAds)
@@ -100,6 +112,7 @@ export function CatalogAdsGrid({ serverSlug, layout, className, initialAds }: Ca
         // первой отрисовки.
         isLoading={false}
         emptyMessage={emptyMessage}
+        emptyAction={<EmptyAdsCta />}
       />
       {hasNextPage && (
         <div className='mt-6 flex justify-center sm:mt-8'>

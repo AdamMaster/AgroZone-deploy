@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 
+import { AppDownloadLink } from '@/components/features/app-download/components'
 import { CategoryMenuButton } from '@/components/features/categories/components'
 import { HomeLocationPicker } from '@/components/features/home/components'
 import { useUnreadNotificationsCount } from '@/components/features/notifications/hooks'
@@ -46,7 +47,13 @@ export const Header = () => {
             <p className='hidden text-sm leading-3 lg:inline dark:text-neutral-200'>
               Агропромышленная торговая площадка
             </p>
-            <HeaderActions className='ml-auto' />
+            <div className='ml-auto flex items-center gap-3'>
+              <AppDownloadLink place='header' className='px-3 py-1 text-gray-900 dark:text-neutral-200'>
+                <span className='hidden lg:inline'>Скачать приложение</span>
+                <span className='lg:hidden'>Приложение</span>
+              </AppDownloadLink>
+              <HeaderActions />
+            </div>
           </div>
         </Container>
       </div>

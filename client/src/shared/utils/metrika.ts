@@ -16,13 +16,15 @@ const METRIKA_COUNTER_ID = process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID
 // каждого нужно завести цель вручную: Настройки счётчика → Цели →
 // добавить цель → «JavaScript-событие» → идентификатор ровно как здесь.
 // Список — 5 сценариев из F15: поиск, показ телефона, сообщение продавцу,
-// подача объявления, регистрация.
+// подача объявления, регистрация; плюс переход к скачиванию приложения
+// (параметр place — откуда нажали: header, banner, footer и т.д.).
 export const METRIKA_GOALS = {
   SEARCH: 'search',
   PHONE_REVEAL: 'phone_reveal',
   MESSAGE_TO_SELLER: 'message_to_seller',
   AD_SUBMIT: 'ad_submit',
-  REGISTRATION: 'registration'
+  REGISTRATION: 'registration',
+  APP_DOWNLOAD_CLICK: 'app_download_click'
 } as const
 
 export type MetrikaGoal = (typeof METRIKA_GOALS)[keyof typeof METRIKA_GOALS]

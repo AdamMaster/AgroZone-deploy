@@ -1,8 +1,4 @@
-import {
-  DashboardMetricKey,
-  DashboardPaymentKind,
-  DashboardPeriodDays
-} from '../types/admin-dashboard.types'
+import { DashboardMetricKey, DashboardPaymentKind, DashboardPeriodDays } from '../types/admin-dashboard.types'
 
 export const DASHBOARD_PERIODS: Array<{ days: DashboardPeriodDays; label: string }> = [
   { days: 7, label: '7 дней' },

@@ -6,6 +6,7 @@ import { RedisService } from '@/redis/redis.service'
 
 import {
   SITE_FLAG_DEFAULTS,
+  SITE_FLAG_KEYS,
   SITE_SETTINGS_CACHE_KEY,
   SITE_SETTINGS_CACHE_TTL_SECONDS,
   SITE_SETTINGS_HISTORY_LIMIT,
@@ -66,16 +67,24 @@ describe('SiteSettingsService', () => {
 
   describe('getFlags', () => {
     it('по умолчанию все флаги выключены, а пустой ответ базы кешируется', async () => {
-      await expect(service.getFlags()).resolves.toEqual({ [KEY]: false })
+      await expect(service.getFlags()).resolves.toEqual({ ...SITE_FLAG_DEFAULTS })
 
-      expect(redis.set).toHaveBeenCalledWith(SITE_SETTINGS_CACHE_KEY, { [KEY]: false }, SITE_SETTINGS_CACHE_TTL_SECONDS)
+      expect(redis.set).toHaveBeenCalledWith(
+        SITE_SETTINGS_CACHE_KEY,
+        { ...SITE_FLAG_DEFAULTS },
+        SITE_SETTINGS_CACHE_TTL_SECONDS
+      )
     })
 
     it('значение из базы переопределяет значение по умолчанию', async () => {
       prisma.siteSetting.findMany.mockResolvedValue([{ key: KEY, value: true }])
 
-      await expect(service.getFlags()).resolves.toEqual({ [KEY]: true })
-      expect(redis.set).toHaveBeenCalledWith(SITE_SETTINGS_CACHE_KEY, { [KEY]: true }, SITE_SETTINGS_CACHE_TTL_SECONDS)
+      await expect(service.getFlags()).resolves.toEqual({ ...SITE_FLAG_DEFAULTS, [KEY]: true })
+      expect(redis.set).toHaveBeenCalledWith(
+        SITE_SETTINGS_CACHE_KEY,
+        { ...SITE_FLAG_DEFAULTS, [KEY]: true },
+        SITE_SETTINGS_CACHE_TTL_SECONDS
+      )
     })
 
     it('строки с неизвестными ключами игнорируются', async () => {
@@ -83,14 +92,14 @@ describe('SiteSettingsService', () => {
 
       const flags = await service.getFlags()
 
-      expect(flags).toEqual({ [KEY]: false })
+      expect(flags).toEqual({ ...SITE_FLAG_DEFAULTS })
       expect(flags).not.toHaveProperty('removedFlag')
     })
 
     it('при попадании в кеш базу не читает', async () => {
       redis.get.mockResolvedValue(JSON.stringify({ [KEY]: true }))
 
-      await expect(service.getFlags()).resolves.toEqual({ [KEY]: true })
+      await expect(service.getFlags()).resolves.toEqual({ ...SITE_FLAG_DEFAULTS, [KEY]: true })
 
       expect(prisma.siteSetting.findMany).not.toHaveBeenCalled()
       expect(redis.set).not.toHaveBeenCalled()
@@ -110,7 +119,7 @@ describe('SiteSettingsService', () => {
       redis.get.mockResolvedValue(raw)
       prisma.siteSetting.findMany.mockResolvedValue([{ key: KEY, value: true }])
 
-      await expect(service.getFlags()).resolves.toEqual({ [KEY]: true })
+      await expect(service.getFlags()).resolves.toEqual({ ...SITE_FLAG_DEFAULTS, [KEY]: true })
       expect(prisma.siteSetting.findMany).toHaveBeenCalledTimes(1)
     })
 
@@ -119,7 +128,7 @@ describe('SiteSettingsService', () => {
       redis.set.mockRejectedValue(new Error('redis down'))
       prisma.siteSetting.findMany.mockResolvedValue([{ key: KEY, value: true }])
 
-      await expect(service.getFlags()).resolves.toEqual({ [KEY]: true })
+      await expect(service.getFlags()).resolves.toEqual({ ...SITE_FLAG_DEFAULTS, [KEY]: true })
       expect(loggerWarn).toHaveBeenCalledTimes(2)
     })
   })
@@ -196,7 +205,7 @@ describe('SiteSettingsService', () => {
   describe('getAdminSettings', () => {
     it('без переопределений отдаёт все флаги из реестра со значениями по умолчанию', async () => {
       await expect(service.getAdminSettings()).resolves.toEqual({
-        flags: [{ key: KEY, value: false, updatedAt: null, updatedBy: null }],
+        flags: SITE_FLAG_KEYS.map(key => ({ key, value: SITE_FLAG_DEFAULTS[key], updatedAt: null, updatedBy: null })),
         changes: []
       })
     })
@@ -213,7 +222,13 @@ describe('SiteSettingsService', () => {
 
       const result = await service.getAdminSettings()
 
-      expect(result.flags).toEqual([{ key: KEY, value: true, updatedAt: CHANGED_AT, updatedBy: ADMIN }])
+      expect(result.flags).toHaveLength(SITE_FLAG_KEYS.length)
+      expect(result.flags.find(flag => flag.key === KEY)).toEqual({
+        key: KEY,
+        value: true,
+        updatedAt: CHANGED_AT,
+        updatedBy: ADMIN
+      })
       expect(result.changes).toEqual([{ id: 'c1', key: KEY, value: true, createdAt: CHANGED_AT, changedBy: ADMIN }])
       expect(prisma.siteSettingChange.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ orderBy: { createdAt: 'desc' }, take: SITE_SETTINGS_HISTORY_LIMIT })

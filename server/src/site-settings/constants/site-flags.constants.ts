@@ -12,13 +12,20 @@ export const SiteFlagKey = {
   // Система рейтингов и отзывов о продавцах. Выключена, пока на площадке
   // не наберётся достаточно продавцов и трафика: пустые звёзды выглядят
   // хуже, чем их отсутствие. Включает владелец одним нажатием в админке.
-  SellerRatings: 'sellerRatings'
+  SellerRatings: 'sellerRatings',
+  // Все призывы «Скачать приложение» на сайте: баннер для Android-браузеров,
+  // ссылки в шапке и подвале. Выключен, пока на площадке мало объявлений:
+  // человек, поставивший приложение и не нашедший товар, оставит низкую
+  // оценку в RuStore, а первые оценки сильнее всего влияют на средний
+  // рейтинг.
+  AppDownload: 'appDownload'
 } as const
 
 export type SiteFlagKey = (typeof SiteFlagKey)[keyof typeof SiteFlagKey]
 
 export const SITE_FLAG_DEFAULTS: Readonly<Record<SiteFlagKey, boolean>> = {
-  [SiteFlagKey.SellerRatings]: false
+  [SiteFlagKey.SellerRatings]: false,
+  [SiteFlagKey.AppDownload]: false
 }
 
 export const SITE_FLAG_KEYS = Object.values(SiteFlagKey)

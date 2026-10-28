@@ -1,5 +1,7 @@
 import Link from 'next/link'
 
+import { AppDownloadLink } from '@/components/features/app-download/components'
+
 import { Container } from '../container'
 
 interface FooterLink {
@@ -27,6 +29,7 @@ export const Footer = () => {
               {link.label}
             </Link>
           ))}
+          <AppDownloadLink place='footer' side='top' align='start' />
         </div>
 
         <div className='dark:border-accent grid gap-2 border-t border-gray-200 py-5'>

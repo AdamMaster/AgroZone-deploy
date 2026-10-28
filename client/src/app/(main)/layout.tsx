@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 
+import { AppDownloadBanner } from '@/components/features/app-download/components'
 import { CatalogBreadcrumbs, CategoryGrid, CategoryMenu } from '@/components/features/categories/components'
 import { categoriesService } from '@/components/features/categories/services'
 import { SiteFlagsProvider } from '@/components/features/site-settings/components'
@@ -15,6 +16,7 @@ export default async function MainLayout({
 
   return (
     <SiteFlagsProvider flags={siteFlags}>
+      <AppDownloadBanner />
       <Suspense fallback={null}>
         <Header />
       </Suspense>

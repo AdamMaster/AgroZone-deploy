@@ -5,7 +5,8 @@ import { SiteFlagKey, SiteFlags } from '../types/site-settings.types'
 // Безопасная сторона отказа — функция, которая должна быть скрыта, не
 // покажется по ошибке. Значения совпадают с SITE_FLAG_DEFAULTS на бэкенде.
 export const DEFAULT_SITE_FLAGS: SiteFlags = {
-  [SiteFlagKey.SellerRatings]: false
+  [SiteFlagKey.SellerRatings]: false,
+  [SiteFlagKey.AppDownload]: false
 }
 
 // Как долго Next держит ответ /site-settings/public в Data Cache. Флаг

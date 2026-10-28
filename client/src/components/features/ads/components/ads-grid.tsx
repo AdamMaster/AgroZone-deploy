@@ -1,5 +1,7 @@
 'use client'
 
+import { ReactNode } from 'react'
+
 import { AdCard, AdCardList } from '@/components/features/ads/components'
 import { Skeleton } from '@/components/ui'
 
@@ -30,9 +32,12 @@ interface AdsGridProps {
   className?: 'cols-1' | 'cols-4'
   isLoading: boolean
   emptyMessage: string
+  // Дополнение под сообщением о пустой выдаче (например, призыв разместить
+  // объявление). Не задано — только сообщение, как раньше.
+  emptyAction?: ReactNode
 }
 
-export function AdsGrid({ ads, layout, className, isLoading, emptyMessage }: AdsGridProps) {
+export function AdsGrid({ ads, layout, className, isLoading, emptyMessage, emptyAction }: AdsGridProps) {
   const classNames = getAdsGridClassNames(layout)
 
   if (isLoading) {
@@ -46,7 +51,12 @@ export function AdsGrid({ ads, layout, className, isLoading, emptyMessage }: Ads
   }
 
   if (!ads.length) {
-    return <div className='py-10 text-center text-gray-500'>{emptyMessage}</div>
+    return (
+      <div className='py-10 text-center text-gray-500'>
+        {emptyMessage}
+        {emptyAction}
+      </div>
+    )
   }
 
   return (

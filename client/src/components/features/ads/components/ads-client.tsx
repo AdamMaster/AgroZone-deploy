@@ -14,6 +14,7 @@ import { useAdsInfinite } from '../hooks'
 import { IAdsListResponse } from '../types/ad.types'
 import { buildAdsQueryParams } from '../utils/build-ads-query-params'
 import { AdsGrid } from './ads-grid'
+import { EmptyAdsCta } from './empty-ads-cta'
 
 interface AdsLocationOverride {
   regionIsoCode?: string
@@ -118,6 +119,7 @@ export function AdsClient({ serverSlug, layout, className, locationOverride, ini
         className={className}
         isLoading={isWaitingForCategories || isLoadingAds}
         emptyMessage={emptyMessage}
+        emptyAction={<EmptyAdsCta />}
       />
 
       {/* Пустой сентинел, а не условно смонтированный/размонтированный —
