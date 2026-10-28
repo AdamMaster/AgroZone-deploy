@@ -89,13 +89,15 @@ export const ContentAds = () => {
   const draftAds = ads.filter(ad => ad.status === 'DRAFT')
   const rejectedAds = ads.filter(ad => ad.status === 'REJECTED')
   const expiresAt = ads.filter(ad => ad.status === 'EXPIRED')
+  const suspendedAds = ads.filter(ad => ad.status === 'SUSPENDED')
 
   const tabs = [
     { value: 'published', label: 'Опубликованные', ads: publishedAds },
     { value: 'archived', label: 'Архив', ads: archivedAds },
     { value: 'draft', label: 'Черновики', ads: draftAds },
     { value: 'rejected', label: 'Отклонённые', ads: rejectedAds },
-    { value: 'expires', label: 'Завершенные', ads: expiresAt }
+    { value: 'expires', label: 'Завершенные', ads: expiresAt },
+    { value: 'suspended', label: 'Приостановленные', ads: suspendedAds }
   ].filter(tab => tab.ads.length > 0)
 
   if (!ads?.length) {

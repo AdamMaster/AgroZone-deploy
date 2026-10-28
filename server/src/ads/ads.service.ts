@@ -1,4 +1,11 @@
-import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common'
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException
+} from '@nestjs/common'
 import { PrismaService } from '@/prisma/prisma.service'
 import { FileService } from '../file/file.service'
 import 'multer'
@@ -475,7 +482,12 @@ export class AdsService {
             // как ad.priceHighlightUntil в будущем ИЛИ владелец с активным
             // премиумом), для каталога это поле не было нужно раньше —
             // фронт нигде его тут не показывал.
-            premiumUntil: true
+            premiumUntil: true,
+            // Для компактного рейтинга в карточке: готовые поля User, без
+            // подзапросов. Наружу уходят только как `rating` и только при
+            // включённых рейтингах, см. toListSeller.
+            ratingAverage: true,
+            ratingCount: true
           }
         },
         category: true,
@@ -496,8 +508,11 @@ export class AdsService {
     const adsById = new Map(ads.map(ad => [ad.id, ad]))
     const orderedAds = ids.map(id => adsById.get(id)).filter((ad): ad is (typeof ads)[number] => ad !== undefined)
 
-    const items = orderedAds.map(ad => ({
+    const { sellerRatings } = await this.siteSettingsService.getFlags()
+
+    const items = orderedAds.map(({ user, ...ad }) => ({
       ...ad,
+      user: this.toListSeller(user, sellerRatings),
       isFavorite: userId ? ad.favorites?.length > 0 : false,
       isExpired: false,
       // Есть только когда в запросе была точка поиска (lat/lng) — км до
@@ -927,6 +942,18 @@ export class AdsService {
     } satisfies Prisma.UserSelect
   }
 
+  // Продавец в карточке списка: сырые поля рейтинга заменяются готовым
+  // `rating` (с порогом показа) либо пропадают, пока рейтинги выключены.
+  private toListSeller<T extends StoredSellerRating>(user: T | null, isRatingEnabled: boolean) {
+    if (!user) {
+      return null
+    }
+
+    const { ratingAverage, ratingCount, ...userRest } = user
+
+    return { ...userRest, ...publicRatingFields({ ratingAverage, ratingCount }, isRatingEnabled) }
+  }
+
   // Prisma отдаёт счётчик вложенным `_count.ads` — фронту нужен плоский
   // `adsCount` (см. IAdUser). Сырые поля рейтинга заменяются готовым
   // `rating` (с порогом показа) либо пропадают, пока рейтинги выключены.
@@ -1232,6 +1259,20 @@ export class AdsService {
     return ad
   }
 
+  // Объявление владельца для действий, которые его меняют (правка, снятие,
+  // удаление, публикация). Приостановленное по жалобам объявление трогать
+  // нельзя: оно остаётся как есть до решения модератора, иначе продавец мог
+  // бы убрать или переписать то, на что жалуются.
+  private async getMutableUserAdOrThrow(id: string, userId: string) {
+    const ad = await this.getUserAdOrThrow(id, userId)
+
+    if (ad.status === AdStatus.SUSPENDED) {
+      throw new ForbiddenException('Объявление приостановлено до проверки жалоб, изменить его сейчас нельзя')
+    }
+
+    return ad
+  }
+
   private async validateFileLimits(userId: string, files: Express.Multer.File[]) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -1331,7 +1372,7 @@ export class AdsService {
   async update(id: string, updateAdDto: UpdateAdDto, userId: string, files?: Express.Multer.File[]) {
     await this.validateFileLimits(userId, files ?? [])
 
-    const ad = await this.getUserAdOrThrow(id, userId)
+    const ad = await this.getMutableUserAdOrThrow(id, userId)
 
     if (!ad) {
       throw new NotFoundException('Объявление не найдено')
@@ -1410,7 +1451,7 @@ export class AdsService {
   }
 
   async republish(id: string, userId: string, updateDto?: UpdateAdDto) {
-    const ad = await this.getUserAdOrThrow(id, userId)
+    const ad = await this.getMutableUserAdOrThrow(id, userId)
 
     if (!ad) throw new NotFoundException('Объявление не найдено')
 
@@ -1559,7 +1600,7 @@ export class AdsService {
   }
 
   async archive(id: string, userId: string) {
-    const ad = await this.getUserAdOrThrow(id, userId)
+    const ad = await this.getMutableUserAdOrThrow(id, userId)
 
     if (!ad) {
       throw new NotFoundException('Объявление не найдено')
@@ -1576,7 +1617,7 @@ export class AdsService {
   }
 
   async activate(id: string, userId: string) {
-    const ad = await this.getUserAdOrThrow(id, userId)
+    const ad = await this.getMutableUserAdOrThrow(id, userId)
     if (!ad) throw new NotFoundException('Объявление не найдено')
 
     const nextStatus = this.adStateMachine.transition(ad.status, 'ACTIVATE')
@@ -1591,7 +1632,7 @@ export class AdsService {
   }
 
   async draft(id: string, userId: string) {
-    const ad = await this.getUserAdOrThrow(id, userId)
+    const ad = await this.getMutableUserAdOrThrow(id, userId)
     if (!ad) throw new NotFoundException('Объявление не найдено')
 
     const status = this.adStateMachine.transition(ad.status, 'DRAFT')
@@ -1643,7 +1684,7 @@ export class AdsService {
     const parsedPrice = price !== undefined && price !== null ? BigInt(Math.round(Number(price))) : undefined
 
     if (id) {
-      const ad = await this.getUserAdOrThrow(id, userId)
+      const ad = await this.getMutableUserAdOrThrow(id, userId)
 
       const categoryPath = rest.categoryId
         ? await this.categoriesService.getCategoryPath(rest.categoryId)
@@ -1705,7 +1746,7 @@ export class AdsService {
   }
 
   async publishDraft(id: string, userId: string) {
-    const ad = await this.getUserAdOrThrow(id, userId)
+    const ad = await this.getMutableUserAdOrThrow(id, userId)
 
     const status = this.adStateMachine.transition(ad.status, 'PUBLISH')
 
@@ -1810,7 +1851,7 @@ export class AdsService {
   }
 
   async remove(id: string, userId: string) {
-    const ad = await this.getUserAdOrThrow(id, userId)
+    const ad = await this.getMutableUserAdOrThrow(id, userId)
 
     if (!ad) {
       throw new NotFoundException('Объявление не найдено')

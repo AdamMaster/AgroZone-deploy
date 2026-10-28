@@ -1,2 +1,6 @@
 export * from './seller-card'
 export * from './seller-profile-content'
+export * from './seller-profile-tabs'
+export * from './seller-rating'
+export * from './seller-actions'
+export * from './review-dialog'

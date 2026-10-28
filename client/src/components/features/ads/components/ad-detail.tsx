@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import Zoom from 'yet-another-react-lightbox/plugins/zoom'
 
 import { UserType } from '@/components/features/auth/types'
+import { SellerRatingSummary } from '@/components/features/sellers/components/seller-rating'
 import {
   Avatar,
   AvatarFallback,
@@ -179,6 +180,8 @@ export const AdDetail = ({
   // что делиться им бессмысленно. Статистика осмысленна, если объявление
   // уже показывалось покупателям.
   const isPublished = ad.status === 'PUBLISHED'
+  // Приостановленное по жалобам объявление владелец менять не может.
+  const isSuspended = ad.status === 'SUSPENDED'
   const hasViewStats = isPublished || ad.status === 'ARCHIVED' || ad.status === 'EXPIRED'
   const canMoveToDraft = ad.status === 'REJECTED'
 
@@ -285,14 +288,16 @@ export const AdDetail = ({
           <ButtonBack onClick={() => router.back()} className='shadow-none!' />
           {isOwner ? (
             <div className='flex items-center'>
-              <button
-                type='button'
-                onClick={() => router.push(`/ads/${ad.id}/edit`)}
-                className='flex size-13 items-center justify-center'
-                aria-label='Редактировать объявление'
-              >
-                <Edit size={20} />
-              </button>
+              {!isSuspended && (
+                <button
+                  type='button'
+                  onClick={() => router.push(`/ads/${ad.id}/edit`)}
+                  className='flex size-13 items-center justify-center'
+                  aria-label='Редактировать объявление'
+                >
+                  <Edit size={20} />
+                </button>
+              )}
               {(isPublished || hasViewStats || canMoveToDraft) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger className='flex size-13 items-center justify-center' aria-label='Ещё'>
@@ -560,14 +565,16 @@ export const AdDetail = ({
 
             <div className='mb-8'>
               {isOwner ? (
-                <Button
-                  className='hidden w-full sm:flex'
-                  variant='secondary'
-                  size='lg'
-                  onClick={() => router.push(`/ads/${ad.id}/edit`)}
-                >
-                  Редактировать объявление
-                </Button>
+                !isSuspended && (
+                  <Button
+                    className='hidden w-full sm:flex'
+                    variant='secondary'
+                    size='lg'
+                    onClick={() => router.push(`/ads/${ad.id}/edit`)}
+                  >
+                    Редактировать объявление
+                  </Button>
+                )
               ) : (
                 <div className='flex gap-1.5 sm:flex-col lg:flex-row'>
                   <Button
@@ -597,6 +604,8 @@ export const AdDetail = ({
                 <div className='flex items-center gap-1.5'>
                   <p className='font-medium'>{ad.user?.displayName ?? 'Пользователь'}</p>
                 </div>
+                {/* Без href: весь блок продавца и так ссылка на его страницу. */}
+                <SellerRatingSummary rating={ad.user?.rating} showEmpty className='mb-0.5 text-xs' />
                 {publishedDate && <p className='text-xs text-gray-500'>Опубликовано {publishedDate}</p>}
                 {updatedDate && <p className='text-xs text-gray-500'>Обновлено {updatedDate}</p>}
                 {!!ad.user?.adsCount && (

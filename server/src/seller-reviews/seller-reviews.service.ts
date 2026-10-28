@@ -3,11 +3,18 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException
 } from '@nestjs/common'
 import { Prisma } from '@/generated/prisma/client'
-import { ConversationType, SellerReviewContactType, SellerReviewStatus } from '@/generated/prisma/enums'
+import {
+  ConversationType,
+  SellerReviewContactType,
+  SellerReviewReportStatus,
+  SellerReviewStatus
+} from '@/generated/prisma/enums'
 
+import { NotificationsService } from '@/notifications/notifications.service'
 import { PrismaService } from '@/prisma/prisma.service'
 
 import { CreateSellerReviewDto } from './dto/create-seller-review.dto'
@@ -17,17 +24,23 @@ import { UpdateSellerReviewDto } from './dto/update-seller-review.dto'
 import { SellerRatingService } from './seller-rating.service'
 import { SellerReviewEligibilityService } from './seller-review-eligibility.service'
 import { SellerReviewBlockReason, SellerReviewEligibility } from './seller-review-eligibility.types'
+import { SellerReviewTextFilterService } from './seller-review-text-filter.service'
 import { SELLER_REVIEWS_PAGE_SIZE_DEFAULT } from './constants/seller-reviews.constants'
 import { buildPublicRating } from './utils/public-rating.util'
+import { lockReview } from './utils/review-lock.util'
+import { resolveReviewStatus } from './utils/review-status.util'
 import { computeReviewWeight } from './utils/review-weight.util'
 
-// Что отдаём клиенту. Вес, диалог и статус модерации сюда не попадают:
-// вес — внутренняя механика рейтинга, остальное клиенту не нужно.
+// Что отдаём клиенту. Вес, диалог, флаги автофильтра и решение модератора
+// сюда не попадают: вес — внутренняя механика рейтинга, а по флагам можно
+// подбирать обход фильтра. status нужен автору, чтобы показать «на
+// проверке»; в публичной выдаче он всегда PUBLISHED.
 const REVIEW_SELECT = {
   id: true,
   rating: true,
   text: true,
   contactType: true,
+  status: true,
   sellerReply: true,
   sellerReplyAt: true,
   createdAt: true,
@@ -37,15 +50,22 @@ const REVIEW_SELECT = {
 
 type ReviewRow = Prisma.SellerReviewGetPayload<{ select: typeof REVIEW_SELECT }>
 
+// Править можно опубликованный отзыв и отзыв на проверке; скрытый — нельзя.
+const EDITABLE_STATUSES: SellerReviewStatus[] = [SellerReviewStatus.PUBLISHED, SellerReviewStatus.PENDING]
+
 // Пустую строку считаем «без текста»: в базе либо текст, либо null.
 const normalizeText = (text: string | undefined) => (text === undefined ? undefined : text.trim() || null)
 
 @Injectable()
 export class SellerReviewsService {
+  private readonly logger = new Logger(SellerReviewsService.name)
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly eligibilityService: SellerReviewEligibilityService,
-    private readonly ratingService: SellerRatingService
+    private readonly ratingService: SellerRatingService,
+    private readonly textFilter: SellerReviewTextFilterService,
+    private readonly notificationsService: NotificationsService
   ) {}
 
   // Публичный список отзывов продавца вместе с итоговым рейтингом
@@ -103,6 +123,9 @@ export class SellerReviewsService {
     }
 
     const weight = computeReviewWeight(eligibility.contactType, await this.loadAuthorTrust(authorId, sellerId, now))
+    const text = normalizeText(dto.text) ?? null
+    const filterFlags = await this.textFilter.detect(text, authorId)
+    const status = resolveReviewStatus({ current: null, flags: filterFlags, hasPendingReports: false })
 
     try {
       const review = await this.prisma.$transaction(async tx => {
@@ -117,8 +140,10 @@ export class SellerReviewsService {
             conversationId: eligibility.conversationId,
             contactType: eligibility.contactType,
             rating: dto.rating,
-            text: normalizeText(dto.text) ?? null,
-            weight
+            text,
+            weight,
+            status,
+            filterFlags
           },
           select: REVIEW_SELECT
         })
@@ -127,6 +152,12 @@ export class SellerReviewsService {
 
         return created
       })
+
+      // Продавцу сообщаем только о том, что уже видно: отзыв, задержанный на
+      // проверку, дойдёт до него после решения модератора.
+      if (review.status === SellerReviewStatus.PUBLISHED) {
+        await this.notifySeller(sellerId, review.id)
+      }
 
       return this.present(review)
     } catch (error) {
@@ -141,9 +172,11 @@ export class SellerReviewsService {
   }
 
   // Автор правит свой отзыв: оценку и/или текст. Тип контакта и вес не
-  // пересматриваются — право на отзыв получено один раз.
+  // пересматриваются — право на отзыв получено один раз. Новый текст
+  // проходит автофильтр заново: правкой нельзя пронести то, что не прошло
+  // при создании. Скрытый модератором отзыв править нельзя.
   async update(reviewId: string, userId: string, dto: UpdateSellerReviewDto) {
-    const review = await this.findOwnPublished(reviewId, userId, 'authorId')
+    await this.findOwn(reviewId, userId, 'authorId', EDITABLE_STATUSES)
 
     const text = normalizeText(dto.text)
 
@@ -151,14 +184,41 @@ export class SellerReviewsService {
       throw new BadRequestException('Нечего изменять: укажите оценку или текст')
     }
 
+    const flags = text === undefined ? null : await this.textFilter.detect(text, userId, reviewId)
+
     const updated = await this.prisma.$transaction(async tx => {
+      // Статус мог измениться с проверки выше (решение модератора, жалобы),
+      // поэтому читаем его заново под блокировкой.
+      const locked = await lockReview(tx, reviewId)
+
+      if (!locked) {
+        throw new NotFoundException('Отзыв не найден')
+      }
+
+      if (!EDITABLE_STATUSES.includes(locked.status)) {
+        throw new ForbiddenException('Этот отзыв сейчас нельзя изменить')
+      }
+
+      const moderation = flags && {
+        filterFlags: flags,
+        status: resolveReviewStatus({
+          current: locked.status,
+          flags,
+          hasPendingReports: await this.hasPendingReports(tx, reviewId)
+        })
+      }
+
       const row = await tx.sellerReview.update({
         where: { id: reviewId },
-        data: { ...(dto.rating !== undefined && { rating: dto.rating }), ...(text !== undefined && { text }) },
+        data: {
+          ...(dto.rating !== undefined && { rating: dto.rating }),
+          ...(text !== undefined && { text }),
+          ...moderation
+        },
         select: REVIEW_SELECT
       })
 
-      await this.ratingService.recalculate(tx, [review.sellerId, review.authorId])
+      await this.ratingService.recalculate(tx, [locked.sellerId, locked.authorId])
 
       return row
     })
@@ -172,11 +232,17 @@ export class SellerReviewsService {
   async remove(reviewId: string, userId: string): Promise<void> {
     const review = await this.prisma.sellerReview.findUnique({
       where: { id: reviewId },
-      select: { authorId: true, sellerId: true }
+      select: { authorId: true, sellerId: true, status: true }
     })
 
     if (!review || review.authorId !== userId) {
       throw new NotFoundException('Отзыв не найден')
+    }
+
+    // Скрытый модератором отзыв остаётся как след решения. Удалением автор
+    // освободил бы место и тут же написал бы новый отзыв, обойдя скрытие.
+    if (review.status === SellerReviewStatus.HIDDEN) {
+      throw new ForbiddenException('Этот отзыв скрыт модератором, удалить его нельзя')
     }
 
     await this.prisma.$transaction(async tx => {
@@ -188,7 +254,7 @@ export class SellerReviewsService {
   // Продавец отвечает на отзыв о себе. Ответ один: повторный запрос
   // заменяет прежний (так ответ редактируется).
   async reply(reviewId: string, userId: string, dto: ReplySellerReviewDto) {
-    await this.findOwnPublished(reviewId, userId, 'sellerId')
+    const existing = await this.findOwn(reviewId, userId, 'sellerId', [SellerReviewStatus.PUBLISHED])
 
     const sellerReply = normalizeText(dto.text)
 
@@ -202,27 +268,64 @@ export class SellerReviewsService {
       select: REVIEW_SELECT
     })
 
+    // Автору сообщаем о первом ответе; правка ответа его не тревожит.
+    if (!existing.sellerReply) {
+      await this.notifyAuthor(existing.authorId, existing.sellerId, reviewId)
+    }
+
     return this.present(updated)
   }
 
+  // Уведомление не должно откатывать или ронять отзыв, который уже записан,
+  // поэтому его сбой только логируется.
+  private async notifySeller(sellerId: string, reviewId: string) {
+    try {
+      await this.notificationsService.notifySellerReviewReceived(sellerId)
+    } catch (error) {
+      this.logger.error(`Не удалось уведомить продавца об отзыве ${reviewId}`, error)
+    }
+  }
+
+  private async notifyAuthor(authorId: string, sellerId: string, reviewId: string) {
+    try {
+      await this.notificationsService.notifySellerReviewReplied(authorId, sellerId)
+    } catch (error) {
+      this.logger.error(`Не удалось уведомить автора об ответе на отзыв ${reviewId}`, error)
+    }
+  }
+
   // Отзыв, которым распоряжается именно этот пользователь (как автор или как
-  // продавец) и который ещё опубликован. Чужой отзыв выглядит как
-  // несуществующий, чтобы по ответам нельзя было перебирать чужие id.
-  private async findOwnPublished(reviewId: string, userId: string, ownerField: 'authorId' | 'sellerId') {
+  // продавец) и который сейчас в одном из допустимых статусов. Чужой отзыв
+  // выглядит как несуществующий, чтобы по ответам нельзя было перебирать
+  // чужие id.
+  private async findOwn(
+    reviewId: string,
+    userId: string,
+    ownerField: 'authorId' | 'sellerId',
+    allowedStatuses: SellerReviewStatus[]
+  ) {
     const review = await this.prisma.sellerReview.findUnique({
       where: { id: reviewId },
-      select: { authorId: true, sellerId: true, status: true }
+      select: { authorId: true, sellerId: true, status: true, sellerReply: true }
     })
 
     if (!review || review[ownerField] !== userId) {
       throw new NotFoundException('Отзыв не найден')
     }
 
-    if (review.status !== SellerReviewStatus.PUBLISHED) {
+    if (!allowedStatuses.includes(review.status)) {
       throw new ForbiddenException('Этот отзыв сейчас нельзя изменить')
     }
 
     return review
+  }
+
+  private async hasPendingReports(tx: Prisma.TransactionClient, reviewId: string): Promise<boolean> {
+    const count = await tx.sellerReviewReport.count({
+      where: { reviewId, status: SellerReviewReportStatus.PENDING }
+    })
+
+    return count > 0
   }
 
   // Данные для коэффициента доверия к автору: возраст аккаунта и есть ли у

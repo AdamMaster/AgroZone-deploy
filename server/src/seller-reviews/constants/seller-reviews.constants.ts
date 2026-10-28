@@ -45,4 +45,32 @@ export const SELLER_RATING_MIN_REVIEWS_TO_SHOW = 3
 export const SELLER_REVIEWS_PAGE_SIZE_DEFAULT = 20
 export const SELLER_REVIEWS_PAGE_SIZE_MAX = 50
 
+// Модерация. Отзыв с текстом, повторяющимся не меньше стольких раз (у любых
+// авторов), уходит на проверку: так выглядит рассылка одного заготовленного
+// отзыва. Короткие тексты («Всё хорошо») повторяются честно, их не учитываем.
+export const SELLER_REVIEW_REPEATED_TEXT_MIN_LENGTH = 20
+export const SELLER_REVIEW_REPEATED_TEXT_THRESHOLD = 2
+
+// Жалобы на отзыв. Отзыв уходит на проверку сам, когда жалуются столько
+// независимых пользователей; «независимый» — аккаунт не моложе указанного
+// возраста, иначе пачку жалоб можно сделать с одноразовых аккаунтов.
+export const SELLER_REVIEW_REPORTS_TO_HIDE = 3
+export const SELLER_REVIEW_REPORTER_MIN_ACCOUNT_AGE_DAYS = 7
+export const SELLER_REVIEW_REPORTS_PER_DAY_LIMIT = 10
+export const SELLER_REVIEW_REPORT_COMMENT_MAX_LENGTH = 1000
+
+export const SELLER_REVIEW_MODERATION_PAGE_SIZE_DEFAULT = 20
+export const SELLER_REVIEW_MODERATION_PAGE_SIZE_MAX = 50
+
+// Сигналы накрутки в карточке продавца. Это пороги подсветки, а не
+// приговор: сигнал только привлекает внимание модератора. Малое число отзывов
+// ничего не доказывает, поэтому доли считаются, начиная с минимума.
+export const SELLER_REVIEW_SIGNALS_MIN_REVIEWS = 3
+export const SELLER_REVIEW_SIGNAL_YOUNG_AUTHORS_SHARE = 0.5
+export const SELLER_REVIEW_SIGNAL_UNCONFIRMED_SHARE = 0.8
+export const SELLER_REVIEW_SIGNAL_RECIPROCAL_MIN = 2
+export const SELLER_REVIEW_SIGNAL_BURST_WINDOW_HOURS = 24
+export const SELLER_REVIEW_SIGNAL_BURST_MIN_REVIEWS = 5
+export const SELLER_REVIEW_SIGNAL_SHARED_IP_AUTHORS_MIN = 2
+
 export const MS_PER_DAY = 24 * 60 * 60 * 1000

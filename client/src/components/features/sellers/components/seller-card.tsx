@@ -8,6 +8,8 @@ import { USER_TYPE_LABELS } from '@/shared/constants/user-types'
 import { isPremiumActive, pluralizeRu } from '@/shared/utils'
 
 import { IPublicSeller } from '../types/seller.types'
+import { SellerActions } from './seller-actions'
+import { SellerRatingSummary } from './seller-rating'
 
 interface SellerCardProps {
   seller: IPublicSeller
@@ -46,6 +48,13 @@ export function SellerCard({ seller }: SellerCardProps) {
           )}
         </div>
 
+        <SellerRatingSummary
+          rating={seller.rating}
+          href={`/sellers/${seller.id}?tab=reviews`}
+          showEmpty
+          className='mt-3'
+        />
+
         <div className='w-full space-y-1 pt-4 text-sm text-gray-500'>
           <p>На сайте с {formatJoinDate(seller.createdAt)}</p>
           <p>
@@ -66,6 +75,10 @@ export function SellerCard({ seller }: SellerCardProps) {
             </span>
           </a>
         )}
+
+        <div className='mt-4'>
+          <SellerActions sellerId={seller.id} />
+        </div>
       </div>
     </div>
   )

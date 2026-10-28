@@ -1,5 +1,11 @@
 import { AdReportReason } from '@/components/features/ads/types/ad.types'
 import { UserRole, UserType } from '@/components/features/auth/types'
+import {
+  SellerReportReason,
+  SellerReviewContactType,
+  SellerReviewReportReason,
+  SellerReviewStatus
+} from '@/components/features/sellers/types'
 import { SiteFlagKey } from '@/components/features/site-settings/types/site-settings.types'
 
 // Значения — строго как в enum AdReportStatus на бэкенде (prisma/schema.prisma).
@@ -123,4 +129,158 @@ export interface IAdminSiteFlagChange {
 export interface IAdminSiteSettings {
   flags: IAdminSiteFlag[]
   changes: IAdminSiteFlagChange[]
+}
+
+// --- Модерация отзывов о продавцах (/admin/seller-reviews) ---
+
+// Какое правило автофильтра сработало на тексте отзыва.
+export enum SellerReviewFilterFlag {
+  Profanity = 'PROFANITY',
+  Link = 'LINK',
+  Phone = 'PHONE',
+  RepeatedText = 'REPEATED_TEXT'
+}
+
+export enum SellerReviewModerationDecision {
+  Publish = 'PUBLISH',
+  Hide = 'HIDE'
+}
+
+export interface ISellerReviewModerationUser {
+  id: string
+  displayName: string | null
+  email: string | null
+  deletedAt: string | null
+}
+
+export interface ISellerReviewModerationReport {
+  id: string
+  reason: SellerReviewReportReason
+  comment: string | null
+  createdAt: string
+  reporter: { id: string; displayName: string | null }
+}
+
+export interface ISellerReviewModerationItem {
+  id: string
+  rating: number
+  text: string | null
+  status: SellerReviewStatus
+  contactType: SellerReviewContactType
+  weight: number
+  filterFlags: SellerReviewFilterFlag[]
+  createdAt: string
+  author: ISellerReviewModerationUser
+  seller: ISellerReviewModerationUser
+  reports: ISellerReviewModerationReport[]
+}
+
+export interface ISellerReviewModerationQueue {
+  items: ISellerReviewModerationItem[]
+  total: number
+  page: number
+  limit: number
+}
+
+// --- Жалобы на продавцов (/admin/seller-reports) ---
+
+export enum SellerReportStatus {
+  Pending = 'PENDING',
+  Accepted = 'ACCEPTED',
+  Dismissed = 'DISMISSED'
+}
+
+export enum SellerSanctionType {
+  Warning = 'WARNING',
+  AdsSuspended = 'ADS_SUSPENDED',
+  AdsRestored = 'ADS_RESTORED',
+  ReviewsHidden = 'REVIEWS_HIDDEN'
+}
+
+export enum SellerReportResolutionAction {
+  Dismiss = 'DISMISS',
+  Warn = 'WARN',
+  SuspendAds = 'SUSPEND_ADS'
+}
+
+// Сработавшие сигналы накрутки отзывов — значения как в SellerReviewSignalCode
+// на бэкенде.
+export enum SellerReviewSignalCode {
+  YoungAuthors = 'YOUNG_AUTHORS',
+  MostlyUnconfirmed = 'MOSTLY_UNCONFIRMED',
+  ReciprocalReviews = 'RECIPROCAL_REVIEWS',
+  ReviewBurst = 'REVIEW_BURST',
+  SharedIpWithSeller = 'SHARED_IP_WITH_SELLER',
+  SharedIpAmongAuthors = 'SHARED_IP_AMONG_AUTHORS'
+}
+
+export interface ISellerReportQueueItem {
+  seller: {
+    id: string
+    displayName: string | null
+    email: string | null
+    createdAt: string
+    deletedAt: string | null
+  } | null
+  pendingReports: number
+  oldestReportAt: string
+  suspendedAds: number
+}
+
+export interface ISellerReportQueue {
+  items: ISellerReportQueueItem[]
+  total: number
+  page: number
+  limit: number
+}
+
+export interface ISellerReportEntry {
+  id: string
+  reason: SellerReportReason
+  comment: string | null
+  status: SellerReportStatus
+  createdAt: string
+  resolvedAt: string | null
+  reporter: { id: string; displayName: string | null; createdAt: string }
+  ad: { id: string; title: string } | null
+}
+
+export interface ISellerSanctionEntry {
+  id: string
+  type: SellerSanctionType
+  note: string | null
+  createdAt: string
+  moderator: { id: string; displayName: string | null } | null
+}
+
+export interface ISellerReviewSignals {
+  totalReviews: number
+  unconfirmedReviews: number
+  youngAuthorReviews: number
+  reciprocalReviews: number
+  maxReviewsInWindow: number
+  authorsSharingIpWithSeller: number
+  authorsSharingIpWithEachOther: number
+  flagged: SellerReviewSignalCode[]
+}
+
+export interface ISellerReportCard {
+  seller: {
+    id: string
+    displayName: string | null
+    email: string | null
+    picture: string | null
+    type: UserType
+    createdAt: string
+    deletedAt: string | null
+    businessVerifiedAt: string | null
+    ratingAverage: number | null
+    ratingCount: number
+    phones: IAdminUserPhone[]
+  }
+  // Число объявлений продавца по статусам.
+  ads: Record<string, number>
+  reports: ISellerReportEntry[]
+  sanctions: ISellerSanctionEntry[]
+  reviewSignals: ISellerReviewSignals
 }

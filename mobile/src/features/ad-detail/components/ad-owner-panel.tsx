@@ -21,7 +21,8 @@ interface AdOwnerPanelProps {
 
 // Опубликованное и на модерации удалить нельзя — сначала снять с
 // публикации (isAdRemovable сайта и проверка на сервере).
-const isRemovable = (status: AdDetail['status']) => status !== 'PUBLISHED' && status !== 'PENDING'
+const isRemovable = (status: AdDetail['status']) =>
+  status !== 'PUBLISHED' && status !== 'PENDING' && status !== 'SUSPENDED'
 
 // Блок владельца над фото — как на сайте на телефоне: у неопубликованного
 // плашка статуса и доступные действия, у опубликованного — «Поднять» и

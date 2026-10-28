@@ -1,5 +1,6 @@
 import { UserType } from '../../auth/types'
 import { ICategory, ICategoryFeature } from '../../categories/types/categories.types'
+import type { ISellerRating } from '../../sellers/types/seller-review.types'
 
 // ICategory/ICategoryFeature раньше были продублированы здесь и в
 // categories/types/categories.types.ts — два независимых определения с
@@ -36,6 +37,9 @@ export interface IAdUser {
   // с бэкенда, активность проверяется на фронте через isPremiumActive из
   // '@/shared/utils/user.util'.
   premiumUntil?: string | null
+  // Рейтинг продавца по отзывам. Приходит только при включённых рейтингах
+  // (в карточках списков и в GET /ads/:id), без поля — рейтингов нет.
+  rating?: ISellerRating
 }
 
 export interface IAd {
@@ -56,7 +60,7 @@ export interface IAd {
   // не в каждом ответе оно есть.
   phone?: string
   images: string[]
-  status: 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED' | 'EXPIRED'
+  status: 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED' | 'EXPIRED' | 'SUSPENDED'
   expiresAt: Date | null
   publishedAt: Date | null
   lat: number

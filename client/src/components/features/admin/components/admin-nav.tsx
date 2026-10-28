@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft, Building2, Flag, LayoutDashboard, Settings, ShieldCheck, UserPlus } from 'lucide-react'
+import { ArrowLeft, Building2, Flag, LayoutDashboard, Settings, ShieldCheck, Star, UserPlus, UserX } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -17,6 +17,8 @@ const items = [
   { label: 'Обзор', icon: LayoutDashboard, id: 'dashboard', href: '/admin', exact: true },
   { label: 'Модерация объявлений', icon: ShieldCheck, id: 'moderation', href: '/admin/moderation' },
   { label: 'Жалобы', icon: Flag, id: 'reports', href: '/admin/reports' },
+  { label: 'Отзывы', icon: Star, id: 'seller-reviews', href: '/admin/seller-reviews' },
+  { label: 'Жалобы на продавцов', icon: UserX, id: 'seller-reports', href: '/admin/seller-reports' },
   { label: 'Фиды дилеров', icon: Building2, id: 'dealers', href: '/admin/dealers' },
   { label: 'Пользователи', icon: UserPlus, id: 'users', href: '/admin/users' },
   { label: 'Настройки', icon: Settings, id: 'settings', href: '/admin/settings' }

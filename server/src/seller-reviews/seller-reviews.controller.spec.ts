@@ -7,6 +7,7 @@ import { SiteSettingsService } from '@/site-settings/site-settings.service'
 import { UserService } from '@/user/user.service'
 
 import { SellerRatingsEnabledGuard } from './guards/seller-ratings-enabled.guard'
+import { SellerReviewReportsService } from './seller-review-reports.service'
 import { SellerReviewsController, UserReviewsController } from './seller-reviews.controller'
 import { SellerReviewsService } from './seller-reviews.service'
 
@@ -19,6 +20,7 @@ const REVIEW_ID = '1798edb5-4e5a-4a6b-9c7d-8e9f0a1b2c3d'
 describe('Контроллеры отзывов о продавцах (HTTP)', () => {
   let app: INestApplication
   let sellerReviewsService: Record<string, jest.Mock>
+  let reportsService: { report: jest.Mock }
   let siteSettingsService: { getFlags: jest.Mock }
   // Авторизация имитируется заголовком: настоящая сессия в тесте не нужна.
   let signedInUserId: string | undefined
@@ -33,6 +35,7 @@ describe('Контроллеры отзывов о продавцах (HTTP)', (
       remove: jest.fn().mockResolvedValue(undefined),
       reply: jest.fn().mockResolvedValue({ id: REVIEW_ID })
     }
+    reportsService = { report: jest.fn().mockResolvedValue(undefined) }
     siteSettingsService = { getFlags: jest.fn().mockResolvedValue({ sellerRatings: true }) }
 
     const moduleRef = await Test.createTestingModule({
@@ -41,6 +44,7 @@ describe('Контроллеры отзывов о продавцах (HTTP)', (
         SellerRatingsEnabledGuard,
         AuthGuard,
         { provide: SellerReviewsService, useValue: sellerReviewsService },
+        { provide: SellerReviewReportsService, useValue: reportsService },
         { provide: SiteSettingsService, useValue: siteSettingsService },
         { provide: UserService, useValue: { findById: jest.fn().mockResolvedValue({ id: 'user', deletedAt: null }) } }
       ]
@@ -66,7 +70,8 @@ describe('Контроллеры отзывов о продавцах (HTTP)', (
       ['POST', `/users/${SELLER_ID}/reviews`],
       ['PATCH', `/seller-reviews/${REVIEW_ID}`],
       ['DELETE', `/seller-reviews/${REVIEW_ID}`],
-      ['PUT', `/seller-reviews/${REVIEW_ID}/reply`]
+      ['PUT', `/seller-reviews/${REVIEW_ID}/reply`],
+      ['POST', `/seller-reviews/${REVIEW_ID}/reports`]
     ])('%s %s — 404 даже для гостя, до проверки авторизации', async (method, path) => {
       const response = await request(app.getHttpServer())[method.toLowerCase() as 'get'](path).send({ rating: 5 })
 
@@ -88,7 +93,8 @@ describe('Контроллеры отзывов о продавцах (HTTP)', (
       ['POST', `/users/${SELLER_ID}/reviews`, { rating: 5 }],
       ['PATCH', `/seller-reviews/${REVIEW_ID}`, { rating: 4 }],
       ['DELETE', `/seller-reviews/${REVIEW_ID}`, undefined],
-      ['PUT', `/seller-reviews/${REVIEW_ID}/reply`, { text: 'Спасибо' }]
+      ['PUT', `/seller-reviews/${REVIEW_ID}/reply`, { text: 'Спасибо' }],
+      ['POST', `/seller-reviews/${REVIEW_ID}/reports`, { reason: 'FAKE' }]
     ])('%s %s требует входа — гостю 401', async (method, path, body) => {
       const response = await request(app.getHttpServer())[method.toLowerCase() as 'get'](path).send(body)
 
@@ -144,6 +150,34 @@ describe('Контроллеры отзывов о продавцах (HTTP)', (
       await request(app.getHttpServer()).put(`/seller-reviews/${REVIEW_ID}/reply`).send({ text: 'Спасибо' })
 
       expect(sellerReviewsService.reply).toHaveBeenCalledWith(REVIEW_ID, 'user', { text: 'Спасибо' })
+    })
+
+    it('жалоба: id пользователя из сессии, ответ 204 без тела', async () => {
+      signedInUserId = 'user'
+
+      const response = await request(app.getHttpServer())
+        .post(`/seller-reviews/${REVIEW_ID}/reports`)
+        .send({ reason: 'FAKE', comment: 'Этого покупателя не было' })
+
+      expect(response.status).toBe(204)
+      expect(reportsService.report).toHaveBeenCalledWith(REVIEW_ID, 'user', {
+        reason: 'FAKE',
+        comment: 'Этого покупателя не было'
+      })
+    })
+
+    it.each([
+      ['нет причины', {}],
+      ['неизвестная причина', { reason: 'WHATEVER' }],
+      ['слишком длинный комментарий', { reason: 'FAKE', comment: 'я'.repeat(1001) }],
+      ['лишнее поле', { reason: 'FAKE', status: 'ACCEPTED' }]
+    ])('жалоба с некорректным телом (%s) — 400', async (_name, body) => {
+      signedInUserId = 'user'
+
+      const response = await request(app.getHttpServer()).post(`/seller-reviews/${REVIEW_ID}/reports`).send(body)
+
+      expect(response.status).toBe(400)
+      expect(reportsService.report).not.toHaveBeenCalled()
     })
 
     it('пагинация: limit больше максимума — 400', async () => {

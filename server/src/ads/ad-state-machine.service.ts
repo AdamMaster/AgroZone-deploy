@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
 import { AdStatus } from '@/generated/prisma/client'
 
-type Action = 'PUBLISH' | 'REJECT' | 'ARCHIVE' | 'ACTIVATE' | 'DRAFT'
+type Action = 'PUBLISH' | 'REJECT' | 'ARCHIVE' | 'ACTIVATE' | 'DRAFT' | 'SUSPEND' | 'RESTORE'
 
 @Injectable()
 export class AdStateMachineService {
@@ -26,8 +26,17 @@ export class AdStateMachineService {
     },
 
     PUBLISHED: {
-      ARCHIVE: AdStatus.ARCHIVED
+      ARCHIVE: AdStatus.ARCHIVED,
+      // Приостановка по жалобам на продавца (SellerReportsService).
+      SUSPEND: AdStatus.SUSPENDED
       // PUBLISHED обычно не уходит в DRAFT, так как оно уже "в эфире"
+    },
+
+    // Выйти из приостановки может только решение модератора; владелец
+    // ничего из SUSPENDED сделать не может (см.
+    // AdsService.getMutableUserAdOrThrow).
+    SUSPENDED: {
+      RESTORE: AdStatus.PUBLISHED
     },
 
     ARCHIVED: {

@@ -5,7 +5,7 @@ import { cache } from 'react'
 import { adsService } from '@/components/features/ads/services'
 import { IAdsListResponse } from '@/components/features/ads/types/ad.types'
 import { CATALOG_PAGE_SIZE } from '@/components/features/ads/utils/build-ads-query-params'
-import { SellerCard, SellerProfileContent } from '@/components/features/sellers/components'
+import { SellerCard, SellerProfileTabs } from '@/components/features/sellers/components'
 import { sellersService } from '@/components/features/sellers/services'
 import { Container } from '@/components/layout'
 
@@ -92,7 +92,7 @@ export default async function SellerPage({ params, searchParams }: SellerPagePro
         <div>
           <SellerCard seller={seller} />
         </div>
-        <SellerProfileContent sellerId={seller.id} initialAds={initialAds} />
+        <SellerProfileTabs sellerId={seller.id} initialAds={initialAds} rating={seller.rating} />
       </div>
     </Container>
   )

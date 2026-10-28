@@ -33,6 +33,7 @@ import { DealerFeedsModule } from './dealer-feeds/dealer-feeds.module'
 import { SecurityEventsModule } from './security-events/security-events.module'
 import { AdminDashboardModule } from './admin-dashboard/admin-dashboard.module'
 import { SiteSettingsModule } from './site-settings/site-settings.module'
+import { SellerReportsModule } from './seller-reports/seller-reports.module'
 import { SellerReviewsModule } from './seller-reviews/seller-reviews.module'
 
 @Module({
@@ -98,7 +99,8 @@ import { SellerReviewsModule } from './seller-reviews/seller-reviews.module'
     DealerFeedsModule,
     AdminDashboardModule,
     SiteSettingsModule,
-    SellerReviewsModule
+    SellerReviewsModule,
+    SellerReportsModule
   ]
 })
 export class AppModule {}

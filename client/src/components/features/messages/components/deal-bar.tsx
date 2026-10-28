@@ -1,7 +1,9 @@
 'use client'
 
 import { CircleCheck } from 'lucide-react'
+import { useState } from 'react'
 
+import { ReviewDialog } from '@/components/features/sellers/components/review-dialog'
 import { useSiteFlags } from '@/components/features/site-settings/hooks'
 import { Button } from '@/components/ui'
 
@@ -12,7 +14,7 @@ const formatDealDate = (value: string) =>
   new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(new Date(value))
 
 interface DealBarProps {
-  conversation: Pick<IConversationListItem, 'id' | 'isSeller' | 'canConfirmDeal' | 'dealConfirmedAt'>
+  conversation: Pick<IConversationListItem, 'id' | 'isSeller' | 'canConfirmDeal' | 'dealConfirmedAt' | 'counterpart'>
 }
 
 // Отметка «сделка состоялась» над перепиской. Ставит её только продавец, и
@@ -20,9 +22,10 @@ interface DealBarProps {
 // видит результат. Подсказку про отзыв показываем, лишь когда рейтинги
 // продавцов включены в админке — иначе обещать отзыв нечем.
 export const DealBar = ({ conversation }: DealBarProps) => {
-  const { id, isSeller, canConfirmDeal, dealConfirmedAt } = conversation
+  const { id, isSeller, canConfirmDeal, dealConfirmedAt, counterpart } = conversation
   const { sellerRatings } = useSiteFlags()
   const { setDeal, isSettingDeal } = useSetDeal(id)
+  const [isReviewOpen, setIsReviewOpen] = useState(false)
 
   if (dealConfirmedAt) {
     return (
@@ -39,6 +42,14 @@ export const DealBar = ({ conversation }: DealBarProps) => {
           <Button type='button' variant='ghost' size='sm' disabled={isSettingDeal} onClick={() => setDeal(false)}>
             Отменить
           </Button>
+        )}
+        {!isSeller && sellerRatings && (
+          <>
+            <Button type='button' size='sm' onClick={() => setIsReviewOpen(true)}>
+              Оставить отзыв
+            </Button>
+            <ReviewDialog sellerId={counterpart.id} open={isReviewOpen} onOpenChange={setIsReviewOpen} />
+          </>
         )}
       </div>
     )

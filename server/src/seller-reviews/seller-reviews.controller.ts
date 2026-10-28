@@ -20,8 +20,10 @@ import { AuthGuard } from '@/auth/guards/auth.guard'
 import { CreateSellerReviewDto } from './dto/create-seller-review.dto'
 import { FindSellerReviewsQueryDto } from './dto/find-seller-reviews-query.dto'
 import { ReplySellerReviewDto } from './dto/reply-seller-review.dto'
+import { ReportSellerReviewDto } from './dto/report-seller-review.dto'
 import { UpdateSellerReviewDto } from './dto/update-seller-review.dto'
 import { SellerRatingsEnabledGuard } from './guards/seller-ratings-enabled.guard'
+import { SellerReviewReportsService } from './seller-review-reports.service'
 import { SellerReviewsService } from './seller-reviews.service'
 
 // Отзывы о конкретном продавце. Гард флага стоит на уровне класса и потому
@@ -57,11 +59,14 @@ export class UserReviewsController {
 }
 
 // Действия над уже существующим отзывом: автор правит и удаляет, продавец
-// отвечает.
+// отвечает, любой пользователь может пожаловаться.
 @Controller('seller-reviews')
 @UseGuards(SellerRatingsEnabledGuard, AuthGuard)
 export class SellerReviewsController {
-  constructor(private readonly sellerReviewsService: SellerReviewsService) {}
+  constructor(
+    private readonly sellerReviewsService: SellerReviewsService,
+    private readonly reportsService: SellerReviewReportsService
+  ) {}
 
   @Patch(':id')
   update(
@@ -81,5 +86,15 @@ export class SellerReviewsController {
   @Put(':id/reply')
   reply(@Param('id', ParseUUIDPipe) id: string, @CurrentUser('id') userId: string, @Body() dto: ReplySellerReviewDto) {
     return this.sellerReviewsService.reply(id, userId, dto)
+  }
+
+  @Post(':id/reports')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  report(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: ReportSellerReviewDto
+  ) {
+    return this.reportsService.report(id, userId, dto)
   }
 }

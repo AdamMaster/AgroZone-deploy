@@ -1,7 +1,7 @@
 import type { AdBadge } from '@/features/ads/types/ad.types'
 
 // Значения — как enum AdStatus сервера (prisma/schema.prisma).
-export type AdStatus = 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED' | 'EXPIRED'
+export type AdStatus = 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED' | 'EXPIRED' | 'SUSPENDED'
 
 // Своё объявление в «Моих объявлениях» (GET /ads/my). Описаны только поля,
 // которые использует приложение.

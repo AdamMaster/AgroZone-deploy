@@ -162,4 +162,101 @@ export class NotificationsService {
 
     return notification
   }
+
+  // Решения модератора по отзыву автора. Только in-app: это ответ на его
+  // действие на сайте, а не событие, о котором нужно сообщать письмом. Не
+  // идёт через try/catch — запись в локальную базу, см. notifyAdRejected.
+  async notifySellerReviewHidden(authorId: string, sellerId: string) {
+    return this.prisma.notification.create({
+      data: {
+        userId: authorId,
+        type: NotificationType.SELLER_REVIEW_HIDDEN,
+        title: 'Отзыв скрыт модератором',
+        message: 'Ваш отзыв о продавце нарушает правила площадки и скрыт. В рейтинг он не входит.',
+        link: `/sellers/${sellerId}`
+      }
+    })
+  }
+
+  async notifySellerReviewPublished(authorId: string, sellerId: string) {
+    return this.prisma.notification.create({
+      data: {
+        userId: authorId,
+        type: NotificationType.SELLER_REVIEW_PUBLISHED,
+        title: 'Отзыв опубликован',
+        message: 'Модератор проверил ваш отзыв о продавце — он опубликован и учтён в рейтинге.',
+        link: `/sellers/${sellerId}`
+      }
+    })
+  }
+
+  // Меры модератора по жалобам на продавца. Только in-app, как и решения по
+  // отзывам: продавец увидит их в уведомлениях, а объявления — в «Моих
+  // объявлениях».
+  async notifySellerWarning(sellerId: string) {
+    return this.prisma.notification.create({
+      data: {
+        userId: sellerId,
+        type: NotificationType.SELLER_WARNING,
+        title: 'Предупреждение от модератора',
+        message:
+          'На вас поступили жалобы от покупателей, модератор их проверил. Повторные нарушения правил площадки приведут к более строгим мерам.',
+        link: '/safety'
+      }
+    })
+  }
+
+  async notifySellerAdsSuspended(sellerId: string) {
+    return this.prisma.notification.create({
+      data: {
+        userId: sellerId,
+        type: NotificationType.SELLER_ADS_SUSPENDED,
+        title: 'Объявления приостановлены',
+        message:
+          'На вас поступило несколько жалоб, поэтому объявления скрыты до проверки модератором. Пока она идёт, изменить или удалить их нельзя.',
+        link: '/profile/settings/ads'
+      }
+    })
+  }
+
+  async notifySellerAdsRestored(sellerId: string) {
+    return this.prisma.notification.create({
+      data: {
+        userId: sellerId,
+        type: NotificationType.SELLER_ADS_RESTORED,
+        title: 'Объявления снова опубликованы',
+        message: 'Модератор завершил проверку жалоб, ваши объявления снова доступны покупателям.',
+        link: '/profile/settings/ads'
+      }
+    })
+  }
+
+  // Отзывы. Только in-app, как и остальные уведомления рейтингов. Продавцу —
+  // когда о нём появился опубликованный отзыв (сразу или после проверки
+  // модератором), автору — когда продавец впервые ответил на его отзыв.
+  // Вызываются вне транзакций отзывов: сбой уведомления не должен ронять
+  // сам отзыв, см. SellerReviewsService.
+  async notifySellerReviewReceived(sellerId: string) {
+    return this.prisma.notification.create({
+      data: {
+        userId: sellerId,
+        type: NotificationType.SELLER_REVIEW_RECEIVED,
+        title: 'Новый отзыв о вас',
+        message: 'Покупатель оставил отзыв. Прочитать его и ответить можно на вашей странице продавца.',
+        link: `/sellers/${sellerId}?tab=reviews`
+      }
+    })
+  }
+
+  async notifySellerReviewReplied(authorId: string, sellerId: string) {
+    return this.prisma.notification.create({
+      data: {
+        userId: authorId,
+        type: NotificationType.SELLER_REVIEW_REPLIED,
+        title: 'Продавец ответил на ваш отзыв',
+        message: 'Ответ продавца виден под вашим отзывом на его странице.',
+        link: `/sellers/${sellerId}?tab=reviews`
+      }
+    })
+  }
 }

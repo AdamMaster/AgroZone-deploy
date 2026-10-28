@@ -2,7 +2,16 @@
 // здесь зеркалит это же намерение. Компоненты рендерят title/message/link
 // полностью generic, без switch по типу — новое значение добавляется сюда
 // без изменений в компонентах.
-export type NotificationType = 'AD_REJECTED' | 'NEW_MESSAGE'
+export type NotificationType =
+  | 'AD_REJECTED'
+  | 'NEW_MESSAGE'
+  | 'SELLER_REVIEW_HIDDEN'
+  | 'SELLER_REVIEW_PUBLISHED'
+  | 'SELLER_REVIEW_RECEIVED'
+  | 'SELLER_REVIEW_REPLIED'
+  | 'SELLER_WARNING'
+  | 'SELLER_ADS_SUSPENDED'
+  | 'SELLER_ADS_RESTORED'
 
 export interface INotification {
   id: string

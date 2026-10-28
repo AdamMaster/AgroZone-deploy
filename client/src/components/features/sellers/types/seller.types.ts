@@ -1,5 +1,7 @@
 import { UserType } from '@/components/features/auth/types'
 
+import { ISellerRating } from './seller-review.types'
+
 // Публичная карточка продавца (/sellers/:id) — намеренно НЕ переиспользует
 // IUser (тот тип — для владельца собственного аккаунта, там email,
 // телефоны, служебные флаги). Тут ровно тот набор полей, что отдаёт
@@ -20,4 +22,6 @@ export interface IPublicSeller {
   // нужен, чтобы показать реальное имя файла, а не голую ссылку на S3.
   presentationUrl: string | null
   presentationFileName: string | null
+  // Рейтинг по отзывам. Приходит, только когда рейтинги включены в админке.
+  rating?: ISellerRating
 }

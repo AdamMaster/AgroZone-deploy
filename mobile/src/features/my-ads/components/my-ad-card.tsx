@@ -24,6 +24,8 @@ interface MyAdCardProps {
 const HINTS = {
   pending:
     'Мы проверяем объявление на соответствие правилам площадки. Обычно модерация занимает около 15 минут, но в отдельных случаях может занять до 24 часов.',
+  suspended:
+    'На вас поступили жалобы, объявление скрыто от покупателей до решения модератора. Изменить или удалить его пока нельзя.',
   premium:
     'Премиум-аккаунт сам поднимает все ваши объявления в топ каждый день и выделяет цену — эти услуги можно не покупать, только значок премиум не заменяет.'
 } as const
@@ -68,6 +70,11 @@ export const MyAdCard = memo(function MyAdCard({ ad, isOwnerPremium, onOpen, onE
               <Text className='rounded-2xl bg-orange-200 px-2 py-0.5 text-xs text-neutral-900'>На модерации</Text>
             </Pressable>
           )}
+          {ad.status === 'SUSPENDED' && (
+            <Pressable onPress={() => toggleHint('suspended')} className='mb-1 self-start' hitSlop={4}>
+              <Text className='rounded-2xl bg-red-100 px-2 py-0.5 text-xs text-red-600'>Приостановлено</Text>
+            </Pressable>
+          )}
           <View className='flex-row items-center gap-2'>
             <Pressable onPress={() => onOpen(ad)} className='shrink'>
               <Text className='text-base leading-tight text-gray-900'>{ad.title}</Text>
@@ -92,9 +99,11 @@ export const MyAdCard = memo(function MyAdCard({ ad, isOwnerPremium, onOpen, onE
           <Text className='text-[13px] text-gray-500'>{ad.address}</Text>
         </View>
 
-        <Pressable accessibilityRole='button' accessibilityLabel={editLabel} onPress={() => onEdit(ad)} hitSlop={8}>
-          <SquarePen size={20} color={iconColor} />
-        </Pressable>
+        {ad.status !== 'SUSPENDED' && (
+          <Pressable accessibilityRole='button' accessibilityLabel={editLabel} onPress={() => onEdit(ad)} hitSlop={8}>
+            <SquarePen size={20} color={iconColor} />
+          </Pressable>
+        )}
       </View>
 
       {hintText && (

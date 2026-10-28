@@ -159,7 +159,8 @@ export function AdDetailScreen({ id, view, onSwitchToOwnerView }: AdDetailScreen
         isFavorite={!!ad.isFavorite}
         isFavoritePending={isFavoritePending}
         onToggleFavorite={() => toggleFavorite({ adId: ad.id, isFavorite: !!ad.isFavorite })}
-        onEdit={() => openAdEditor(ad.id)}
+        // Приостановленное по жалобам объявление владелец менять не может.
+        onEdit={ad.status === 'SUSPENDED' ? undefined : () => openAdEditor(ad.id)}
         menuActions={menuActions}
       />
 

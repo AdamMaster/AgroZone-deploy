@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { BadRequestException, ConflictException, Logger, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ConflictException, ForbiddenException, Logger, NotFoundException } from '@nestjs/common'
 
 import { AdsService } from './ads.service'
 import { PrismaService } from '@/prisma/prisma.service'
@@ -80,6 +80,53 @@ describe('AdsService', () => {
     }).compile()
 
     service = module.get(AdsService)
+  })
+
+  describe('findAll — рейтинг продавца в карточках списка', () => {
+    const listedAd = (user: Record<string, unknown>) => ({
+      id: 'ad-1',
+      title: 'Трактор',
+      favorites: [],
+      user: { id: 'user-1', displayName: 'Адам', premiumUntil: null, ...user }
+    })
+
+    beforeEach(() => {
+      prisma.$queryRaw = jest
+        .fn()
+        .mockResolvedValueOnce([{ count: BigInt(1) }])
+        .mockResolvedValueOnce([{ id: 'ad-1', distance_km: null }])
+    })
+
+    it('пока рейтинги выключены, в карточке нет ни rating, ни сырых полей', async () => {
+      prisma.ad.findMany.mockResolvedValue([listedAd({ ratingAverage: 4.5, ratingCount: 7 })])
+
+      const { items } = await service.findAll({})
+
+      expect(items[0].user).toEqual({ id: 'user-1', displayName: 'Адам', premiumUntil: null })
+    })
+
+    it('при включённых рейтингах отдаёт rating с порогом показа вместо сырых полей', async () => {
+      siteSettingsService.getFlags.mockResolvedValue({ sellerRatings: true })
+      prisma.ad.findMany.mockResolvedValue([listedAd({ ratingAverage: 4.5, ratingCount: 7 })])
+
+      const { items } = await service.findAll({})
+
+      expect(items[0].user).toEqual({
+        id: 'user-1',
+        displayName: 'Адам',
+        premiumUntil: null,
+        rating: { average: 4.5, count: 7 }
+      })
+    })
+
+    it('меньше трёх отзывов: среднего нет', async () => {
+      siteSettingsService.getFlags.mockResolvedValue({ sellerRatings: true })
+      prisma.ad.findMany.mockResolvedValue([listedAd({ ratingAverage: 5, ratingCount: 2 })])
+
+      const { items } = await service.findAll({})
+
+      expect(items[0].user?.rating).toEqual({ average: null, count: 2 })
+    })
   })
 
   describe('setExpirationByAdmin', () => {
@@ -737,7 +784,44 @@ describe('AdsService', () => {
       const counts = await service.getMyAdsStatusCounts('user-1')
 
       expect(prisma.ad.groupBy).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'user-1' } }))
-      expect(counts).toEqual({ DRAFT: 1, PENDING: 0, PUBLISHED: 3, REJECTED: 0, ARCHIVED: 0, EXPIRED: 0 })
+      expect(counts).toEqual({
+        DRAFT: 1,
+        PENDING: 0,
+        PUBLISHED: 3,
+        REJECTED: 0,
+        ARCHIVED: 0,
+        EXPIRED: 0,
+        SUSPENDED: 0
+      })
+    })
+  })
+
+  // Приостановленное по жалобам объявление остаётся как есть до решения
+  // модератора: владелец не может ни переписать, ни снять, ни удалить его.
+  describe('приостановленное объявление (SUSPENDED)', () => {
+    beforeEach(() => {
+      prisma.ad.findFirst.mockResolvedValue({ id: 'ad1', userId: 'owner', status: 'SUSPENDED', images: [] })
+    })
+
+    it.each([
+      ['правка', () => service.update('ad1', {} as never, 'owner')],
+      ['повторная публикация', () => service.republish('ad1', 'owner')],
+      ['снятие с публикации', () => service.archive('ad1', 'owner')],
+      ['активация', () => service.activate('ad1', 'owner')],
+      ['перевод в черновик', () => service.draft('ad1', 'owner')],
+      ['публикация черновика', () => service.publishDraft('ad1', 'owner')],
+      ['удаление', () => service.remove('ad1', 'owner')]
+    ])('%s запрещена — 403, ничего не пишется', async (_name, action) => {
+      await expect(action()).rejects.toBeInstanceOf(ForbiddenException)
+
+      expect(prisma.ad.update).not.toHaveBeenCalled()
+      expect(prisma.ad.delete).not.toHaveBeenCalled()
+    })
+
+    it('чужое или несуществующее объявление по-прежнему 404, а не 403', async () => {
+      prisma.ad.findFirst.mockResolvedValue(null)
+
+      await expect(service.archive('ad1', 'stranger')).rejects.toBeInstanceOf(NotFoundException)
     })
   })
 })

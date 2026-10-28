@@ -36,6 +36,8 @@ import { GeocodeService } from './geocode.service'
     AdsExpirationWorker,
     AdsArchivePurgeWorker,
     AdViewsRollupWorker
-  ]
+  ],
+  // Нужен SellerReportsModule для приостановки объявлений продавца.
+  exports: [AdStateMachineService]
 })
 export class AdsModule {}

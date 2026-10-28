@@ -1,6 +1,6 @@
 import type { AdStatus } from '../types/my-ad.types'
 
-export type MyAdsTabKey = 'published' | 'archived' | 'draft' | 'rejected' | 'expired'
+export type MyAdsTabKey = 'published' | 'archived' | 'draft' | 'rejected' | 'expired' | 'suspended'
 
 export interface MyAdsTab {
   key: MyAdsTabKey
@@ -15,5 +15,6 @@ export const MY_ADS_TABS: readonly MyAdsTab[] = [
   { key: 'archived', label: 'Архив', statuses: ['ARCHIVED'] },
   { key: 'draft', label: 'Черновики', statuses: ['DRAFT'] },
   { key: 'rejected', label: 'Отклонённые', statuses: ['REJECTED'] },
-  { key: 'expired', label: 'Завершенные', statuses: ['EXPIRED'] }
+  { key: 'expired', label: 'Завершенные', statuses: ['EXPIRED'] },
+  { key: 'suspended', label: 'Приостановленные', statuses: ['SUSPENDED'] }
 ]

@@ -10,5 +10,6 @@ export const AD_STATUS_LABELS: Record<string, string> = {
   PUBLISHED: 'Опубликовано',
   REJECTED: 'Отклонено',
   ARCHIVED: 'Снято с публикации',
-  EXPIRED: 'Срок действия истёк'
+  EXPIRED: 'Срок действия истёк',
+  SUSPENDED: 'Приостановлено'
 }

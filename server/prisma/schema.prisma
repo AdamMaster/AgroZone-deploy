@@ -129,6 +129,18 @@ model User {
   sellerReviewsReceived SellerReview[] @relation("SellerReviewSeller")
   sellerReviewsWritten  SellerReview[] @relation("SellerReviewAuthor")
 
+  // Модерация отзывов: кто из администраторов принял решение по отзыву и
+  // чьи жалобы на отзывы есть в очереди — см. SellerReviewReport.
+  sellerReviewsModerated SellerReview[]       @relation("SellerReviewModerator")
+  sellerReviewReports    SellerReviewReport[] @relation("SellerReviewReporter")
+
+  // Жалобы на мошенничество: поданные на этого пользователя как на продавца и
+  // им самим, а также меры модераторов — см. SellerReport, SellerSanction.
+  sellerReportsReceived SellerReport[]   @relation("SellerReportSeller")
+  sellerReportsMade     SellerReport[]   @relation("SellerReportReporter")
+  sellerSanctions       SellerSanction[] @relation("SellerSanctionSeller")
+  sellerSanctionsIssued SellerSanction[] @relation("SellerSanctionModerator")
+
   // Рейтинг продавца — денормализованный результат по опубликованным
   // отзывам, чтобы карточки и профили не считали его на лету. Пересчитывается
   // только в SellerRatingService.recalculate, больше нигде не пишется.
@@ -289,12 +301,22 @@ enum SellerReviewContactType {
 }
 
 // PUBLISHED — виден всем и входит в рейтинг; HIDDEN — скрыт модератором;
-// PENDING — ждёт решения модератора (автофильтр, жалобы). Модерация
-// появляется на следующем этапе, пока создаются только PUBLISHED.
+// PENDING — ждёт решения модератора (сработал автофильтр или набралось
+// достаточно жалоб): не виден никому, кроме автора, и в рейтинг не входит.
 enum SellerReviewStatus {
   PUBLISHED
   HIDDEN
   PENDING
+}
+
+// Что насторожило автофильтр в тексте отзыва (см. review-text-filter.util).
+// Хранится вместе с отзывом, чтобы модератор сразу видел причину, по
+// которой тот попал в очередь.
+enum SellerReviewFilterFlag {
+  PROFANITY
+  LINK
+  PHONE
+  REPEATED_TEXT
 }
 
 // Отзыв покупателя о продавце. Один отзыв на пару «автор — продавец»
@@ -332,6 +354,21 @@ model SellerReview {
 
   status SellerReviewStatus @default(PUBLISHED)
 
+  // Сработавшие правила автофильтра; пусто, если отзыв чистый. Непустое
+  // значение при status = PENDING — причина, по которой отзыв ждёт модератора.
+  filterFlags SellerReviewFilterFlag[] @default([]) @map("filter_flags")
+
+  // Решение модератора. moderatedAt заполнено — отзыв уже рассмотрен: если
+  // он оставлен опубликованным, новые жалобы, пришедшие до этого момента, его
+  // повторно в очередь не возвращают (см. SellerReviewModerationService).
+  // moderatedById — SetNull: удаление аккаунта модератора не должно
+  // ломать отзыв.
+  moderatedAt   DateTime? @map("moderated_at")
+  moderatedById String?   @map("moderated_by_id")
+  moderatedBy   User?     @relation("SellerReviewModerator", fields: [moderatedById], references: [id], onDelete: SetNull)
+
+  reports SellerReviewReport[]
+
   // Ответ продавца: один на отзыв, редактируется; sellerReplyAt — время
   // последнего сохранения ответа.
   sellerReply   String?   @map("seller_reply") @db.Text
@@ -346,7 +383,133 @@ model SellerReview {
   // Лимит отзывов в сутки на автора.
   @@index([authorId, createdAt])
   @@index([conversationId])
+  // Очередь модератора: отзывы в ожидании решения.
+  @@index([status, createdAt])
   @@map("seller_reviews")
+}
+
+enum SellerReviewReportReason {
+  FAKE
+  ABUSIVE
+  SPAM
+  PERSONAL_DATA
+  OTHER
+}
+
+// PENDING — жалоба ещё не рассмотрена; ACCEPTED — модератор счёл её
+// обоснованной (отзыв скрыт); DISMISSED — отклонена (отзыв оставлен).
+enum SellerReviewReportStatus {
+  PENDING
+  ACCEPTED
+  DISMISSED
+}
+
+// Жалоба на отзыв о продавце. Одна жалоба от одного пользователя на отзыв
+// (@@unique) — повтор не накручивает счётчик. Решение принимает модератор,
+// автоматически только прячется из публичной выдачи сам отзыв при
+// достаточном числе независимых жалоб (см. SELLER_REVIEW_REPORTS_TO_HIDE).
+model SellerReviewReport {
+  id String @id @default(uuid())
+
+  reviewId String       @map("review_id")
+  review   SellerReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  reporterId String @map("reporter_id")
+  reporter   User   @relation("SellerReviewReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  reason  SellerReviewReportReason
+  comment String?                  @db.Text
+  status  SellerReviewReportStatus @default(PENDING)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([reviewId, reporterId])
+  @@index([reviewId, status])
+  // Лимит жалоб в сутки на пользователя.
+  @@index([reporterId, createdAt])
+  @@map("seller_review_reports")
+}
+
+enum SellerReportReason {
+  PREPAYMENT_SCAM
+  FAKE_AD
+  STOLEN_PHOTOS
+  DIFFERENT_ITEM
+  OTHER
+}
+
+// PENDING — ждёт решения модератора; ACCEPTED — признана обоснованной
+// (продавцу вынесена мера); DISMISSED — отклонена.
+enum SellerReportStatus {
+  PENDING
+  ACCEPTED
+  DISMISSED
+}
+
+// Жалоба на продавца: мошенничество, обман. Отдельный канал от отзывов — она
+// не влияет на рейтинг, а работает на закономерности: решение по продавцу
+// принимает модератор по совокупности жалоб, сигналов и истории аккаунта.
+// Пожаловаться может только тот, кто контактировал с продавцом (диалог по его
+// объявлению или показанный телефон) — иначе конкурент мог бы закидать
+// жалобами любого. Одна жалоба от человека на продавца (@@unique).
+model SellerReport {
+  id String @id @default(uuid())
+
+  sellerId String @map("seller_id")
+  seller   User   @relation("SellerReportSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+
+  reporterId String @map("reporter_id")
+  reporter   User   @relation("SellerReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  // Объявление, по которому произошёл обман; необязательно. SetNull: удаление
+  // объявления не должно стирать жалобу.
+  adId String? @map("ad_id")
+  ad   Ad?     @relation(fields: [adId], references: [id], onDelete: SetNull)
+
+  reason  SellerReportReason
+  comment String?            @db.Text
+  status  SellerReportStatus @default(PENDING)
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  resolvedAt DateTime? @map("resolved_at")
+
+  @@unique([sellerId, reporterId])
+  // Нерассмотренные жалобы на продавца и их подсчёт.
+  @@index([sellerId, status])
+  // Лимит жалоб в сутки на человека.
+  @@index([reporterId, createdAt])
+  // Очередь модератора.
+  @@index([status, createdAt])
+  @@map("seller_reports")
+}
+
+enum SellerSanctionType {
+  WARNING
+  ADS_SUSPENDED
+  ADS_RESTORED
+  REVIEWS_HIDDEN
+}
+
+// Журнал мер по продавцу: что, когда и кем сделано. Нужен модератору в
+// карточке продавца (история аккаунта) и как след для разбора споров.
+// moderatorId пустой, если мера автоматическая (приостановка объявлений по
+// числу жалоб) или аккаунт модератора удалён.
+model SellerSanction {
+  id String @id @default(uuid())
+
+  sellerId String @map("seller_id")
+  seller   User   @relation("SellerSanctionSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+
+  moderatorId String? @map("moderator_id")
+  moderator   User?   @relation("SellerSanctionModerator", fields: [moderatorId], references: [id], onDelete: SetNull)
+
+  type SellerSanctionType
+  note String?            @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([sellerId, createdAt])
+  @@map("seller_sanctions")
 }
 
 // Переключатели возможностей сайта и приложения (feature flags), которыми
@@ -625,6 +788,7 @@ model Ad {
 
   conversations Conversation[]
   reports       AdReport[]
+  sellerReports SellerReport[]
   bumps         AdBump[]
   views         AdView[]
   viewsDaily    AdViewDaily[]
@@ -1395,6 +1559,12 @@ enum AdStatus {
   REJECTED
   ARCHIVED
   EXPIRED
+  // Приостановлено до решения модератора: на продавца пожаловались несколько
+  // независимых людей (см. SellerReport). Покупателям не видно, владелец не
+  // может ни снять, ни удалить объявление — оно остаётся как материал для
+  // проверки. Решение модератора возвращает его в PUBLISHED (или EXPIRED,
+  // если срок публикации уже вышел).
+  SUSPENDED
 }
 
 enum ConversationType {
@@ -1480,4 +1650,18 @@ enum NotificationType {
   // раньше получатель никак не узнавал о нём, кроме как сам зайдёт в "Мои
   // сообщения" и заметит (см. обсуждение с владельцем).
   NEW_MESSAGE
+  // Отзыв автора скрыт модератором (по жалобам или после проверки).
+  SELLER_REVIEW_HIDDEN
+  // Отзыв, задержанный на проверку, одобрен и опубликован.
+  SELLER_REVIEW_PUBLISHED
+  // Предупреждение продавцу по жалобам на него.
+  SELLER_WARNING
+  // Объявления продавца приостановлены до проверки жалоб.
+  SELLER_ADS_SUSPENDED
+  // Проверка завершилась, объявления снова опубликованы.
+  SELLER_ADS_RESTORED
+  // Продавцу: о нём появился новый опубликованный отзыв.
+  SELLER_REVIEW_RECEIVED
+  // Автору отзыва: продавец ответил на его отзыв.
+  SELLER_REVIEW_REPLIED
 }

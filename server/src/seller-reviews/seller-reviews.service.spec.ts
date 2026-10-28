@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common'
 import { Prisma } from '@/generated/prisma/client'
-import { SellerReviewContactType, SellerReviewStatus } from '@/generated/prisma/enums'
+import { SellerReviewContactType, SellerReviewFilterFlag, SellerReviewStatus } from '@/generated/prisma/enums'
 
 import { SellerReviewsService } from './seller-reviews.service'
 import { SellerReviewBlockReason } from './seller-review-eligibility.types'
@@ -14,6 +14,7 @@ const reviewRow = (overrides: object = {}) => ({
   rating: 5,
   text: 'Отличный продавец',
   contactType: SellerReviewContactType.DEAL_CONFIRMED,
+  status: SellerReviewStatus.PUBLISHED,
   sellerReply: null,
   sellerReplyAt: null,
   createdAt: NOW,
@@ -27,6 +28,8 @@ describe('SellerReviewsService', () => {
   let prisma: any
   let eligibilityService: any
   let ratingService: any
+  let textFilter: any
+  let notificationsService: any
 
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(NOW)
@@ -45,6 +48,7 @@ describe('SellerReviewsService', () => {
         update: jest.fn().mockResolvedValue(reviewRow()),
         delete: jest.fn().mockResolvedValue({})
       },
+      sellerReviewReport: { count: jest.fn().mockResolvedValue(0) },
       $queryRaw: jest.fn().mockResolvedValue([{ id: 'c1' }])
     }
     prisma.$transaction = jest.fn(async (callback: any) => callback(prisma))
@@ -58,7 +62,14 @@ describe('SellerReviewsService', () => {
     }
     ratingService = { recalculate: jest.fn().mockResolvedValue(undefined) }
 
-    service = new SellerReviewsService(prisma, eligibilityService, ratingService)
+    textFilter = { detect: jest.fn().mockResolvedValue([]) }
+
+    notificationsService = {
+      notifySellerReviewReceived: jest.fn().mockResolvedValue({}),
+      notifySellerReviewReplied: jest.fn().mockResolvedValue({})
+    }
+
+    service = new SellerReviewsService(prisma, eligibilityService, ratingService, textFilter, notificationsService)
   })
 
   afterEach(() => jest.useRealTimers())
@@ -127,17 +138,19 @@ describe('SellerReviewsService', () => {
       await expect(service.findForSeller('seller', {})).rejects.toBeInstanceOf(NotFoundException)
     })
 
-    it('наружу не уходят вес, статус и диалог', async () => {
+    it('наружу не уходят вес, диалог, флаги автофильтра и решение модератора', async () => {
       prisma.sellerReview.findMany.mockResolvedValue([reviewRow()])
 
       const { items } = await service.findForSeller('seller', {})
 
-      expect(Object.keys(items[0])).not.toEqual(expect.arrayContaining(['weight']))
-      expect(items[0]).not.toHaveProperty('status')
+      expect(items[0]).not.toHaveProperty('weight')
       expect(items[0]).not.toHaveProperty('conversationId')
       const select = prisma.sellerReview.findMany.mock.calls[0][0].select
       expect(select).not.toHaveProperty('weight')
       expect(select).not.toHaveProperty('conversationId')
+      expect(select).not.toHaveProperty('filterFlags')
+      expect(select).not.toHaveProperty('moderatedById')
+      expect(select).not.toHaveProperty('moderatedAt')
     })
   })
 
@@ -171,11 +184,46 @@ describe('SellerReviewsService', () => {
             contactType: SellerReviewContactType.CONTACT,
             rating: 4,
             text: 'Хорошо',
-            weight: 0.3
+            weight: 0.3,
+            status: SellerReviewStatus.PUBLISHED,
+            filterFlags: []
           }
         })
       )
       expect(ratingService.recalculate).toHaveBeenCalledWith(prisma, ['seller', 'author'])
+    })
+
+    it('опубликованный отзыв — продавцу уходит уведомление', async () => {
+      await service.create('author', 'seller', { rating: 5 })
+
+      expect(notificationsService.notifySellerReviewReceived).toHaveBeenCalledWith('seller')
+    })
+
+    it('отзыв на проверке продавцу пока не показывается — без уведомления', async () => {
+      prisma.sellerReview.create.mockResolvedValue(reviewRow({ status: SellerReviewStatus.PENDING }))
+
+      await service.create('author', 'seller', { rating: 5, text: 'тел 89001234567' })
+
+      expect(notificationsService.notifySellerReviewReceived).not.toHaveBeenCalled()
+    })
+
+    it('сбой уведомления не ломает уже сохранённый отзыв', async () => {
+      notificationsService.notifySellerReviewReceived.mockRejectedValue(new Error('db down'))
+
+      await expect(service.create('author', 'seller', { rating: 5 })).resolves.toEqual(
+        expect.objectContaining({ id: 'r1' })
+      )
+    })
+
+    it('автофильтр сработал — отзыв уходит на проверку вместе с флагами', async () => {
+      textFilter.detect.mockResolvedValue([SellerReviewFilterFlag.LINK])
+
+      await service.create('author', 'seller', { rating: 5, text: 'смотрите t.me/x_agro' })
+
+      expect(textFilter.detect).toHaveBeenCalledWith('смотрите t.me/x_agro', 'author')
+      expect(prisma.sellerReview.create.mock.calls[0][0].data).toEqual(
+        expect.objectContaining({ status: SellerReviewStatus.PENDING, filterFlags: [SellerReviewFilterFlag.LINK] })
+      )
     })
 
     it('текст из пробелов сохраняется как «без текста»', async () => {
@@ -276,27 +324,97 @@ describe('SellerReviewsService', () => {
   })
 
   describe('update', () => {
+    const locked = (status: SellerReviewStatus) => [{ id: 'r1', sellerId: 'seller', authorId: 'author', status }]
+
     beforeEach(() => {
       prisma.sellerReview.findUnique.mockResolvedValue({
         authorId: 'author',
         sellerId: 'seller',
         status: SellerReviewStatus.PUBLISHED
       })
+      prisma.$queryRaw.mockResolvedValue(locked(SellerReviewStatus.PUBLISHED))
     })
 
     it('автор меняет оценку и текст, рейтинг пересчитывается', async () => {
       await service.update('r1', 'author', { rating: 2, text: ' Передумал ' })
 
       expect(prisma.sellerReview.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'r1' }, data: { rating: 2, text: 'Передумал' } })
+        expect.objectContaining({
+          where: { id: 'r1' },
+          data: { rating: 2, text: 'Передумал', filterFlags: [], status: SellerReviewStatus.PUBLISHED }
+        })
       )
+      expect(textFilter.detect).toHaveBeenCalledWith('Передумал', 'author', 'r1')
       expect(ratingService.recalculate).toHaveBeenCalledWith(prisma, ['seller', 'author'])
     })
 
     it('пустой текст стирает текст, оценку не трогает', async () => {
       await service.update('r1', 'author', { text: '' })
 
-      expect(prisma.sellerReview.update.mock.calls[0][0].data).toEqual({ text: null })
+      expect(prisma.sellerReview.update.mock.calls[0][0].data).toEqual({
+        text: null,
+        filterFlags: [],
+        status: SellerReviewStatus.PUBLISHED
+      })
+    })
+
+    it('правка одной оценки фильтр не запускает и статус не трогает', async () => {
+      await service.update('r1', 'author', { rating: 3 })
+
+      expect(textFilter.detect).not.toHaveBeenCalled()
+      expect(prisma.sellerReview.update.mock.calls[0][0].data).toEqual({ rating: 3 })
+    })
+
+    it('правкой в текст добавили ссылку — опубликованный отзыв уходит на проверку', async () => {
+      textFilter.detect.mockResolvedValue([SellerReviewFilterFlag.LINK])
+
+      await service.update('r1', 'author', { text: 'теперь пишите на shop.ru' })
+
+      expect(prisma.sellerReview.update.mock.calls[0][0].data).toEqual(
+        expect.objectContaining({ status: SellerReviewStatus.PENDING, filterFlags: [SellerReviewFilterFlag.LINK] })
+      )
+    })
+
+    it('автор исправил текст, задержанный фильтром, — отзыв публикуется', async () => {
+      prisma.sellerReview.findUnique.mockResolvedValue({
+        authorId: 'author',
+        sellerId: 'seller',
+        status: SellerReviewStatus.PENDING
+      })
+      prisma.$queryRaw.mockResolvedValue(locked(SellerReviewStatus.PENDING))
+
+      await service.update('r1', 'author', { text: 'Без ссылок' })
+
+      expect(prisma.sellerReview.update.mock.calls[0][0].data.status).toBe(SellerReviewStatus.PUBLISHED)
+    })
+
+    it('отзыв задержан по жалобам — правка текста его не освобождает', async () => {
+      prisma.sellerReview.findUnique.mockResolvedValue({
+        authorId: 'author',
+        sellerId: 'seller',
+        status: SellerReviewStatus.PENDING
+      })
+      prisma.$queryRaw.mockResolvedValue(locked(SellerReviewStatus.PENDING))
+      prisma.sellerReviewReport.count.mockResolvedValue(3)
+
+      await service.update('r1', 'author', { text: 'Исправил' })
+
+      expect(prisma.sellerReview.update.mock.calls[0][0].data.status).toBe(SellerReviewStatus.PENDING)
+    })
+
+    it('модератор скрыл отзыв между проверкой и записью — правка отклоняется, ничего не пишется', async () => {
+      prisma.$queryRaw.mockResolvedValue(locked(SellerReviewStatus.HIDDEN))
+
+      await expect(service.update('r1', 'author', { rating: 1 })).rejects.toBeInstanceOf(ForbiddenException)
+
+      expect(prisma.sellerReview.update).not.toHaveBeenCalled()
+      expect(ratingService.recalculate).not.toHaveBeenCalled()
+    })
+
+    it('отзыв удалён между проверкой и записью — 404', async () => {
+      prisma.$queryRaw.mockResolvedValue([])
+
+      await expect(service.update('r1', 'author', { rating: 1 })).rejects.toBeInstanceOf(NotFoundException)
     })
 
     it('ничего не прислали — 400, без записи', async () => {
@@ -332,7 +450,11 @@ describe('SellerReviewsService', () => {
 
   describe('remove', () => {
     it('автор удаляет свой отзыв, рейтинг пересчитывается в той же транзакции', async () => {
-      prisma.sellerReview.findUnique.mockResolvedValue({ authorId: 'author', sellerId: 'seller' })
+      prisma.sellerReview.findUnique.mockResolvedValue({
+        authorId: 'author',
+        sellerId: 'seller',
+        status: SellerReviewStatus.PUBLISHED
+      })
 
       await service.remove('r1', 'author')
 
@@ -340,8 +462,35 @@ describe('SellerReviewsService', () => {
       expect(ratingService.recalculate).toHaveBeenCalledWith(prisma, ['seller', 'author'])
     })
 
+    it('отзыв на проверке автор удалить может', async () => {
+      prisma.sellerReview.findUnique.mockResolvedValue({
+        authorId: 'author',
+        sellerId: 'seller',
+        status: SellerReviewStatus.PENDING
+      })
+
+      await service.remove('r1', 'author')
+
+      expect(prisma.sellerReview.delete).toHaveBeenCalled()
+    })
+
+    it('скрытый модератором отзыв удалить нельзя — иначе скрытие обходится повторным отзывом', async () => {
+      prisma.sellerReview.findUnique.mockResolvedValue({
+        authorId: 'author',
+        sellerId: 'seller',
+        status: SellerReviewStatus.HIDDEN
+      })
+
+      await expect(service.remove('r1', 'author')).rejects.toBeInstanceOf(ForbiddenException)
+      expect(prisma.sellerReview.delete).not.toHaveBeenCalled()
+    })
+
     it('чужой отзыв удалить нельзя', async () => {
-      prisma.sellerReview.findUnique.mockResolvedValue({ authorId: 'author', sellerId: 'seller' })
+      prisma.sellerReview.findUnique.mockResolvedValue({
+        authorId: 'author',
+        sellerId: 'seller',
+        status: SellerReviewStatus.PUBLISHED
+      })
 
       await expect(service.remove('r1', 'seller')).rejects.toBeInstanceOf(NotFoundException)
       expect(prisma.sellerReview.delete).not.toHaveBeenCalled()
@@ -369,6 +518,31 @@ describe('SellerReviewsService', () => {
       expect(prisma.sellerReview.update).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'r1' }, data: { sellerReply: 'Спасибо!', sellerReplyAt: NOW } })
       )
+    })
+
+    it('первый ответ — автору уходит уведомление', async () => {
+      await service.reply('r1', 'seller', { text: 'Спасибо!' })
+
+      expect(notificationsService.notifySellerReviewReplied).toHaveBeenCalledWith('author', 'seller')
+    })
+
+    it('правка уже данного ответа автора не тревожит', async () => {
+      prisma.sellerReview.findUnique.mockResolvedValue({
+        authorId: 'author',
+        sellerId: 'seller',
+        status: SellerReviewStatus.PUBLISHED,
+        sellerReply: 'Старый ответ'
+      })
+
+      await service.reply('r1', 'seller', { text: 'Новый ответ' })
+
+      expect(notificationsService.notifySellerReviewReplied).not.toHaveBeenCalled()
+    })
+
+    it('сбой уведомления не ломает сохранённый ответ', async () => {
+      notificationsService.notifySellerReviewReplied.mockRejectedValue(new Error('db down'))
+
+      await expect(service.reply('r1', 'seller', { text: 'Спасибо!' })).resolves.toBeDefined()
     })
 
     it('ответ не меняет рейтинг', async () => {

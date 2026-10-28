@@ -102,6 +102,9 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
     republishAd({ id: ad.id })
   }
 
+  // Приостановленное по жалобам объявление владелец менять не может.
+  const isSuspended = ad.status === 'SUSPENDED'
+
   // Опубликованное объявление открывается на публичной странице, остальные
   // (публичная отдаёт для них 404) — на странице просмотра владельца.
   // Редактирование — отдельная кнопка, а не переход по клику на карточку.
@@ -243,19 +246,34 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
                   Срок действия истек
                 </span>
               )}
+              {isSuspended && (
+                <Tooltip>
+                  <TooltipTrigger className='-order-1'>
+                    <span className='mb-1 flex w-fit items-center rounded-2xl bg-red-100 px-2 py-0.5 text-xs text-red-600'>
+                      Приостановлено
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    На вас поступили жалобы, объявление скрыто от покупателей до решения модератора. Изменить или
+                    удалить его пока нельзя.
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
             <p className='mb-0 text-base font-bold sm:mb-3 sm:text-lg'>{formatPriceWithUnit(ad.price, ad.unit)}</p>
             <p className='text-[13px] text-gray-500'>{ad.address}</p>
           </div>
 
-          <button
-            type='button'
-            onClick={() => handleEdit()}
-            aria-label={ad.status === 'REJECTED' ? 'Исправить' : 'Редактировать'}
-            className='flex shrink-0 rounded-lg sm:hidden'
-          >
-            <Edit className='size-5 text-gray-950' />
-          </button>
+          {!isSuspended && (
+            <button
+              type='button'
+              onClick={() => handleEdit()}
+              aria-label={ad.status === 'REJECTED' ? 'Исправить' : 'Редактировать'}
+              className='flex shrink-0 rounded-lg sm:hidden'
+            >
+              <Edit className='size-5 text-gray-950' />
+            </button>
+          )}
         </div>
 
         <div className='hidden w-full flex-col gap-2 sm:flex md:w-48'>
@@ -282,9 +300,11 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
             </Button>
           )}
           <div className='flex gap-1'>
-            <Button className='grow' variant='outline' onClick={() => handleEdit()}>
-              {ad.status === 'REJECTED' ? 'Исправить' : 'Редактировать'}
-            </Button>
+            {!isSuspended && (
+              <Button className='grow' variant='outline' onClick={() => handleEdit()}>
+                {ad.status === 'REJECTED' ? 'Исправить' : 'Редактировать'}
+              </Button>
+            )}
             {menuActions.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger aria-label='Ещё' className={MENU_TRIGGER_CLASS_NAME}>
