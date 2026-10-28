@@ -8,6 +8,7 @@ import { BlockedUsersService } from '@/blocked-users/blocked-users.service'
 import { FileService } from '@/file/file.service'
 import { NotificationsService } from '@/notifications/notifications.service'
 import { PrismaService } from '@/prisma/prisma.service'
+import { SiteSettingsService } from '@/site-settings/site-settings.service'
 
 import {
   CONVERSATION_DEAL_CHANGED_EVENT,
@@ -31,7 +32,8 @@ export class ConversationsService {
     private readonly blockedUsersService: BlockedUsersService,
     private readonly notificationsService: NotificationsService,
     private readonly fileService: FileService,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
+    private readonly siteSettingsService: SiteSettingsService
   ) {}
 
   // Начать диалог с продавцом объявления. Всегда вызывается покупателем —
@@ -301,9 +303,28 @@ export class ConversationsService {
         dealConfirmedAt,
         participantIds: [conversation.buyerId!, conversation.sellerId]
       } satisfies ConversationDealChangedPayload)
+
+      if (confirmed) {
+        await this.inviteBuyerToReview(conversation.buyerId!, conversationId)
+      }
     }
 
     return { dealConfirmedAt }
+  }
+
+  // Покупателю приходит приглашение оценить продавца — только пока рейтинги
+  // включены (иначе приглашать не к чему). Best-effort: сбой уведомления не
+  // должен ронять саму отметку сделки.
+  private async inviteBuyerToReview(buyerId: string, conversationId: string) {
+    try {
+      const { sellerRatings } = await this.siteSettingsService.getFlags()
+
+      if (sellerRatings) {
+        await this.notificationsService.notifyDealConfirmed(buyerId, conversationId)
+      }
+    } catch (error) {
+      this.logger.error(`Не удалось отправить приглашение оценить продавца: ${(error as Error).message}`)
+    }
   }
 
   // "Удаление" диалога — по умолчанию скрывает его только у того, кто нажал

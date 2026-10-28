@@ -520,6 +520,17 @@ describe('SellerReviewsService', () => {
       )
     })
 
+    it.each([
+      ['ссылка', 'Подробности тут https://example.com/shop'],
+      ['телефон', 'Позвоните мне: +7 928 123-45-67'],
+      ['мессенджер', 'Напишите в t.me/seller_name']
+    ])('ответ с недопустимым содержимым (%s) отклоняется и не сохраняется', async (_name, text) => {
+      await expect(service.reply('r1', 'seller', { text })).rejects.toBeInstanceOf(BadRequestException)
+
+      expect(prisma.sellerReview.update).not.toHaveBeenCalled()
+      expect(notificationsService.notifySellerReviewReplied).not.toHaveBeenCalled()
+    })
+
     it('первый ответ — автору уходит уведомление', async () => {
       await service.reply('r1', 'seller', { text: 'Спасибо!' })
 

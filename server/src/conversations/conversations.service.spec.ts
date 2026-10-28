@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 import type { EventEmitter2 } from '@nestjs/event-emitter'
 
 import { FileService } from '@/file/file.service'
+import { SiteSettingsService } from '@/site-settings/site-settings.service'
 import { ConversationType, SellerReviewContactType } from '@/generated/prisma/enums'
 
 import {
@@ -16,6 +17,7 @@ describe('ConversationsService: живые события', () => {
   let prisma: any
   let blockedUsersService: any
   let notificationsService: any
+  let siteSettingsService: { getFlags: jest.Mock }
   let fileService: { uploadChatPhotos: jest.Mock; deleteFilesQuietly: jest.Mock }
   let eventEmitter: { emit: jest.Mock }
   let service: ConversationsService
@@ -49,7 +51,11 @@ describe('ConversationsService: живые события', () => {
       $transaction: jest.fn((arg: unknown) => (typeof arg === 'function' ? arg(prisma) : Promise.resolve([message])))
     }
     blockedUsersService = { isBlocked: jest.fn().mockResolvedValue(false) }
-    notificationsService = { notifyNewMessageByEmail: jest.fn().mockResolvedValue(undefined) }
+    notificationsService = {
+      notifyNewMessageByEmail: jest.fn().mockResolvedValue(undefined),
+      notifyDealConfirmed: jest.fn().mockResolvedValue(undefined)
+    }
+    siteSettingsService = { getFlags: jest.fn().mockResolvedValue({ sellerRatings: true }) }
     fileService = {
       uploadChatPhotos: jest.fn().mockResolvedValue([]),
       deleteFilesQuietly: jest.fn().mockResolvedValue(undefined)
@@ -61,7 +67,8 @@ describe('ConversationsService: живые события', () => {
       blockedUsersService,
       notificationsService,
       fileService as unknown as FileService,
-      eventEmitter as unknown as EventEmitter2
+      eventEmitter as unknown as EventEmitter2,
+      siteSettingsService as unknown as SiteSettingsService
     )
   })
 
@@ -164,6 +171,35 @@ describe('ConversationsService: живые события', () => {
         participantIds: ['buyer', 'seller']
       })
       expect(result).toEqual({ dealConfirmedAt: CONFIRMED_AT })
+    })
+
+    it('сделка отмечена — покупателю уходит приглашение оценить продавца', async () => {
+      await service.setDealConfirmed('c1', 'seller', true)
+
+      expect(notificationsService.notifyDealConfirmed).toHaveBeenCalledWith('buyer', 'c1')
+    })
+
+    it('рейтинги выключены — приглашения нет', async () => {
+      siteSettingsService.getFlags.mockResolvedValue({ sellerRatings: false })
+
+      await service.setDealConfirmed('c1', 'seller', true)
+
+      expect(notificationsService.notifyDealConfirmed).not.toHaveBeenCalled()
+    })
+
+    it('снятие отметки и повтор без изменения приглашений не шлют', async () => {
+      await service.setDealConfirmed('c1', 'seller', false)
+
+      prisma.conversation.updateMany.mockResolvedValue({ count: 0 })
+      await service.setDealConfirmed('c1', 'seller', true)
+
+      expect(notificationsService.notifyDealConfirmed).not.toHaveBeenCalled()
+    })
+
+    it('сбой приглашения не ломает отметку сделки', async () => {
+      notificationsService.notifyDealConfirmed.mockRejectedValue(new Error('db down'))
+
+      await expect(service.setDealConfirmed('c1', 'seller', true)).resolves.toBeDefined()
     })
 
     it('продавец снимает отметку: в UPDATE условие «уже отмечена», в событии null', async () => {

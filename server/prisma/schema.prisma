@@ -1664,4 +1664,6 @@ enum NotificationType {
   SELLER_REVIEW_RECEIVED
   // Автору отзыва: продавец ответил на его отзыв.
   SELLER_REVIEW_REPLIED
+  // Покупателю: продавец отметил сделку состоявшейся — можно оценить его.
+  SELLER_DEAL_CONFIRMED
 }

@@ -27,6 +27,7 @@ import { SellerReviewBlockReason, SellerReviewEligibility } from './seller-revie
 import { SellerReviewTextFilterService } from './seller-review-text-filter.service'
 import { SELLER_REVIEWS_PAGE_SIZE_DEFAULT } from './constants/seller-reviews.constants'
 import { buildPublicRating } from './utils/public-rating.util'
+import { detectTextFlags } from './utils/review-text-filter.util'
 import { lockReview } from './utils/review-lock.util'
 import { resolveReviewStatus } from './utils/review-status.util'
 import { computeReviewWeight } from './utils/review-weight.util'
@@ -260,6 +261,16 @@ export class SellerReviewsService {
 
     if (!sellerReply) {
       throw new BadRequestException('Ответ не может быть пустым')
+    }
+
+    // Ответ виден всем под отзывом, а на проверку модератора не попадает:
+    // ссылку, телефон или мат в нём отклоняем сразу, чтобы через ответ
+    // нельзя было увести разговор с площадки или оскорбить автора. Повтор
+    // текста не проверяем: отвечать одними и теми же словами честно.
+    if (detectTextFlags(sellerReply).length > 0) {
+      throw new BadRequestException(
+        'В ответе нельзя оставлять ссылки, телефоны и нецензурные слова. Уберите их и отправьте ответ ещё раз'
+      )
     }
 
     const updated = await this.prisma.sellerReview.update({

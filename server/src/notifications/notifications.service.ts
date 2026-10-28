@@ -244,4 +244,19 @@ export class NotificationsService {
       }
     })
   }
+
+  // Покупателю: продавец отметил сделку состоявшейся. Приглашение оценить
+  // продавца: кнопка «Оставить отзыв» живёт внутри диалога, и без уведомления
+  // многие в него не вернулись бы. Только in-app, ссылка ведёт в сам диалог.
+  async notifyDealConfirmed(buyerId: string, conversationId: string) {
+    return this.prisma.notification.create({
+      data: {
+        userId: buyerId,
+        type: NotificationType.SELLER_DEAL_CONFIRMED,
+        title: 'Продавец отметил сделку состоявшейся',
+        message: 'Вы можете оценить продавца: откройте диалог и нажмите «Оставить отзыв».',
+        link: `/profile/settings/messages?c=${conversationId}`
+      }
+    })
+  }
 }
