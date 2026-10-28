@@ -113,17 +113,16 @@ export class NotificationsService {
   }
 
   // Вызывается из ConversationsService при каждом новом сообщении в
-  // диалоге по объявлению — до этого получатель никак не узнавал о
-  // сообщении, кроме как сам зайдёт в "Мои сообщения" (см. обсуждение с
-  // владельцем: это реальная потеря сделок, а не мелочь). Тот же паттерн,
-  // что и у notifyAdRejected: in-app уведомление — гарантированный канал,
-  // письмо — попытка достучаться быстрее, но необязательная (email может
-  // отсутствовать — регистрация по телефону, см. User.email в схеме).
+  // диалоге по объявлению. Только письмо: в список уведомлений («Объявление
+  // отклонено», «Отзыв скрыт» и т. п.) новые сообщения НЕ попадают — они
+  // дублировали бы вкладку «Сообщения», где у диалога есть счётчик
+  // непрочитанного (шапка и нижняя панель сайта, вкладка приложения), и
+  // заваливали бы колокольчик по записи на каждое сообщение. Письмо
+  // необязательно (email может отсутствовать — регистрация по телефону, см.
+  // User.email в схеме): падать из-за него отправка сообщения не должна.
   //
-  // messageText обрезается до превью — это уведомление/письмо, а не сам
-  // чат, длинное сообщение целиком тут не нужно и не помещается в
-  // разумный вид карточки уведомления.
-  async notifyNewMessage(
+  // messageText обрезается до превью — это письмо, а не сам чат.
+  async notifyNewMessageByEmail(
     recipientId: string,
     conversationId: string,
     adTitle: string,
@@ -134,18 +133,6 @@ export class NotificationsService {
     const trimmedText = messageText.trim()
     const preview =
       trimmedText.length > MESSAGE_PREVIEW_LENGTH ? `${trimmedText.slice(0, MESSAGE_PREVIEW_LENGTH)}…` : trimmedText
-
-    const notification = await this.prisma.notification.create({
-      data: {
-        userId: recipientId,
-        type: NotificationType.NEW_MESSAGE,
-        title: 'Новое сообщение',
-        message: preview
-          ? `${senderName} написал(а) вам по объявлению «${adTitle}»: «${preview}»`
-          : `${senderName} написал(а) вам по объявлению «${adTitle}»`,
-        link: `/profile/settings/messages?c=${conversationId}`
-      }
-    })
 
     try {
       const user = await this.prisma.user.findUnique({
@@ -159,8 +146,6 @@ export class NotificationsService {
     } catch (error) {
       this.logger.error(`Не удалось отправить письмо о новом сообщении (диалог ${conversationId})`, error)
     }
-
-    return notification
   }
 
   // Решения модератора по отзыву автора. Только in-app: это ответ на его

@@ -423,15 +423,16 @@ export class ConversationsService {
       participantIds: [senderId, recipientId]
     } satisfies ConversationMessageCreatedPayload)
 
-    // Уведомление получателю о новом сообщении — best-effort: провал не
-    // должен ронять отправку самого сообщения. Здесь (в отличие от
-    // AdsService.reject/NotificationsService.notifyAdRejected, где в
-    // try/catch обёрнута только email-часть) в try/catch весь блок целиком —
-    // этот метод вызывается на порядки чаще, и создание самой записи Message
-    // не должно зависеть от доступности уведомлений.
+    // Письмо получателю о новом сообщении (в список уведомлений оно не
+    // попадает, см. NotificationsService.notifyNewMessageByEmail) —
+    // best-effort: провал не должен ронять отправку самого сообщения.
+    // Здесь (в отличие от AdsService.reject/NotificationsService.notifyAdRejected,
+    // где в try/catch обёрнута только email-часть) в try/catch весь блок
+    // целиком — этот метод вызывается на порядки чаще, и создание самой
+    // записи Message не должно зависеть от доступности почты.
     try {
       const sender = await this.prisma.user.findUnique({ where: { id: senderId }, select: { displayName: true } })
-      await this.notificationsService.notifyNewMessage(
+      await this.notificationsService.notifyNewMessageByEmail(
         recipientId,
         message.conversationId,
         adTitle,

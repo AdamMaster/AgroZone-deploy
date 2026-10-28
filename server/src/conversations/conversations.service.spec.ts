@@ -49,7 +49,7 @@ describe('ConversationsService: живые события', () => {
       $transaction: jest.fn((arg: unknown) => (typeof arg === 'function' ? arg(prisma) : Promise.resolve([message])))
     }
     blockedUsersService = { isBlocked: jest.fn().mockResolvedValue(false) }
-    notificationsService = { notifyNewMessage: jest.fn().mockResolvedValue(undefined) }
+    notificationsService = { notifyNewMessageByEmail: jest.fn().mockResolvedValue(undefined) }
     fileService = {
       uploadChatPhotos: jest.fn().mockResolvedValue([]),
       deleteFilesQuietly: jest.fn().mockResolvedValue(undefined)
@@ -82,7 +82,7 @@ describe('ConversationsService: живые события', () => {
   })
 
   it('провал уведомления не отменяет рассылку сообщения', async () => {
-    notificationsService.notifyNewMessage.mockRejectedValue(new Error('push down'))
+    notificationsService.notifyNewMessageByEmail.mockRejectedValue(new Error('push down'))
 
     await service.sendMessage('c1', 'buyer', { text: 'Привет' })
 
@@ -329,7 +329,13 @@ describe('ConversationsService: живые события', () => {
 
       await service.sendMessage('c1', 'buyer', {}, [file])
 
-      expect(notificationsService.notifyNewMessage).toHaveBeenCalledWith('seller', 'c1', 'Трактор', 'Иван', 'Фото')
+      expect(notificationsService.notifyNewMessageByEmail).toHaveBeenCalledWith(
+        'seller',
+        'c1',
+        'Трактор',
+        'Иван',
+        'Фото'
+      )
     })
 
     it('заблокированному фото не загружаются', async () => {

@@ -72,9 +72,8 @@ export class MailService {
     return this.sendMail(email, `Объявление «${adTitle}» отклонено`, html)
   }
 
-  // Дублирует письмом in-app уведомление о новом сообщении в диалоге по
-  // объявлению (см. NotificationsService.notifyNewMessage) — тем же
-  // способом, что и sendAdRejectedEmail: письмо необязательно (у
+  // Письмо о новом сообщении в диалоге по объявлению (см.
+  // NotificationsService.notifyNewMessageByEmail). Письмо необязательно (у
   // пользователя может не быть email, см. вызывающий код), падать из-за
   // него отправка сообщения не должна.
   async sendNewMessageEmail(
