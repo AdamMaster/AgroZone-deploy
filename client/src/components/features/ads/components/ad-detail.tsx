@@ -37,6 +37,7 @@ import {
   isTouchDevice,
   pluralizeRu
 } from '@/shared/utils'
+import { photoVariantUrl } from '@/shared/utils/photo-variants'
 
 import { cn } from '@/lib/utils'
 
@@ -58,6 +59,7 @@ import { IAd, ICategoryFeature } from '../types/ad.types'
 import { isAdRemovable } from '../utils/is-ad-removable'
 import { AdBadgeChip } from './ad-badge-chip'
 import { AdCountersPanel } from './ad-counters-panel'
+import { AdPhoto } from './ad-photo'
 import { AdRemoveConfirmDialog } from './ad-remove-confirm-dialog'
 import { AdServicesStatusHandler } from './ad-services-status-handler'
 import { AdStatusBanner } from './ad-status-banner'
@@ -68,8 +70,6 @@ import { ReportAdDialog } from './report-ad-dialog'
 import { SimilarAdsSection } from './similar-ads-section'
 
 import 'yet-another-react-lightbox/styles.css'
-import { AdPhoto } from './ad-photo'
-import { photoVariantUrl } from '@/shared/utils/photo-variants'
 
 // Лайтбокс открывается только по клику на фото — незачем тянуть
 // yet-another-react-lightbox (+ его CSS) в основной бандл страницы
@@ -605,7 +605,7 @@ export const AdDetail = ({
                   <p className='font-medium'>{ad.user?.displayName ?? 'Пользователь'}</p>
                 </div>
                 {/* Без href: весь блок продавца и так ссылка на его страницу. */}
-                <SellerRatingSummary rating={ad.user?.rating} showEmpty className='mb-0.5 text-xs' />
+                <SellerRatingSummary rating={ad.user?.rating} showEmpty className='mb-0.5 text-sm' />
                 {publishedDate && <p className='text-xs text-gray-500'>Опубликовано {publishedDate}</p>}
                 {updatedDate && <p className='text-xs text-gray-500'>Обновлено {updatedDate}</p>}
                 {!!ad.user?.adsCount && (

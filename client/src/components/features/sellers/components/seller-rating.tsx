@@ -1,6 +1,5 @@
 'use client'
 
-import { Star } from 'lucide-react'
 import Link from 'next/link'
 
 import { useSiteFlags } from '@/components/features/site-settings/hooks'
@@ -39,9 +38,9 @@ export const SellerRatingSummary = ({ rating, href, showEmpty = false, className
 
   const content = hasAverage ? (
     <>
-      <RatingStars value={rating.average!} />
       <span className='font-medium text-gray-900'>{rating.average!.toFixed(1)}</span>
-      <span className='text-gray-500'>· {formatReviewsCount(rating.count)}</span>
+      <RatingStars value={rating.average!} />
+      <span className='text-ggray-900 ml-1'> {formatReviewsCount(rating.count)}</span>
     </>
   ) : (
     <span className='text-gray-500'>Пока нет оценок</span>
@@ -55,29 +54,5 @@ export const SellerRatingSummary = ({ rating, href, showEmpty = false, className
     </Link>
   ) : (
     <div className={classes}>{content}</div>
-  )
-}
-
-interface SellerRatingBadgeProps {
-  rating?: ISellerRating
-  className?: string
-}
-
-// Компактный рейтинг для карточек в списках: «★ 4,8 (12)». Только когда
-// среднее уже есть — «Пока нет оценок» в карточке каталога ни к чему.
-export const SellerRatingBadge = ({ rating, className }: SellerRatingBadgeProps) => {
-  const { sellerRatings } = useSiteFlags()
-
-  if (!sellerRatings || !rating || rating.average === null) return null
-
-  return (
-    <span
-      className={cn('inline-flex items-center gap-1 text-xs text-gray-600', className)}
-      title={`Рейтинг продавца: ${rating.average.toFixed(1)}, ${formatReviewsCount(rating.count)}`}
-    >
-      <Star className='size-3.5 fill-amber-400 text-amber-400' />
-      <span className='font-medium text-gray-900'>{rating.average.toFixed(1)}</span>
-      <span className='text-gray-500'>({rating.count})</span>
-    </span>
   )
 }

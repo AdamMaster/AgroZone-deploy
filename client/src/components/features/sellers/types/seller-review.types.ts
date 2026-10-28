@@ -32,11 +32,17 @@ export enum SellerReviewBlockReason {
 }
 
 // Рейтинг продавца для показа. average == null, пока отзывов меньше порога
-// (3): интерфейс тогда пишет «Пока нет оценок», а не звёзды. Поля нет вовсе,
-// пока рейтинги выключены в админке.
+// показа (сейчас — пока нет ни одного): интерфейс тогда пишет «Пока нет
+// оценок», а не звёзды. Поля нет вовсе, пока рейтинги выключены в админке.
 export interface ISellerRating {
   average: number | null
   count: number
+}
+
+// Свой рейтинг в кабинете: владелец видит среднее сразу, а isPublic говорит,
+// показан ли рейтинг уже другим пользователям (сейчас — после первого отзыва).
+export interface IOwnSellerRating extends ISellerRating {
+  isPublic: boolean
 }
 
 export interface ISellerReviewAuthor {

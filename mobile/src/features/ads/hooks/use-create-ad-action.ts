@@ -1,8 +1,8 @@
 import { useRouter } from 'expo-router'
 import { useCallback } from 'react'
 
-import { useRequestSignIn } from '@/features/auth/hooks/use-request-sign-in'
 import { useIsSignedIn } from '@/features/auth/hooks/use-is-signed-in'
+import { useRequestSignIn } from '@/features/auth/hooks/use-request-sign-in'
 
 // «Разместить объявление» — общее для всех мест, где есть эта кнопка
 // (баннер главной, «Мои объявления»). Гостя, как и на сайте, сначала

@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native'
 import { useAdNavigation } from '@/features/ads/hooks/use-ad-navigation'
 import type { AdSeller as Seller } from '@/features/ads/types/ad-detail.types'
 import { SellerBadges } from '@/features/sellers/components/seller-badges'
+import { SellerRatingSummary } from '@/features/sellers/components/seller-rating'
 
 import { Avatar } from '@/shared/components/avatar'
 import { formatFullDate } from '@/shared/utils/date'
@@ -37,6 +38,8 @@ export function AdSeller({ seller, publishedAt, bumpedAt }: AdSellerProps) {
         <Avatar name={seller.displayName} pictureUrl={seller.picture} size='md' colorSeed={seller.id} />
         <View className='flex-1'>
           <Text className='text-base font-medium text-gray-950'>{seller.displayName ?? 'Пользователь'}</Text>
+          {/* Без нажатия: весь блок и так ведёт на страницу продавца. */}
+          <SellerRatingSummary rating={seller.rating} showEmpty />
           {publishedDate && <Text className='text-xs text-gray-500'>Опубликовано {publishedDate}</Text>}
           {updatedDate && <Text className='text-xs text-gray-500'>Обновлено {updatedDate}</Text>}
           {seller.adsCount > 0 && (

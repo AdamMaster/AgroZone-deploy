@@ -47,14 +47,14 @@ export const ReviewCard = ({ review, children, className }: ReviewCardProps) => 
         )}
       </div>
 
-      {review.text && <p className='text-sm break-words whitespace-pre-line'>{review.text}</p>}
+      {review.text && <p className='text-sm wrap-break-word whitespace-pre-line'>{review.text}</p>}
 
       {review.sellerReply && (
         <div className='rounded-lg bg-gray-50 p-3'>
           <p className='mb-1 text-xs text-gray-500'>
             Ответ продавца{review.sellerReplyAt && ` · ${formatFullDate(review.sellerReplyAt)}`}
           </p>
-          <p className='text-sm break-words whitespace-pre-line'>{review.sellerReply}</p>
+          <p className='text-sm wrap-break-word whitespace-pre-line'>{review.sellerReply}</p>
         </div>
       )}
 

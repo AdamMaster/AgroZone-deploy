@@ -78,7 +78,10 @@ export function PhotoLightbox({ visible, images, index, title, onIndexChange, on
     >
       {/* Жесты внутри Modal на Android работают только со своим корнем. */}
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <Animated.View pointerEvents='none' style={[StyleSheet.absoluteFill, { backgroundColor: '#171717' }, fadeStyle]} />
+        <Animated.View
+          pointerEvents='none'
+          style={[StyleSheet.absoluteFill, { backgroundColor: '#171717' }, fadeStyle]}
+        />
         <FlatList
           data={images}
           renderItem={renderItem}

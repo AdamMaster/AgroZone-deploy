@@ -5,10 +5,6 @@ export const SELLER_REVIEW_REPLY_MAX_LENGTH = 1000
 export const SELLER_REVIEW_REPORT_COMMENT_MAX_LENGTH = 1000
 export const SELLER_REPORT_COMMENT_MAX_LENGTH = 1000
 
-// Рейтинг показывается у продавца от стольких отзывов (сервер отдаёт
-// average: null ниже порога) — число нужно только для подсказки.
-export const SELLER_RATING_MIN_REVIEWS_TO_SHOW = 3
-
 export const RATING_LABELS: Record<number, string> = {
   1: 'Ужасно',
   2: 'Плохо',

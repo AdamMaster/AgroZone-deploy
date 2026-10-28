@@ -482,12 +482,7 @@ export class AdsService {
             // как ad.priceHighlightUntil в будущем ИЛИ владелец с активным
             // премиумом), для каталога это поле не было нужно раньше —
             // фронт нигде его тут не показывал.
-            premiumUntil: true,
-            // Для компактного рейтинга в карточке: готовые поля User, без
-            // подзапросов. Наружу уходят только как `rating` и только при
-            // включённых рейтингах, см. toListSeller.
-            ratingAverage: true,
-            ratingCount: true
+            premiumUntil: true
           }
         },
         category: true,
@@ -508,11 +503,8 @@ export class AdsService {
     const adsById = new Map(ads.map(ad => [ad.id, ad]))
     const orderedAds = ids.map(id => adsById.get(id)).filter((ad): ad is (typeof ads)[number] => ad !== undefined)
 
-    const { sellerRatings } = await this.siteSettingsService.getFlags()
-
-    const items = orderedAds.map(({ user, ...ad }) => ({
+    const items = orderedAds.map(ad => ({
       ...ad,
-      user: this.toListSeller(user, sellerRatings),
       isFavorite: userId ? ad.favorites?.length > 0 : false,
       isExpired: false,
       // Есть только когда в запросе была точка поиска (lat/lng) — км до
@@ -940,18 +932,6 @@ export class AdsService {
         }
       }
     } satisfies Prisma.UserSelect
-  }
-
-  // Продавец в карточке списка: сырые поля рейтинга заменяются готовым
-  // `rating` (с порогом показа) либо пропадают, пока рейтинги выключены.
-  private toListSeller<T extends StoredSellerRating>(user: T | null, isRatingEnabled: boolean) {
-    if (!user) {
-      return null
-    }
-
-    const { ratingAverage, ratingCount, ...userRest } = user
-
-    return { ...userRest, ...publicRatingFields({ ratingAverage, ratingCount }, isRatingEnabled) }
   }
 
   // Prisma отдаёт счётчик вложенным `_count.ads` — фронту нужен плоский

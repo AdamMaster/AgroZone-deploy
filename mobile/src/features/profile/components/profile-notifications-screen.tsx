@@ -24,7 +24,7 @@ import { ProfileSectionScreen } from './profile-section-screen'
 // то, к чему оно относится (например, отклонённое объявление).
 export function ProfileNotificationsScreen() {
   const router = useRouter()
-  const { openAd } = useAdNavigation()
+  const { openAd, openSeller } = useAdNavigation()
   const { openConversation } = useChatNavigation()
   const notificationsQuery = useNotifications()
   const { mutate: markRead } = useMarkNotificationRead()
@@ -45,6 +45,8 @@ export function ProfileNotificationsScreen() {
         return openAd(target.id, target.view)
       case 'conversation':
         return openConversation(target.id)
+      case 'seller':
+        return openSeller(target.id, target.tab)
       case 'messages':
         return router.navigate('/messages')
       case 'site':

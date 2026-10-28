@@ -3,8 +3,8 @@ import { type ComponentProps, type ComponentType, useEffect, useState } from 're
 import { Keyboard, Platform, Pressable, Text, View } from 'react-native'
 import { useUniwind } from 'uniwind'
 
-import { useRequestSignIn } from '@/features/auth/hooks/use-request-sign-in'
 import { useIsSignedIn } from '@/features/auth/hooks/use-is-signed-in'
+import { useRequestSignIn } from '@/features/auth/hooks/use-request-sign-in'
 import { useUnreadNotificationsCount } from '@/features/notifications/hooks/use-notifications'
 import { useSupportChatStore } from '@/features/support/store/support-chat-store'
 

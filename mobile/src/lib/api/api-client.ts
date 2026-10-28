@@ -15,7 +15,7 @@ type QueryParamValue = string | number | boolean | null | undefined
 
 type QueryParams = Record<string, QueryParamValue | readonly QueryParamValue[]>
 
-type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE'
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
 interface RequestOptions {
   params?: QueryParams
@@ -144,6 +144,8 @@ export const apiClient = {
   get: <T>(path: string, options?: Omit<RequestOptions, 'body'>) => request<T>('GET', path, options),
   post: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, 'body'>) =>
     request<T>('POST', path, { ...options, body: body ?? {} }),
+  put: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, 'body'>) =>
+    request<T>('PUT', path, { ...options, body: body ?? {} }),
   patch: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, 'body'>) =>
     request<T>('PATCH', path, { ...options, body: body ?? {} }),
   delete: <T>(path: string, options?: Omit<RequestOptions, 'body'>) => request<T>('DELETE', path, options)

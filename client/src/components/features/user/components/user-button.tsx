@@ -3,8 +3,16 @@
 import { LogOut, Settings } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
+import { OwnSellerRating } from '@/components/features/sellers/components/own-seller-rating'
+import { useSiteFlags } from '@/components/features/site-settings/hooks'
 import { Skeleton } from '@/components/ui'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 
 import { IUser } from '../../auth/types'
 import { useLogoutMutation } from '../hooks'
@@ -18,6 +26,7 @@ interface UserButtonProps {
 export const UserButton = ({ className, user }: UserButtonProps) => {
   const { logout, isLoadingLogout } = useLogoutMutation()
   const router = useRouter()
+  const { sellerRatings } = useSiteFlags()
 
   if (!user) return null
 
@@ -59,7 +68,15 @@ export const UserButton = ({ className, user }: UserButtonProps) => {
       <DropdownMenuTrigger aria-label='Меню профиля' className={className}>
         <UserAvatar user={user} />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className='w-40' align='end'>
+      <DropdownMenuContent className={sellerRatings && user.rating ? 'w-56' : 'w-40'} align='end'>
+        {sellerRatings && user.rating && (
+          <>
+            <div className='px-2 py-1.5'>
+              <OwnSellerRating userId={user.id} rating={user.rating} />
+            </div>
+            <DropdownMenuSeparator />
+          </>
+        )}
         {list.map(item => (
           <DropdownMenuItem disabled={isLoadingLogout} onClick={item.onClick} key={item.id}>
             {item.text}

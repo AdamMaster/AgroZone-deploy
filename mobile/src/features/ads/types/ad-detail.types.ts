@@ -1,4 +1,5 @@
 import type { AdStatus } from '@/features/my-ads/types/my-ad.types'
+import type { SellerRating } from '@/features/sellers/types/seller-review.types'
 
 import type { SellerType } from '@/shared/constants/seller-types'
 
@@ -16,6 +17,9 @@ export interface AdSeller {
   premiumUntil: string | null
   // Сколько ещё опубликованных объявлений у продавца (без этого).
   adsCount: number
+  // Рейтинг по отзывам. Приходит только при включённых рейтингах (в списках
+  // объявлений его нет — только в GET /ads/:id).
+  rating?: SellerRating
 }
 
 // Объявление целиком — GET /ads/:id (публичное) и GET /ads/my/:id

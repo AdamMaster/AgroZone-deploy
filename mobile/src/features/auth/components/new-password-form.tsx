@@ -7,8 +7,8 @@ import { ScreenMessage } from '@/shared/components/screen-message'
 import { authApi } from '../api/auth.api'
 import { CaptchaCancelledError, useCaptcha } from '../hooks/use-captcha'
 import { useFinishPasswordReset } from '../hooks/use-finish-password-reset'
-import type { NewPasswordValues } from '../schemas/auth.schemas'
 import { useIsSignedIn } from '../hooks/use-is-signed-in'
+import type { NewPasswordValues } from '../schemas/auth.schemas'
 import { NewPasswordFields } from './new-password-fields'
 
 // Новый пароль по ссылке из письма о сбросе, как NewPasswordForm сайта.

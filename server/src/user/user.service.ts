@@ -27,7 +27,7 @@ import { AdminSetPasswordDto } from './dto/admin-set-password.dto'
 import { AdminSetEmailDto } from './dto/admin-set-email.dto'
 import { MailService } from '@/libs/mail/mail.service'
 import { SecurityEventsService } from '@/security-events/security-events.service'
-import { publicRatingFields } from '@/seller-reviews/utils/public-rating.util'
+import { ownRatingFields, publicRatingFields } from '@/seller-reviews/utils/public-rating.util'
 import { SiteSettingsService } from '@/site-settings/site-settings.service'
 import { maskEmail, maskPhone } from '@/security-events/utils/mask.util'
 
@@ -84,7 +84,10 @@ export class UserService {
     // фронт эти поля нигде не читал (IAccount.accessToken/refreshToken
     // были объявлены в типе только "про запас"). Режем здесь, на границе
     // "для клиента".
-    const { password, accounts, ...safeUser } = user
+    // Сырые поля рейтинга (ratingAverage/ratingCount) тоже не уходят как есть:
+    // вместо них — готовый `rating` и только при включённых рейтингах.
+    const { password, accounts, ratingAverage, ratingCount, ...safeUser } = user
+    const { sellerRatings } = await this.siteSettingsService.getFlags()
 
     return {
       ...safeUser,
@@ -97,6 +100,9 @@ export class UserService {
       // достаточно — и именно так теперь и передаём, не отправляя хэш в
       // браузер.
       hasPassword: password !== null,
+      // Свой рейтинг для кабинета: звёзды и число отзывов видны владельцу, даже
+      // когда другим он ещё не показывается (см. ownRatingFields).
+      ...ownRatingFields({ ratingAverage, ratingCount }, sellerRatings),
       // Раньше сверялись с role === 'PREMIUM' — устарело, см. тот же
       // комментарий в AdsService.validateFileLimits.
       maxUploadLimit: isPremiumActive(user.premiumUntil) ? AD_LIMITS.PREMIUM : AD_LIMITS.REGULAR

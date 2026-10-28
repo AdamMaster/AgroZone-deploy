@@ -3,7 +3,6 @@
 import { ImageIcon } from 'lucide-react'
 import Link from 'next/link'
 
-import { SellerRatingBadge } from '@/components/features/sellers/components/seller-rating'
 import { Heading, Skeleton } from '@/components/ui'
 
 import { formatDistance, formatPriceWithUnit, isFutureDate, isPremiumActive } from '@/shared/utils'
@@ -76,7 +75,6 @@ export const AdCard = ({ ad }: AdCardProps) => {
           <span className='hidden sm:inline'>{ad.address}</span>
           {distanceLabel && <span className='text-gray-500'> · {distanceLabel}</span>}
         </address>
-        <SellerRatingBadge rating={ad.user?.rating} className='mt-0.5' />
         <FavoriteButton
           onClick={() => onClickFavorite(ad.id, !!ad.isFavorite)}
           isFavorite={ad.isFavorite}

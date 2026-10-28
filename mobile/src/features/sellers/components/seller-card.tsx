@@ -11,11 +11,12 @@ import { pluralizeRu } from '@/shared/utils/pluralize'
 
 import type { PublicSeller } from '../types/seller.types'
 import { SellerBadges } from './seller-badges'
+import { SellerRatingSummary } from './seller-rating'
 
 // Карточка продавца — SellerCard сайта на телефоне: слева имя, чипы, с каких
 // пор на сайте и сколько объявлений, справа аватар; ниже презентация
 // компании, если продавец её загрузил.
-export function SellerCard({ seller }: { seller: PublicSeller }) {
+export function SellerCard({ seller, onOpenReviews }: { seller: PublicSeller; onOpenReviews?: () => void }) {
   const iconColor = useThemeColor('--color-gray-400')
   const { presentationUrl } = seller
 
@@ -25,6 +26,11 @@ export function SellerCard({ seller }: { seller: PublicSeller }) {
         <Heading level={2}>{seller.displayName ?? 'Пользователь'}</Heading>
 
         <SellerBadges seller={seller} className='mt-2' />
+
+        {/* Рейтинг под именем, как на сайте: нажатие открывает вкладку «Отзывы». */}
+        <View className='mt-2'>
+          <SellerRatingSummary rating={seller.rating} showEmpty onPress={onOpenReviews} />
+        </View>
 
         <View className='gap-1 pt-4'>
           <Text className='text-sm text-gray-500'>На сайте с {formatMonthYear(seller.createdAt)}</Text>

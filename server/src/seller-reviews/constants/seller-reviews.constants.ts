@@ -38,9 +38,10 @@ export const SELLER_REVIEW_LOW_TRUST_FACTOR = 0.5
 export const SELLER_REVIEW_RECIPROCAL_FACTOR = 0.5
 
 // Рейтинг показывается у продавца от этого числа отзывов, иначе «Пока нет
-// оценок». Один-два отзыва ничего не говорят о продавце, зато легко
-// подделываются.
-export const SELLER_RATING_MIN_REVIEWS_TO_SHOW = 3
+// оценок». Как на Авито, рейтинг виден уже после первого отзыва; от накрутки
+// защищают не порог, а выдержка, возраст аккаунта, подтверждение сделки,
+// веса взаимных отзывов и модерация.
+export const SELLER_RATING_MIN_REVIEWS_TO_SHOW = 1
 
 export const SELLER_REVIEWS_PAGE_SIZE_DEFAULT = 20
 export const SELLER_REVIEWS_PAGE_SIZE_MAX = 50

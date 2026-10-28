@@ -1,3 +1,5 @@
+import type { OwnSellerRating } from '@/features/sellers/types/seller-review.types'
+
 import type { SellerType } from '@/shared/constants/seller-types'
 
 // Номер телефона аккаунта.
@@ -38,6 +40,8 @@ export interface UserProfile {
   presentationUrl: string | null
   presentationFileName: string | null
   presentationFileSize: number | null
+  // Свой рейтинг по отзывам. Приходит только при включённых рейтингах.
+  rating?: OwnSellerRating
 }
 
 // Успешный вход/регистрация. sessionToken сервер присылает только

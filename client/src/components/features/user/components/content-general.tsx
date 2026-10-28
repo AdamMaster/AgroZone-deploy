@@ -7,6 +7,7 @@ import { ChangeEvent, useEffect, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 
 import { UserType } from '@/components/features/auth/types'
+import { OwnSellerRating } from '@/components/features/sellers/components/own-seller-rating'
 import {
   Avatar,
   AvatarFallback,
@@ -157,6 +158,7 @@ export const ContentGeneral = () => {
             </div>
           )
         )}
+        {user && <OwnSellerRating userId={user.id} rating={user.rating} showHint className='min-w-0 flex-1 pl-4' />}
       </div>
       <div className='relative'>
         <form id='form-rhf-demo' onSubmit={form.handleSubmit(onSubmit)}>

@@ -1,3 +1,5 @@
+import type { IOwnSellerRating } from '../../sellers/types/seller-review.types'
+
 export enum UserRole {
   Regular = 'REGULAR',
   Admin = 'ADMIN',
@@ -67,6 +69,9 @@ export interface IUser {
   presentationUrl?: string | null
   presentationFileName?: string | null
   presentationFileSize?: number | null
+  // Свой рейтинг по отзывам. Приходит, только когда рейтинги включены в
+  // админке (UserService.getProfileForClient).
+  rating?: IOwnSellerRating
 }
 
 export interface IUserPhone {

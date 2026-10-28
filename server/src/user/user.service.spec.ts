@@ -559,6 +559,48 @@ describe('UserService', () => {
       expect(result.accounts[0]).not.toHaveProperty('refreshToken')
     })
 
+    describe('рейтинг в кабинете', () => {
+      const profileRow = (overrides: Record<string, unknown> = {}) => ({
+        id: 'user-1',
+        password: null,
+        premiumUntil: null,
+        phones: [],
+        accounts: [],
+        ratingAverage: 4.5,
+        ratingCount: 2,
+        ...overrides
+      })
+
+      it('пока рейтинги выключены, в профиле нет ни rating, ни сырых полей', async () => {
+        prisma.user.findUnique.mockResolvedValue(profileRow())
+
+        const result = await service.getProfileForClient('user-1')
+
+        expect(result).not.toHaveProperty('rating')
+        expect(result).not.toHaveProperty('ratingAverage')
+        expect(result).not.toHaveProperty('ratingCount')
+      })
+
+      it('при включённых рейтингах владелец видит своё среднее, и оно видно другим (isPublic=true)', async () => {
+        siteSettingsService.getFlags.mockResolvedValue({ sellerRatings: true })
+        prisma.user.findUnique.mockResolvedValue(profileRow())
+
+        const result = await service.getProfileForClient('user-1')
+
+        expect(result.rating).toEqual({ average: 4.5, count: 2, isPublic: true })
+        expect(result).not.toHaveProperty('ratingAverage')
+      })
+
+      it('без отзывов среднего нет', async () => {
+        siteSettingsService.getFlags.mockResolvedValue({ sellerRatings: true })
+        prisma.user.findUnique.mockResolvedValue(profileRow({ ratingAverage: null, ratingCount: 0 }))
+
+        const result = await service.getProfileForClient('user-1')
+
+        expect(result.rating).toEqual({ average: null, count: 0, isPublic: false })
+      })
+    })
+
     it('hasPassword=false для OAuth-only аккаунта без пароля', async () => {
       prisma.user.findUnique.mockResolvedValue({
         id: 'user-2',

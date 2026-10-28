@@ -38,7 +38,7 @@ export interface IAdUser {
   // '@/shared/utils/user.util'.
   premiumUntil?: string | null
   // Рейтинг продавца по отзывам. Приходит только при включённых рейтингах
-  // (в карточках списков и в GET /ads/:id), без поля — рейтингов нет.
+  // (только в GET /ads/:id: в карточках списков рейтинга нет), без поля — рейтингов нет.
   rating?: ISellerRating
 }
 

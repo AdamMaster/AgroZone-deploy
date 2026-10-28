@@ -1,12 +1,12 @@
 import { buildPublicRating, publicRatingFields } from './public-rating.util'
 
 describe('buildPublicRating', () => {
-  it('от трёх отзывов отдаёт среднее и количество', () => {
+  it('отдаёт среднее и количество', () => {
     expect(buildPublicRating({ ratingAverage: 4.33, ratingCount: 3 })).toEqual({ average: 4.33, count: 3 })
   })
 
-  it('меньше трёх отзывов среднее скрыто, количество видно', () => {
-    expect(buildPublicRating({ ratingAverage: 5, ratingCount: 2 })).toEqual({ average: null, count: 2 })
+  it('уже после первого отзыва среднее видно', () => {
+    expect(buildPublicRating({ ratingAverage: 5, ratingCount: 1 })).toEqual({ average: 5, count: 1 })
   })
 
   it('без отзывов — пусто', () => {

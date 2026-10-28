@@ -2,7 +2,10 @@ import { type Href, useRouter } from 'expo-router'
 import type { LucideIcon } from 'lucide-react-native'
 import { Alert, Pressable, Text, View } from 'react-native'
 
+import { useAdNavigation } from '@/features/ads/hooks/use-ad-navigation'
+import { useProfile } from '@/features/auth/hooks/use-profile'
 import { useAuthStore } from '@/features/auth/store/auth-store'
+import { OwnSellerRating } from '@/features/sellers/components/own-seller-rating'
 
 import { BottomSheet } from '@/shared/components/bottom-sheet'
 import { useSheetAction } from '@/shared/hooks/use-sheet-action'
@@ -81,6 +84,8 @@ export function ProfileMenuSheet({ visible, onClose }: ProfileMenuSheetProps) {
   const router = useRouter()
   const openSection = useOpenProfileSection()
   const signOut = useAuthStore(state => state.signOut)
+  const { data: profile } = useProfile()
+  const { openSeller } = useAdNavigation()
   const iconColor = useThemeColor('--color-gray-400')
   const { runAction, onDismiss } = useSheetAction(onClose)
 
@@ -121,6 +126,19 @@ export function ProfileMenuSheet({ visible, onClose }: ProfileMenuSheetProps) {
   return (
     <BottomSheet visible={visible} onClose={onClose} onDismiss={onDismiss} size='tall'>
       <View accessibilityLabel='Меню профиля' className='px-2'>
+        {/* Свой рейтинг — как в меню профиля сайта: самым первым пунктом. */}
+        {profile?.rating && (
+          <>
+            <View className='px-4 py-3'>
+              <OwnSellerRating
+                rating={profile.rating}
+                showHint
+                onPress={() => runAction(() => openSeller(profile.id, 'reviews'))}
+              />
+            </View>
+            <View className='my-2 border-t border-gray-100' />
+          </>
+        )}
         {ACCOUNT_ITEMS.map(renderItem)}
         <View className='my-2 border-t border-gray-100' />
         {renderItem(PREMIUM_ITEM)}

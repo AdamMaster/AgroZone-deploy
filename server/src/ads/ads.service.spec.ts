@@ -82,53 +82,6 @@ describe('AdsService', () => {
     service = module.get(AdsService)
   })
 
-  describe('findAll — рейтинг продавца в карточках списка', () => {
-    const listedAd = (user: Record<string, unknown>) => ({
-      id: 'ad-1',
-      title: 'Трактор',
-      favorites: [],
-      user: { id: 'user-1', displayName: 'Адам', premiumUntil: null, ...user }
-    })
-
-    beforeEach(() => {
-      prisma.$queryRaw = jest
-        .fn()
-        .mockResolvedValueOnce([{ count: BigInt(1) }])
-        .mockResolvedValueOnce([{ id: 'ad-1', distance_km: null }])
-    })
-
-    it('пока рейтинги выключены, в карточке нет ни rating, ни сырых полей', async () => {
-      prisma.ad.findMany.mockResolvedValue([listedAd({ ratingAverage: 4.5, ratingCount: 7 })])
-
-      const { items } = await service.findAll({})
-
-      expect(items[0].user).toEqual({ id: 'user-1', displayName: 'Адам', premiumUntil: null })
-    })
-
-    it('при включённых рейтингах отдаёт rating с порогом показа вместо сырых полей', async () => {
-      siteSettingsService.getFlags.mockResolvedValue({ sellerRatings: true })
-      prisma.ad.findMany.mockResolvedValue([listedAd({ ratingAverage: 4.5, ratingCount: 7 })])
-
-      const { items } = await service.findAll({})
-
-      expect(items[0].user).toEqual({
-        id: 'user-1',
-        displayName: 'Адам',
-        premiumUntil: null,
-        rating: { average: 4.5, count: 7 }
-      })
-    })
-
-    it('меньше трёх отзывов: среднего нет', async () => {
-      siteSettingsService.getFlags.mockResolvedValue({ sellerRatings: true })
-      prisma.ad.findMany.mockResolvedValue([listedAd({ ratingAverage: 5, ratingCount: 2 })])
-
-      const { items } = await service.findAll({})
-
-      expect(items[0].user?.rating).toEqual({ average: null, count: 2 })
-    })
-  })
-
   describe('setExpirationByAdmin', () => {
     it('выбрасывает NotFoundException, если объявление не найдено', async () => {
       prisma.ad.findUnique.mockResolvedValue(null)
@@ -621,13 +574,13 @@ describe('AdsService', () => {
         expect(user).toEqual({ id: 'user-1', displayName: 'Адам', adsCount: 2, rating: { average: 4.5, count: 7 } })
       })
 
-      it('меньше трёх отзывов: количество есть, среднего нет — «Пока нет оценок»', async () => {
+      it('без отзывов среднего нет — «Пока нет оценок»', async () => {
         siteSettingsService.getFlags.mockResolvedValue({ sellerRatings: true })
-        prisma.ad.findUnique.mockResolvedValue(publishedAd({ ratingAverage: 5, ratingCount: 2 }))
+        prisma.ad.findUnique.mockResolvedValue(publishedAd({ ratingAverage: null, ratingCount: 0 }))
 
         const { user } = await service.findOne('ad-1')
 
-        expect(user.rating).toEqual({ average: null, count: 2 })
+        expect(user.rating).toEqual({ average: null, count: 0 })
       })
     })
 

@@ -3,7 +3,6 @@
 import { ImageIcon, MapPin } from 'lucide-react'
 import Link from 'next/link'
 
-import { SellerRatingBadge } from '@/components/features/sellers/components/seller-rating'
 import { Heading, Skeleton } from '@/components/ui'
 
 import { formatDistance, formatPriceWithUnit, isFutureDate, isPremiumActive } from '@/shared/utils'
@@ -92,7 +91,6 @@ export const AdCardList = ({ ad }: AdCardListProps) => {
         </div>
         <div className='relative ml-2 hidden text-gray-950 xl:block'>
           <p className='hover:text-primary text-[15px] transition-colors'>{ad.user?.displayName}</p>
-          <SellerRatingBadge rating={ad.user?.rating} className='mt-1' />
         </div>
       </Link>
     </article>

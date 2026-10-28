@@ -26,8 +26,11 @@ export function useAdNavigation() {
   )
 
   // Страница продавца — в текущей вкладке, как /sellers/:id сайта.
+  // tab: 'reviews' — сразу вкладка «Отзывы» (из уведомления, из своего
+  // рейтинга).
   const openSeller = useCallback(
-    (id: string) => router.push({ pathname: `/(tabs)/${stack}/sellers/[id]`, params: { id } }),
+    (id: string, tab?: 'reviews') =>
+      router.push({ pathname: `/(tabs)/${stack}/sellers/[id]`, params: tab ? { id, tab } : { id } }),
     [router, stack]
   )
 

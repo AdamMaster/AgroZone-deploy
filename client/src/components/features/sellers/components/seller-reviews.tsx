@@ -8,7 +8,6 @@ import { Button, Heading, Skeleton } from '@/components/ui'
 
 import { useProfile } from '@/shared/hooks'
 
-import { SELLER_RATING_MIN_REVIEWS_TO_SHOW } from '../constants/seller-reviews.constants'
 import { useCreateSellerReview, useMySellerReview, useSellerReviews } from '../hooks'
 import { ISellerReviewEligibility, SellerReviewBlockReason } from '../types'
 import { MySellerReview } from './my-seller-review'
@@ -65,9 +64,7 @@ export const SellerReviews = ({ sellerId }: SellerReviewsProps) => {
         ) : (
           <div>
             <Heading level={4}>Пока нет оценок</Heading>
-            <p className='text-sm text-gray-500'>
-              Рейтинг появится, когда у продавца будет не меньше {SELLER_RATING_MIN_REVIEWS_TO_SHOW} отзывов.
-            </p>
+            <p className='text-sm text-gray-500'>Рейтинг появится после первого отзыва.</p>
           </div>
         )}
       </div>

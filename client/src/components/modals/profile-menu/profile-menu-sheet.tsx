@@ -18,7 +18,10 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 
+import { OwnSellerRating } from '@/components/features/sellers/components/own-seller-rating'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
+
+import { useProfile } from '@/shared/hooks'
 
 import { cn } from '@/lib/utils'
 
@@ -52,6 +55,7 @@ interface ProfileMenuSheetProps {
 
 export const ProfileMenuSheet = ({ open, onOpenChange }: ProfileMenuSheetProps) => {
   const close = () => onOpenChange(false)
+  const { user } = useProfile()
 
   const renderItem = (item: ProfileMenuItem) => {
     const Icon = item.icon
@@ -78,6 +82,18 @@ export const ProfileMenuSheet = ({ open, onOpenChange }: ProfileMenuSheetProps) 
       <DrawerContent className='h-full'>
         <DrawerTitle className='sr-only'>Меню профиля</DrawerTitle>
         <div className='flex-1 overflow-y-auto p-2'>
+          {user?.rating && (
+            <>
+              <OwnSellerRating
+                userId={user.id}
+                rating={user.rating}
+                showHint
+                onNavigate={close}
+                className='px-4 py-3'
+              />
+              <div className='my-2 border-t border-gray-100' />
+            </>
+          )}
           <div className='flex flex-col'>{ACCOUNT_ITEMS.map(renderItem)}</div>
           <div className='my-2 border-t border-gray-100' />
           <div className='flex flex-col'>{renderItem(PREMIUM_ITEM)}</div>
