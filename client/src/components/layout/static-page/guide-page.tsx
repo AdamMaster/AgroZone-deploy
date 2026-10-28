@@ -111,7 +111,7 @@ export const SupportContacts = ({ intro }: SupportContactsProps) => {
   return (
     <section id='support' className={SCROLL_MARGIN_CLASS_NAME}>
       <Heading level={2}>Поддержка</Heading>
-      <div className='mt-4 rounded-xl bg-gray-50 p-5 sm:p-6 dark:bg-neutral-800'>
+      <div className='mt-4 rounded-xl p-0 sm:bg-gray-50 sm:p-6 dark:bg-neutral-800'>
         <div className={PROSE_CLASS_NAME}>
           <p>{intro}</p>
           <ul>

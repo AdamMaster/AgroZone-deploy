@@ -25,7 +25,7 @@ export const RatingStars = ({ value, className, starClassName = 'size-4' }: Rati
     <span role='img' aria-label={`Оценка ${clamped.toFixed(1)} из 5`} className={cn('relative inline-flex', className)}>
       <span className='flex'>
         {STARS.map(star => (
-          <Star key={star} className={cn('shrink-0 text-gray-300', starClassName)} />
+          <Star key={star} className={cn('shrink-0 fill-gray-300 text-gray-300', starClassName)} />
         ))}
       </span>
       <span className='absolute inset-y-0 left-0 flex overflow-hidden' style={{ width: `${(clamped / 5) * 100}%` }}>
