@@ -589,9 +589,8 @@ export class AdsService {
     // их из реальных объявлений. Города, которые объявление указало точно
     // так же, как уже есть в справочнике, пропускаем — не дублировать.
     const localities = localityRows
-      .filter(
-        (row): row is { region: string; regionIsoCode: string; locality: string; localityFiasId: string } =>
-          Boolean(row.region && row.regionIsoCode && row.locality && row.localityFiasId)
+      .filter((row): row is { region: string; regionIsoCode: string; locality: string; localityFiasId: string } =>
+        Boolean(row.region && row.regionIsoCode && row.locality && row.localityFiasId)
       )
       .filter(row => !cityFiasIds.has(row.localityFiasId))
       .map(row => ({
@@ -603,7 +602,6 @@ export class AdsService {
 
     return [...regions, ...citiesFromReference, ...localities]
   }
-
 
   // Строит SQL-условия для фильтра по динамическим характеристикам
   // категории (Ad.features, JSONB). Ключи в rawFeatures сверяются с
@@ -1648,7 +1646,6 @@ export class AdsService {
     if (phone && !normalizedPhone) {
       throw new BadRequestException('Некорректный номер телефона')
     }
-
 
     if (!normalizedPhone) {
       normalizedPhone = user.phones.find(phone => phone.isPrimary)?.phone ?? user.phones[0]?.phone ?? null

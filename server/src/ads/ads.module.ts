@@ -9,6 +9,7 @@ import { BullModule } from '@nestjs/bullmq'
 import { AdsExpirationWorker } from './workers/ads-expiration.worker'
 import { AdsArchivePurgeWorker } from './workers/ads-archive-purge.worker'
 import { AdViewsRollupWorker } from './workers/ad-views-rollup.worker'
+import { AdPhoneRevealsRetentionWorker } from './workers/ad-phone-reveals-retention.worker'
 import { CategoriesModule } from '@/categories/categories.module'
 import { AuthModule } from '@/auth/auth.module'
 import { NotificationsModule } from '@/notifications/notifications.module'
@@ -35,7 +36,8 @@ import { GeocodeService } from './geocode.service'
     AdStateMachineService,
     AdsExpirationWorker,
     AdsArchivePurgeWorker,
-    AdViewsRollupWorker
+    AdViewsRollupWorker,
+    AdPhoneRevealsRetentionWorker
   ],
   // Нужен SellerReportsModule для приостановки объявлений продавца.
   exports: [AdStateMachineService]
