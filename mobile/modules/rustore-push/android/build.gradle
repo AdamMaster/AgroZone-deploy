@@ -27,5 +27,5 @@ repositories {
 }
 
 dependencies {
-  implementation 'ru.rustore.sdk:pushclient:6.3.0'
+  implementation 'ru.rustore.sdk:pushclient:7.5.0'
 }
