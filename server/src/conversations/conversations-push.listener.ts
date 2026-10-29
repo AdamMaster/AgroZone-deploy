@@ -28,7 +28,11 @@ export class ConversationsPushListener {
       const [senderId, recipientId] = participantIds
 
       // Получатель на связи — сообщение дошло по сокету, звонить в карман лишнее.
-      if (this.gateway.isUserOnline(recipientId)) return
+      if (this.gateway.isUserOnline(recipientId)) {
+        this.logger.log(`Push не нужен: получатель ${recipientId} в сети (сообщение ${message.id})`)
+
+        return
+      }
 
       const conversation = await this.prisma.conversation.findUnique({
         where: { id: message.conversationId },
@@ -40,7 +44,11 @@ export class ConversationsPushListener {
       const lastReadAt =
         conversation.buyerId === recipientId ? conversation.buyerLastReadAt : conversation.sellerLastReadAt
 
-      if (await this.hasRecentUnreadFromSender(message, senderId, lastReadAt)) return
+      if (await this.hasRecentUnreadFromSender(message, senderId, lastReadAt)) {
+        this.logger.log(`Push не нужен: получатель ${recipientId} уже оповещён о предыдущих сообщениях`)
+
+        return
+      }
 
       const sender = await this.prisma.user.findUnique({ where: { id: senderId }, select: { displayName: true } })
       const text = message.text.trim()

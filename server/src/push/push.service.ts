@@ -49,6 +49,11 @@ export class PushService {
         }))
       )
 
+      this.logger.log(
+        `Push пользователю ${userId}: устройств ${devices.length}` +
+          (devices.length > 0 ? ` (${results.map(({ result }) => result).join(', ')})` : '')
+      )
+
       const staleIds = results.filter(({ result }) => result === 'invalid-token').map(({ device }) => device.id)
 
       if (staleIds.length > 0) {
