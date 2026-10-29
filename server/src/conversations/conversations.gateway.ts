@@ -60,6 +60,12 @@ export class ConversationsGateway implements OnGatewayConnection {
     }
   }
 
+  // Есть ли у пользователя открытое соединение (сайт или приложение на
+  // экране). Нужно, чтобы не слать push тому, кто и так видит сообщение.
+  isUserOnline(userId: string): boolean {
+    return (this.server.adapter.rooms.get(userRoom(userId))?.size ?? 0) > 0
+  }
+
   @OnEvent(CONVERSATION_MESSAGE_CREATED_EVENT)
   handleMessageCreated({ message, participantIds }: ConversationMessageCreatedPayload) {
     const payload = { conversationId: message.conversationId, message }

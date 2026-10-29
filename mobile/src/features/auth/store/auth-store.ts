@@ -1,6 +1,8 @@
 import type { Href } from 'expo-router'
 import { create } from 'zustand'
 
+import { unregisterPushDevice } from '@/features/push/lib/push-registration'
+
 import { setSessionRejectedHandler } from '@/lib/api/api-client'
 import { sessionTokenStorage } from '@/lib/auth/session-token-storage'
 import { queryClient } from '@/lib/query/query-client'
@@ -94,6 +96,10 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   // недоступен, локально всё равно выходим — пользователь нажал «Выйти» и
   // должен выйти; серверная сессия тогда просто истечёт по сроку.
   async signOut() {
+    // Пока сессия ещё действует: после выхода сервер не примет запрос, и пуши
+    // этого аккаунта продолжали бы приходить на телефон.
+    await unregisterPushDevice()
+
     try {
       await authApi.logout()
     } catch {

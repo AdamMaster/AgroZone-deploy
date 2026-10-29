@@ -41,7 +41,11 @@
           "category": ["BROWSABLE", "DEFAULT"]
         }
       ],
-      "permissions": ["android.permission.ACCESS_COARSE_LOCATION", "android.permission.ACCESS_FINE_LOCATION"],
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
       "blockedPermissions": ["android.permission.SYSTEM_ALERT_WINDOW"]
     },
     "web": {
@@ -62,6 +66,7 @@
         }
       ],
       "expo-secure-store",
+      ["./plugins/with-rustore-push", { "projectId": "L05EIKLlK8clztztbepoCfXE5yK-G97w" }],
       "expo-web-browser",
       [
         "expo-location",

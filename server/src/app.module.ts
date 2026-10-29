@@ -21,6 +21,7 @@ import { ScheduleModule } from '@nestjs/schedule'
 import { SearchModule } from './search/search.module'
 import { RedisModule } from './redis/redis.module'
 import { ConversationsModule } from './conversations/conversations.module'
+import { PushModule } from './push/push.module'
 import { BlockedUsersModule } from './blocked-users/blocked-users.module'
 import { AdReportsModule } from './ad-reports/ad-reports.module'
 import { AdBumpsModule } from './ad-bumps/ad-bumps.module'
@@ -93,6 +94,7 @@ import { SellerReviewsModule } from './seller-reviews/seller-reviews.module'
     SearchModule,
     RedisModule,
     ConversationsModule,
+    PushModule,
     BlockedUsersModule,
     AdReportsModule,
     AdBumpsModule,

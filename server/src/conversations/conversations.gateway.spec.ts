@@ -104,4 +104,20 @@ describe('ConversationsGateway', () => {
     expect(to).toHaveBeenNthCalledWith(2, 'conversations:user:u1')
     expect(emit).toHaveBeenNthCalledWith(2, 'conversations:removed', { conversationId: 'c2' })
   })
+  describe('isUserOnline', () => {
+    it('в сети, пока в личной комнате есть хотя бы одно соединение', () => {
+      const rooms = new Map<string, Set<string>>([['conversations:user:u1', new Set(['socket-1'])]])
+      ;(gateway as unknown as { server: object }).server = { adapter: { rooms } }
+
+      expect(gateway.isUserOnline('u1')).toBe(true)
+      expect(gateway.isUserOnline('u2')).toBe(false)
+    })
+
+    it('пустая комната — не в сети', () => {
+      const rooms = new Map<string, Set<string>>([['conversations:user:u1', new Set()]])
+      ;(gateway as unknown as { server: object }).server = { adapter: { rooms } }
+
+      expect(gateway.isUserOnline('u1')).toBe(false)
+    })
+  })
 })

@@ -1160,6 +1160,8 @@ export class UserService {
       await tx.token.deleteMany({ where: { userId } })
       await tx.favorite.deleteMany({ where: { userId } })
       await tx.notification.deleteMany({ where: { userId } })
+      // Устройства для push: после удаления аккаунта пушей быть не должно.
+      await tx.pushDevice.deleteMany({ where: { userId } })
 
       // Объявления — не удаляем (см. комментарий к методу), просто прячем
       // из каталога переводом в архив.

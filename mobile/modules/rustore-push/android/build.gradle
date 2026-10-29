@@ -1,0 +1,28 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.rustorepush'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.rustorepush"
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+}
+
+// Репозиторий RuStore с SDK push. Его же добавляет в корневой build.gradle
+// плагин plugins/with-rustore-push.js: зависимости модуля разрешает и само
+// приложение, а не только эта библиотека.
+repositories {
+  maven {
+    url = uri('https://nexus-external.rustore.ru/repository/maven-rustore-exposed/')
+  }
+}
+
+dependencies {
+  implementation 'ru.rustore.sdk:pushclient:6.3.0'
+}

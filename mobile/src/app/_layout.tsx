@@ -9,6 +9,7 @@ import { useNavigationTheme } from '@/providers/use-navigation-theme'
 
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { ConversationsRealtime } from '@/features/messages/components/conversations-realtime'
+import { PushRegistration } from '@/features/push/components/push-registration'
 import { prefetchSiteFlags } from '@/features/site-settings/lib/prefetch-site-flags'
 import { SupportRealtime } from '@/features/support/components/support-realtime'
 import { themeHydrated } from '@/features/theme/store/theme-store'
@@ -52,6 +53,7 @@ function RootNavigator() {
     <>
       {isSignedIn && <SupportRealtime />}
       {isSignedIn && <ConversationsRealtime />}
+      {isSignedIn && <PushRegistration />}
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name='(tabs)' />
         <Stack.Screen name='categories' options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />

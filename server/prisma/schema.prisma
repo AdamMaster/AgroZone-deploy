@@ -79,6 +79,7 @@ model User {
   securityEvents UserSecurityEvent[]
 
   registrationAttempts RegistrationAttempt[]
+  pushDevices          PushDevice[]
 
   deletedAt DateTime? @map("deleted_at")
 
@@ -1754,4 +1755,33 @@ enum RegistrationFailureReason {
   LINK_EXPIRED
   INVALID_DATA
   UNKNOWN_ERROR
+}
+
+// Магазин, через который доставляется push на устройство. FCM (Google) —
+// когда появится, добавится вторым значением.
+enum PushProvider {
+  RUSTORE
+}
+
+// Устройство пользователя, на которое можно отправить push (по одной записи на
+// токен). Один человек — несколько устройств; токен принадлежит устройству, а
+// не аккаунту: после выхода и входа под другим аккаунтом он переходит к новому
+// владельцу (см. PushService.registerDevice).
+model PushDevice {
+  id String @id @default(uuid())
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  provider PushProvider
+  token    String
+
+  appVersion String? @map("app_version")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([provider, token])
+  @@index([userId])
+  @@map("push_devices")
 }
