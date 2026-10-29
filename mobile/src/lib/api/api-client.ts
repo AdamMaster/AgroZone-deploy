@@ -1,3 +1,5 @@
+import { Platform } from 'react-native'
+
 import { API_URL } from '@/config/env'
 
 import { sessionTokenStorage } from '@/lib/auth/session-token-storage'
@@ -49,6 +51,40 @@ export function setSessionRejectedHandler(handler: (() => void) | null) {
   onSessionRejected = handler
 }
 
+// Пока телефон лежал, мобильная сеть и Wi-Fi забывают о соединении с
+// сервером, а приложение этого не знает: первый запрос после паузы уходит в
+// «мёртвое» соединение и теряется (сообщение «не отправляется», пока
+// приложение не перезапустят). Поэтому перед запросом, который что-то меняет
+// (отправка сообщения, сохранение), после паузы в обмене с сервером отправляем
+// лёгкий запрос с коротким пределом: он «пробивает» мёртвое соединение, и сам
+// запрос уже идёт по живому. Повторять сам запрос нельзя — он мог дойти до
+// сервера, и получился бы дубль.
+const STALE_CONNECTION_MS = 20_000
+const PROBE_TIMEOUT_MS = 3_000
+
+let lastServerContactAt = Date.now()
+let probeInFlight: Promise<void> | null = null
+
+async function ensureLiveConnection(): Promise<void> {
+  if (Platform.OS === 'web' || Date.now() - lastServerContactAt < STALE_CONNECTION_MS) return
+
+  probeInFlight ??= (async () => {
+    const probeSignal = createRequestSignal(undefined, PROBE_TIMEOUT_MS)
+
+    try {
+      await fetch(`${API_URL}/site-settings/public`, { signal: probeSignal.signal })
+    } catch {
+      // Результат не важен: проба нужна, чтобы сбросить мёртвое соединение.
+    } finally {
+      probeSignal.cleanup()
+      lastServerContactAt = Date.now()
+      probeInFlight = null
+    }
+  })()
+
+  await probeInFlight
+}
+
 // null/undefined/пустые строки не отправляем вовсе — сервер трактует
 // отсутствующий параметр как «фильтр не задан», а пустую строку может
 // счесть невалидным значением.
@@ -74,6 +110,8 @@ async function request<T>(method: HttpMethod, path: string, options: RequestOpti
   // границей частей fetch ставит сам, задавать его вручную нельзя.
   const isMultipart = requestBody instanceof FormData
   const url = `${API_URL}${path}${params ? buildQueryString(params) : ''}`
+  if (method !== 'GET') await ensureLiveConnection()
+
   const requestSignal = createRequestSignal(signal, timeoutMs)
   const sessionToken = sessionTokenStorage.get()
 
@@ -95,6 +133,8 @@ async function request<T>(method: HttpMethod, path: string, options: RequestOpti
       body: isMultipart ? requestBody : requestBody !== undefined ? JSON.stringify(requestBody) : undefined,
       signal: requestSignal.signal
     })
+
+    lastServerContactAt = Date.now()
 
     const isJson = response.headers.get('Content-Type')?.includes('application/json') ?? false
 
