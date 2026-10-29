@@ -38,6 +38,26 @@ export function useConversations() {
   })
 }
 
+// Число диалогов с непрочитанным сообщением — для значка на вкладке
+// «Сообщения». Тот же запрос и кэш, что у списка (одна загрузка на оба
+// места), но со своим select: вкладка видна на любом экране, поэтому значок
+// не должен зависеть от того, открыт ли список. Пока сокет не подключён,
+// опрашиваем сами, иначе значок не обновился бы вне экрана сообщений.
+export function useUnreadConversationsCount(): number {
+  const isSignedIn = useIsSignedIn()
+  const isSocketConnected = useConversationsSocketStore(state => state.isConnected)
+
+  const { data } = useQuery({
+    queryKey: conversationsQueryKey,
+    queryFn: ({ signal }) => conversationsApi.list(signal),
+    enabled: isSignedIn,
+    refetchInterval: isSocketConnected ? false : CONVERSATIONS_POLL_INTERVAL_MS,
+    select: conversations => conversations.filter(item => item.isUnread).length
+  })
+
+  return data ?? 0
+}
+
 // Диалог из уже загруженного списка — для шапки чата (собеседник,
 // объявление). Чат, открытый по уведомлению, сам загрузит список.
 export function useConversation(conversationId: string) {

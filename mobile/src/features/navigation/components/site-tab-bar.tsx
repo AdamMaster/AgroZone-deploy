@@ -5,6 +5,7 @@ import { useUniwind } from 'uniwind'
 
 import { useIsSignedIn } from '@/features/auth/hooks/use-is-signed-in'
 import { useRequestSignIn } from '@/features/auth/hooks/use-request-sign-in'
+import { useUnreadConversationsCount } from '@/features/messages/hooks/use-conversations'
 import { useUnreadNotificationsCount } from '@/features/notifications/hooks/use-notifications'
 import { useSupportChatStore } from '@/features/support/store/support-chat-store'
 
@@ -32,8 +33,9 @@ interface TabItem {
   // /profile/settings/* на сайте.
   sectionPrefixes?: readonly string[]
   // Значок на иконке, как на сайте: число непрочитанных уведомлений
-  // («Профиль») или точка — новый ответ поддержки («Сообщения»).
-  badge?: 'unreadNotifications' | 'supportReply'
+  // («Профиль»); число диалогов с новыми сообщениями или, если их нет, точка
+  // — новый ответ поддержки («Сообщения»).
+  badge?: 'unreadNotifications' | 'messages'
 }
 
 // Те же вкладки, порядок, подписи и иконки, что у MobileTabBar сайта.
@@ -48,7 +50,7 @@ const TABS: readonly TabItem[] = [
     href: '/messages',
     requiresAuth: true,
     sectionPrefixes: ['/messages/', '/chat/'],
-    badge: 'supportReply'
+    badge: 'messages'
   },
   {
     routeName: '(profile)',
@@ -100,6 +102,7 @@ export function SiteTabBar({ state, navigation, insets }: TabBarProps) {
   const activeColor = theme === 'dark' ? primaryColor : activeTextColor
 
   const unreadCount = useUnreadNotificationsCount()
+  const unreadConversationsCount = useUnreadConversationsCount()
   const hasSupportReply = useSupportChatStore(store => store.hasUnread)
   const isKeyboardShown = useIsKeyboardShownOnAndroid()
 
@@ -154,9 +157,17 @@ export function SiteTabBar({ state, navigation, insets }: TabBarProps) {
             <View>
               <Icon size={ICON_SIZE} color={color} />
               {tab.badge === 'unreadNotifications' && <CountBadge count={unreadCount} />}
-              {tab.badge === 'supportReply' && hasSupportReply && (
-                <View pointerEvents='none' className='absolute -top-0.5 -right-1 size-2.5 rounded-full bg-primary' />
-              )}
+              {tab.badge === 'messages' &&
+                (unreadConversationsCount > 0 ? (
+                  <CountBadge count={unreadConversationsCount} />
+                ) : (
+                  hasSupportReply && (
+                    <View
+                      pointerEvents='none'
+                      className='absolute -top-0.5 -right-1 size-2.5 rounded-full bg-primary'
+                    />
+                  )
+                ))}
             </View>
             <Text className='text-[11px] font-medium' style={{ color }}>
               {tab.label}

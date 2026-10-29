@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { JSX, MouseEvent, SVGProps } from 'react'
 
+import { useConversations } from '@/components/features/messages/hooks'
 import { useUnreadNotificationsCount } from '@/components/features/notifications/hooks'
 import {
   ChatCircleFillIcon,
@@ -52,12 +53,24 @@ const ProfileTabBadge = () => {
   )
 }
 
-// Новый ответ поддержки: плавающей кнопки чата на мобильном нет (см.
-// SupportChatWidget), поэтому о нём сообщает точка на вкладке «Сообщения».
+// Значок вкладки «Сообщения»: число диалогов с новыми сообщениями (как в меню
+// настроек), а если их нет — точка нового ответа поддержки (плавающей кнопки
+// чата на мобильном нет, см. SupportChatWidget). Список диалогов обновляется
+// по сокету (ConversationsRealtime в корневом layout).
 const MessagesTabBadge = () => {
-  const hasUnread = useSupportChatStore(state => state.hasUnread)
+  const { conversations } = useConversations()
+  const hasSupportReply = useSupportChatStore(state => state.hasUnread)
+  const unreadCount = conversations.filter(item => item.isUnread).length
 
-  if (!hasUnread) return null
+  if (unreadCount > 0) {
+    return (
+      <span className='bg-primary absolute -top-1 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium text-white'>
+        {unreadCount > 9 ? '9+' : unreadCount}
+      </span>
+    )
+  }
+
+  if (!hasSupportReply) return null
 
   return <span className='bg-primary absolute -top-0.5 -right-1 size-2.5 rounded-full' />
 }
