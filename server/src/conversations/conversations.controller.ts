@@ -13,13 +13,20 @@ import {
   UseInterceptors
 } from '@nestjs/common'
 import { FilesInterceptor } from '@nestjs/platform-express'
+import { Throttle } from '@nestjs/throttler'
 import 'multer'
 
 import { CurrentUser } from '@/auth/decorators/decorators/user.decorator'
 import { AuthGuard } from '@/auth/guards/auth.guard'
 
-import { CHAT_MAX_FILE_SIZE, CHAT_MAX_PHOTOS } from './constants/conversations.constants'
+import {
+  CHAT_MAX_FILE_SIZE,
+  CHAT_MAX_PHOTOS,
+  CHAT_SEND_THROTTLE,
+  CHAT_START_THROTTLE
+} from './constants/conversations.constants'
 import { ConversationsService } from './conversations.service'
+import { ChatThrottlerGuard } from './guards/chat-throttler.guard'
 import { FindMessagesQueryDto } from './dto/find-messages-query.dto'
 import { SendMessageDto } from './dto/send-message.dto'
 import { SetDealConfirmationDto } from './dto/set-deal-confirmation.dto'
@@ -34,6 +41,8 @@ export class ConversationsController {
   constructor(private readonly conversationsService: ConversationsService) {}
 
   @Post()
+  @UseGuards(ChatThrottlerGuard)
+  @Throttle(CHAT_START_THROTTLE)
   @UseInterceptors(FilesInterceptor('files', CHAT_MAX_PHOTOS, { limits: { fileSize: CHAT_MAX_FILE_SIZE } }))
   start(
     @CurrentUser('id') userId: string,
@@ -58,6 +67,8 @@ export class ConversationsController {
   }
 
   @Post(':id/messages')
+  @UseGuards(ChatThrottlerGuard)
+  @Throttle(CHAT_SEND_THROTTLE)
   @UseInterceptors(FilesInterceptor('files', CHAT_MAX_PHOTOS, { limits: { fileSize: CHAT_MAX_FILE_SIZE } }))
   sendMessage(
     @Param('id', ParseUUIDPipe) id: string,

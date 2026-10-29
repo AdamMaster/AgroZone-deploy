@@ -11,7 +11,7 @@ import { formatPhoneNumber, generatePassword, phoneToApi } from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
 
-import { ADMIN_BUTTON_CLASS } from '../constants/admin-ui.constants'
+import { ADMIN_BUTTON_CLASS, fieldClassName } from '../constants/admin-ui.constants'
 import { useCreateVerifiedUser } from '../hooks'
 import { AdminCreateUserSchema, TypeAdminCreateUserSchema } from '../schemes'
 
@@ -60,9 +60,6 @@ export const CreateUserForm = () => {
   }
 
   const submittedPassword = form.getValues('password')
-
-  const fieldClassName =
-    'rounded-md border-mist-700 bg-transparent placeholder:text-mist-500 hover:bg-mist-800/50 focus-visible:border-mist-600 focus-visible:bg-mist-800/50'
 
   if (createdUser) {
     return (

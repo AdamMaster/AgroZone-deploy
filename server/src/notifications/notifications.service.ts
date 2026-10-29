@@ -249,13 +249,24 @@ export class NotificationsService {
   // продавца: кнопка «Оставить отзыв» живёт внутри диалога, и без уведомления
   // многие в него не вернулись бы. Только in-app, ссылка ведёт в сам диалог.
   async notifyDealConfirmed(buyerId: string, conversationId: string) {
+    const link = `/profile/settings/messages?c=${conversationId}`
+
+    // Продавец может снимать и ставить отметку заново — приглашение оценить
+    // по одному и тому же диалогу приходит один раз, а не при каждом включении.
+    const alreadyInvited = await this.prisma.notification.findFirst({
+      where: { userId: buyerId, type: NotificationType.SELLER_DEAL_CONFIRMED, link },
+      select: { id: true }
+    })
+
+    if (alreadyInvited) return null
+
     return this.prisma.notification.create({
       data: {
         userId: buyerId,
         type: NotificationType.SELLER_DEAL_CONFIRMED,
         title: 'Продавец отметил сделку состоявшейся',
         message: 'Вы можете оценить продавца: откройте диалог и нажмите «Оставить отзыв».',
-        link: `/profile/settings/messages?c=${conversationId}`
+        link
       }
     })
   }

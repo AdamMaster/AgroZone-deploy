@@ -52,9 +52,17 @@ const ExistingConversation = ({ conversationId, conversations, onBack }: Existin
   const { markRead } = useMarkRead()
 
   // Отмечаем диалог прочитанным при открытии и при получении новых
-  // сообщений, пока пользователь на него смотрит.
+  // сообщений, пока пользователь на него смотрит: в фоновой вкладке сообщение
+  // не прочитано, оно отмечается, когда на вкладку возвращаются.
   useEffect(() => {
-    markRead(conversationId)
+    const markIfVisible = () => {
+      if (document.visibilityState === 'visible') markRead(conversationId)
+    }
+
+    markIfVisible()
+    document.addEventListener('visibilitychange', markIfVisible)
+
+    return () => document.removeEventListener('visibilitychange', markIfVisible)
   }, [conversationId, messages.length, markRead])
 
   return (
@@ -62,7 +70,13 @@ const ExistingConversation = ({ conversationId, conversations, onBack }: Existin
       <ChatHeader ad={conversation?.ad} counterpart={conversation?.counterpart} onBack={onBack} />
       {conversation && <DealBar conversation={conversation} />}
       <MessageThread messages={messages} isLoading={isLoading} counterpart={conversation?.counterpart} />
-      <MessageComposer allowPhotos onSend={(text, photos) => sendMessage({ text, photos })} isSending={isSending} />
+      {conversation?.counterpart.deletedAt ? (
+        <p className='border-t px-4 py-3 text-center text-sm text-gray-500'>
+          Собеседник удалил аккаунт — написать ему больше нельзя.
+        </p>
+      ) : (
+        <MessageComposer allowPhotos onSend={(text, photos) => sendMessage({ text, photos })} isSending={isSending} />
+      )}
     </div>
   )
 }

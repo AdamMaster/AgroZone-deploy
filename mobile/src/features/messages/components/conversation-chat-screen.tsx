@@ -1,5 +1,6 @@
 import { useFocusEffect } from 'expo-router'
 import { useCallback } from 'react'
+import { Text, View } from 'react-native'
 
 import { useProfile } from '@/features/auth/hooks/use-profile'
 
@@ -63,7 +64,17 @@ export function ConversationChatScreen({ conversationId }: { conversationId: str
           onLoadOlder={() => void history.loadOlder()}
         />
       }
-      composer={<MessageComposer allowPhotos onSend={send} isSending={isSending} />}
+      composer={
+        counterpart?.deletedAt ? (
+          <View className='border-t border-border px-4 py-3'>
+            <Text className='text-center text-sm text-gray-500'>
+              Собеседник удалил аккаунт — написать ему больше нельзя.
+            </Text>
+          </View>
+        ) : (
+          <MessageComposer allowPhotos onSend={send} isSending={isSending} />
+        )
+      }
     />
   )
 }

@@ -6,7 +6,7 @@ import { Button, Input } from '@/components/ui'
 
 import { formatPhoneNumber, pluralizeRu } from '@/shared/utils'
 
-import { ADMIN_BUTTON_CLASS, getAdminChipClassName } from '../constants/admin-ui.constants'
+import { ADMIN_BUTTON_CLASS, fieldClassName, getAdminChipClassName } from '../constants/admin-ui.constants'
 import {
   REGISTRATION_ATTEMPT_FILTERS,
   REGISTRATION_CHANNEL_LABELS,
@@ -150,7 +150,7 @@ export const RegistrationAttemptsPanel = () => {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder='Телефон или почта (часть)'
-          className='rounded-md border-mist-700 bg-transparent pl-9 placeholder:text-mist-400 hover:bg-mist-800/40 focus-visible:border-mist-600 focus-visible:bg-mist-800/40'
+          className={fieldClassName}
         />
       </div>
 

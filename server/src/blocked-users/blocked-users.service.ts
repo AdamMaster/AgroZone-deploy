@@ -1,10 +1,15 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
+import { EventEmitter2 } from '@nestjs/event-emitter'
 
+import { CONVERSATION_REMOVED_EVENT, ConversationUserPayload } from '@/conversations/conversations.events'
 import { PrismaService } from '@/prisma/prisma.service'
 
 @Injectable()
 export class BlockedUsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2
+  ) {}
 
   // Список тех, кого заблокировал текущий юзер — для экрана
   // "Заблокированные" в настройках, с возможностью разблокировать.
@@ -42,6 +47,19 @@ export class BlockedUsersService {
     // потому что то, какой флаг скрытия относится к блокирующему
     // (hiddenByBuyer или hiddenBySeller), зависит от его роли в конкретном
     // диалоге и может отличаться от диалога к диалогу.
+    // Диалоги, которые прямо сейчас видны блокирующему: о них сообщаем его
+    // другим устройствам и вкладкам, чтобы они пропали и там, а не после
+    // следующего обновления списка.
+    const visibleConversations = await this.prisma.conversation.findMany({
+      where: {
+        OR: [
+          { buyerId: blockerId, sellerId: blockedId, hiddenByBuyer: false },
+          { sellerId: blockerId, buyerId: blockedId, hiddenBySeller: false }
+        ]
+      },
+      select: { id: true }
+    })
+
     await this.prisma.$transaction([
       this.prisma.conversation.updateMany({
         where: { buyerId: blockerId, sellerId: blockedId },
@@ -52,6 +70,13 @@ export class BlockedUsersService {
         data: { hiddenBySeller: true }
       })
     ])
+
+    for (const { id } of visibleConversations) {
+      this.eventEmitter.emit(CONVERSATION_REMOVED_EVENT, {
+        conversationId: id,
+        userId: blockerId
+      } satisfies ConversationUserPayload)
+    }
   }
 
   // deleteMany, а не delete по уникальному ключу — идемпотентно: повторная

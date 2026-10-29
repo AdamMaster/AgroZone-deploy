@@ -2,7 +2,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter'
 import 'multer'
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { AdStatus, ConversationType, SellerReviewContactType } from '@/generated/prisma/enums'
-import type { Message } from '@/generated/prisma/client'
+import type { Message, Prisma } from '@/generated/prisma/client'
 
 import { BlockedUsersService } from '@/blocked-users/blocked-users.service'
 import { FileService } from '@/file/file.service'
@@ -19,6 +19,7 @@ import {
   ConversationMessageCreatedPayload,
   ConversationUserPayload
 } from './conversations.events'
+import { CHAT_EMAIL_COOLDOWN_MS } from './constants/conversations.constants'
 import { FindMessagesQueryDto } from './dto/find-messages-query.dto'
 import { SendMessageDto } from './dto/send-message.dto'
 import { StartConversationDto } from './dto/start-conversation.dto'
@@ -45,7 +46,7 @@ export class ConversationsService {
     const text = this.requireContent(dto.text, files)
     const ad = await this.prisma.ad.findUnique({
       where: { id: dto.adId },
-      select: { id: true, userId: true, title: true }
+      select: { id: true, userId: true, title: true, status: true, user: { select: { deletedAt: true } } }
     })
 
     if (!ad) {
@@ -54,6 +55,14 @@ export class ConversationsService {
 
     if (ad.userId === userId) {
       throw new BadRequestException('Нельзя написать самому себе')
+    }
+
+    // Писать можно только по объявлению, которое сейчас открыто на сайте: по
+    // снятому, отклонённому, архивному или удалённого продавца ответа не будет
+    // (в интерфейсе кнопки нет, но API должен отказывать сам). Отказ тот же,
+    // что и для несуществующего, — не раскрываем статус чужого объявления.
+    if (ad.status !== AdStatus.PUBLISHED || !ad.user || ad.user.deletedAt) {
+      throw new NotFoundException('Объявление не найдено')
     }
 
     // Сообщение об ошибке намеренно нейтральное, без слова "заблокировал" —
@@ -65,18 +74,22 @@ export class ConversationsService {
 
     // Фото грузятся до создания диалога: если загрузка не удалась, пустого
     // диалога без сообщения не появится.
-    const { conversation, message } = await this.withUploadedPhotos(files, async attachments => {
-      const conversation = await this.prisma.conversation.upsert({
-        where: { adId_buyerId: { adId: dto.adId, buyerId: userId } },
-        update: {},
-        // adTitleSnapshot — на случай, если объявление позже будет физически
-        // удалено (Conversation.adId тогда обнулится, см. schema.prisma), чтобы
-        // в списке диалогов не было пустоты (см. getConversations ниже).
-        create: { adId: dto.adId, buyerId: userId, sellerId: ad.userId, adTitleSnapshot: ad.title }
-      })
+    // Диалог и первое сообщение — одной транзакцией: если сообщение не
+    // сохранится, пустого диалога в списке не останется.
+    const { conversation, message } = await this.withUploadedPhotos(files, attachments =>
+      this.prisma.$transaction(async tx => {
+        const conversation = await tx.conversation.upsert({
+          where: { adId_buyerId: { adId: dto.adId, buyerId: userId } },
+          update: {},
+          // adTitleSnapshot — на случай, если объявление позже будет физически
+          // удалено (Conversation.adId тогда обнулится, см. schema.prisma), чтобы
+          // в списке диалогов не было пустоты (см. getConversations ниже).
+          create: { adId: dto.adId, buyerId: userId, sellerId: ad.userId, adTitleSnapshot: ad.title }
+        })
 
-      return { conversation, message: await this.saveMessage(conversation.id, userId, text, attachments) }
-    })
+        return { conversation, message: await this.saveMessage(tx, conversation.id, userId, text, attachments) }
+      })
+    )
 
     await this.publishMessage(message, ad.userId, ad.title)
 
@@ -96,8 +109,16 @@ export class ConversationsService {
       throw new ForbiddenException('Не удалось отправить сообщение')
     }
 
+    // Собеседник удалил аккаунт: прочитать сообщение некому, а отправитель
+    // не должен думать, что ему ответят. История остаётся доступной.
+    const counterpart = await this.prisma.user.findUnique({ where: { id: counterpartId }, select: { deletedAt: true } })
+
+    if (!counterpart || counterpart.deletedAt) {
+      throw new BadRequestException('Собеседник удалил аккаунт — написать ему больше нельзя')
+    }
+
     const message = await this.withUploadedPhotos(files, attachments =>
-      this.saveMessage(conversationId, userId, text, attachments)
+      this.prisma.$transaction(tx => this.saveMessage(tx, conversationId, userId, text, attachments))
     )
 
     await this.publishMessage(message, counterpartId, conversation.adTitleSnapshot ?? '')
@@ -414,19 +435,26 @@ export class ConversationsService {
     }
   }
 
-  private async saveMessage(conversationId: string, senderId: string, text: string, attachments: string[]) {
-    const [message] = await this.prisma.$transaction([
-      this.prisma.message.create({ data: { conversationId, senderId, text, attachments } }),
-      // Сбрасываем скрытие с обеих сторон при любом новом сообщении — не
-      // только у получателя (которому логично снова увидеть диалог, раз ему
-      // пишут), но и у самого отправителя: если он писал через "Написать" на
-      // странице объявления в диалог, который сам же раньше скрыл, он должен
-      // увидеть в списке своё же новое сообщение, а не потерять его.
-      this.prisma.conversation.update({
-        where: { id: conversationId },
-        data: { lastMessageAt: new Date(), hiddenByBuyer: false, hiddenBySeller: false }
-      })
-    ])
+  // Сообщение и обновление диалога — в переданной транзакции: сообщение не
+  // должно остаться без lastMessageAt и наоборот.
+  private async saveMessage(
+    tx: Prisma.TransactionClient,
+    conversationId: string,
+    senderId: string,
+    text: string,
+    attachments: string[]
+  ) {
+    const message = await tx.message.create({ data: { conversationId, senderId, text, attachments } })
+
+    // Сбрасываем скрытие с обеих сторон при любом новом сообщении — не
+    // только у получателя (которому логично снова увидеть диалог, раз ему
+    // пишут), но и у самого отправителя: если он писал через "Написать" на
+    // странице объявления в диалог, который сам же раньше скрыл, он должен
+    // увидеть в списке своё же новое сообщение, а не потерять его.
+    await tx.conversation.update({
+      where: { id: conversationId },
+      data: { lastMessageAt: new Date(), hiddenByBuyer: false, hiddenBySeller: false }
+    })
 
     return message
   }
@@ -452,6 +480,8 @@ export class ConversationsService {
     // целиком — этот метод вызывается на порядки чаще, и создание самой
     // записи Message не должно зависеть от доступности почты.
     try {
+      if (!(await this.shouldEmailRecipient(message, recipientId))) return
+
       const sender = await this.prisma.user.findUnique({ where: { id: senderId }, select: { displayName: true } })
       await this.notificationsService.notifyNewMessageByEmail(
         recipientId,
@@ -464,6 +494,35 @@ export class ConversationsService {
     } catch (error) {
       this.logger.error(`Не удалось отправить уведомление о новом сообщении: ${(error as Error).message}`)
     }
+  }
+
+  // Письмо — на первое непрочитанное сообщение, а не на каждое: пока
+  // получатель не открыл диалог, новые сообщения того же отправителя в течение
+  // CHAT_EMAIL_COOLDOWN_MS писем не порождают (быстрая переписка из 30
+  // сообщений — одно письмо, а не тридцать). Если получатель молчит дольше,
+  // следующее сообщение напомнит о себе новым письмом.
+  private async shouldEmailRecipient(message: Message, recipientId: string): Promise<boolean> {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: message.conversationId },
+      select: { buyerId: true, buyerLastReadAt: true, sellerLastReadAt: true }
+    })
+
+    if (!conversation) return false
+
+    const lastReadAt =
+      conversation.buyerId === recipientId ? conversation.buyerLastReadAt : conversation.sellerLastReadAt
+    const windowStart = new Date(message.createdAt.getTime() - CHAT_EMAIL_COOLDOWN_MS)
+    const since = lastReadAt && lastReadAt > windowStart ? lastReadAt : windowStart
+
+    const earlierUnread = await this.prisma.message.count({
+      where: {
+        conversationId: message.conversationId,
+        senderId: message.senderId,
+        createdAt: { gte: since, lt: message.createdAt }
+      }
+    })
+
+    return earlierUnread === 0
   }
 
   private async getConversationForParticipant(conversationId: string, userId: string) {

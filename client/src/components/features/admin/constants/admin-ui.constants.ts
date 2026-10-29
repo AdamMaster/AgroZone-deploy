@@ -12,3 +12,6 @@ export const ADMIN_BUTTON_CLASS = 'rounded-sm bg-neutral-600  hover:bg-neutral-5
 // копий классов в каждом переключателе.
 export const getAdminChipClassName = (isActive: boolean) =>
   `rounded-sm px-3 py-1.5 text-sm font-medium ${isActive ? 'bg-mist-500/80 ' : 'bg-mist-600/50 hover:bg-mist-600/70'}`
+
+export const fieldClassName =
+  'rounded-md border-mist-700 bg-mist-900 placeholder:text-mist-500 hover:bg-mist-800 focus-visible:border-mist-600 focus-visible:bg-mist-800/50'

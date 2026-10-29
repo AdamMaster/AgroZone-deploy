@@ -11,7 +11,7 @@ import { formatFullDate, formatPhoneNumber, pluralizeRu } from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
 
-import { ADMIN_BUTTON_CLASS } from '../constants/admin-ui.constants'
+import { ADMIN_BUTTON_CLASS, fieldClassName } from '../constants/admin-ui.constants'
 import { useAdminUsersSearch } from '../hooks'
 import { UserBadges } from './user-badges'
 
@@ -32,7 +32,7 @@ export const UsersSearch = () => {
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder='Имя, email или телефон'
-          className='rounded-md border-mist-700 bg-transparent pl-9 placeholder:text-mist-400 hover:bg-mist-800/40 focus-visible:border-mist-600 focus-visible:bg-mist-800/40'
+          className={fieldClassName}
         />
       </div>
 

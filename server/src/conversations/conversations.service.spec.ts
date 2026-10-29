@@ -3,7 +3,7 @@ import type { EventEmitter2 } from '@nestjs/event-emitter'
 
 import { FileService } from '@/file/file.service'
 import { SiteSettingsService } from '@/site-settings/site-settings.service'
-import { ConversationType, SellerReviewContactType } from '@/generated/prisma/enums'
+import { AdStatus, ConversationType, SellerReviewContactType } from '@/generated/prisma/enums'
 
 import {
   CONVERSATION_DEAL_CHANGED_EVENT,
@@ -11,6 +11,7 @@ import {
   CONVERSATION_READ_EVENT,
   CONVERSATION_REMOVED_EVENT
 } from './conversations.events'
+import { CHAT_EMAIL_COOLDOWN_MS } from './constants/conversations.constants'
 import { ConversationsService } from './conversations.service'
 
 describe('ConversationsService: живые события', () => {
@@ -31,7 +32,14 @@ describe('ConversationsService: живые события', () => {
   }
 
   beforeEach(() => {
-    const message = { id: 'm1', conversationId: 'c1', senderId: 'buyer', text: 'Привет', attachments: [] }
+    const message = {
+      id: 'm1',
+      conversationId: 'c1',
+      senderId: 'buyer',
+      text: 'Привет',
+      attachments: [],
+      createdAt: new Date('2026-10-29T12:00:00.000Z')
+    }
 
     prisma = {
       conversation: {
@@ -44,10 +52,22 @@ describe('ConversationsService: живые события', () => {
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         delete: jest.fn().mockResolvedValue({})
       },
-      ad: { findUnique: jest.fn().mockResolvedValue({ id: 'ad1', userId: 'seller', title: 'Трактор' }) },
+      ad: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'ad1',
+          userId: 'seller',
+          title: 'Трактор',
+          status: AdStatus.PUBLISHED,
+          user: { deletedAt: null }
+        })
+      },
       sellerReview: { findFirst: jest.fn().mockResolvedValue(null) },
-      message: { create: jest.fn().mockReturnValue(message), findMany: jest.fn().mockResolvedValue([]) },
-      user: { findUnique: jest.fn().mockResolvedValue({ displayName: 'Иван' }) },
+      message: {
+        create: jest.fn().mockReturnValue(message),
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0)
+      },
+      user: { findUnique: jest.fn().mockResolvedValue({ displayName: 'Иван', deletedAt: null }) },
       $transaction: jest.fn((arg: unknown) => (typeof arg === 'function' ? arg(prisma) : Promise.resolve([message])))
     }
     blockedUsersService = { isBlocked: jest.fn().mockResolvedValue(false) }
@@ -358,10 +378,17 @@ describe('ConversationsService: живые события', () => {
     })
 
     it('в уведомлении сообщение только с фото подписано «Фото»', async () => {
-      const photoMessage = { id: 'm2', conversationId: 'c1', senderId: 'buyer', text: '', attachments: [PHOTO] }
+      const photoMessage = {
+        id: 'm2',
+        conversationId: 'c1',
+        senderId: 'buyer',
+        text: '',
+        attachments: [PHOTO],
+        createdAt: new Date('2026-10-29T12:00:00.000Z')
+      }
 
       fileService.uploadChatPhotos.mockResolvedValue([PHOTO])
-      prisma.$transaction.mockResolvedValue([photoMessage])
+      prisma.message.create.mockReturnValue(photoMessage)
 
       await service.sendMessage('c1', 'buyer', {}, [file])
 
@@ -452,6 +479,100 @@ describe('ConversationsService: живые события', () => {
       await service.deleteConversation('c1', 'buyer')
 
       expect(fileService.deleteFilesQuietly).not.toHaveBeenCalled()
+    })
+  })
+  describe('защита от спама и мусора', () => {
+    it('по неопубликованному объявлению диалог не начинается', async () => {
+      for (const status of [AdStatus.ARCHIVED, AdStatus.REJECTED]) {
+        prisma.ad.findUnique.mockResolvedValue({
+          id: 'ad1',
+          userId: 'seller',
+          title: 'Трактор',
+          status,
+          user: { deletedAt: null }
+        })
+
+        await expect(service.startConversation('buyer', { adId: 'ad1', text: 'Привет' })).rejects.toBeInstanceOf(
+          NotFoundException
+        )
+      }
+
+      expect(prisma.conversation.upsert).not.toHaveBeenCalled()
+      expect(fileService.uploadChatPhotos).not.toHaveBeenCalled()
+    })
+
+    it('продавец удалил аккаунт — диалог не начинается', async () => {
+      prisma.ad.findUnique.mockResolvedValue({
+        id: 'ad1',
+        userId: 'seller',
+        title: 'Трактор',
+        status: AdStatus.PUBLISHED,
+        user: { deletedAt: new Date() }
+      })
+
+      await expect(service.startConversation('buyer', { adId: 'ad1', text: 'Привет' })).rejects.toBeInstanceOf(
+        NotFoundException
+      )
+    })
+
+    it('диалог и первое сообщение создаются в одной транзакции', async () => {
+      await service.startConversation('buyer', { adId: 'ad1', text: 'Привет' })
+
+      expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function))
+      expect(prisma.conversation.upsert).toHaveBeenCalled()
+      expect(prisma.message.create).toHaveBeenCalled()
+    })
+
+    it('собеседник удалил аккаунт — писать ему нельзя, сообщение не сохраняется и не рассылается', async () => {
+      prisma.user.findUnique.mockResolvedValue({ deletedAt: new Date() })
+
+      await expect(service.sendMessage('c1', 'buyer', { text: 'Привет' })).rejects.toBeInstanceOf(BadRequestException)
+
+      expect(prisma.message.create).not.toHaveBeenCalled()
+      expect(eventEmitter.emit).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('письмо о новом сообщении', () => {
+    it('первое непрочитанное сообщение — письмо уходит', async () => {
+      await service.sendMessage('c1', 'buyer', { text: 'Привет' })
+
+      expect(notificationsService.notifyNewMessageByEmail).toHaveBeenCalledTimes(1)
+    })
+
+    it('пока получатель не прочёл предыдущее сообщение, новые писем не порождают', async () => {
+      prisma.message.count.mockResolvedValue(1)
+
+      await service.sendMessage('c1', 'buyer', { text: 'Ещё одно' })
+
+      expect(notificationsService.notifyNewMessageByEmail).not.toHaveBeenCalled()
+      // Сообщение при этом доставляется как обычно.
+      expect(eventEmitter.emit).toHaveBeenCalledWith(CONVERSATION_MESSAGE_CREATED_EVENT, expect.anything())
+    })
+
+    it('предыдущие сообщения ищутся за период напоминания, если получатель давно не читал', async () => {
+      await service.sendMessage('c1', 'buyer', { text: 'Привет' })
+
+      const { createdAt } = (await prisma.message.create.mock.results[0].value) as { createdAt: Date }
+
+      expect(prisma.message.count).toHaveBeenCalledWith({
+        where: {
+          conversationId: 'c1',
+          senderId: 'buyer',
+          createdAt: { gte: new Date(createdAt.getTime() - CHAT_EMAIL_COOLDOWN_MS), lt: createdAt }
+        }
+      })
+    })
+
+    it('если получатель недавно открывал диалог, учитываются только сообщения после этого', async () => {
+      const readAt = new Date('2026-10-29T11:30:00.000Z')
+      prisma.conversation.findUnique.mockResolvedValue({ ...conversation, sellerLastReadAt: readAt })
+
+      await service.sendMessage('c1', 'buyer', { text: 'Привет' })
+
+      expect(prisma.message.count).toHaveBeenCalledWith({
+        where: expect.objectContaining({ createdAt: expect.objectContaining({ gte: readAt }) })
+      })
     })
   })
 })
