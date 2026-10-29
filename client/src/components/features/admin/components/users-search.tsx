@@ -32,7 +32,7 @@ export const UsersSearch = () => {
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder='Имя, email или телефон'
-          className={fieldClassName}
+          className={cn(fieldClassName, 'pl-9')}
         />
       </div>
 

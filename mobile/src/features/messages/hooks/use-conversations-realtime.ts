@@ -47,10 +47,14 @@ function createHandlers(queryClient: QueryClient) {
         current?.map(item => (item.id === conversationId ? { ...item, dealConfirmedAt } : item))
       ),
     // Удалено на другом устройстве.
-    onRemoved: ({ conversationId }: ConversationEvent) =>
+    onRemoved: ({ conversationId }: ConversationEvent) => {
       queryClient.setQueryData<ConversationListItem[]>(conversationsQueryKey, current =>
         current?.filter(item => item.id !== conversationId)
       )
+      // История удалённого диалога начинается с чистого листа: старые
+      // сообщения из кэша убираем, иначе они вернулись бы вместе с новым.
+      queryClient.removeQueries({ queryKey: conversationMessagesQueryKey(conversationId) })
+    }
   }
 }
 

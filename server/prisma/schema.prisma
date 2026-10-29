@@ -1433,6 +1433,13 @@ model Conversation {
   hiddenByBuyer  Boolean @default(false) @map("hidden_by_buyer")
   hiddenBySeller Boolean @default(false) @map("hidden_by_seller")
 
+  // Когда участник нажал «Удалить переписку»: он видит только сообщения
+  // новее этой отметки (для него история начинается с чистого листа, даже если
+  // собеседник потом напишет снова и диалог вернётся в список). У собеседника
+  // история остаётся целиком. Отметка остаётся и после возвращения диалога.
+  buyerClearedAt  DateTime? @map("buyer_cleared_at")
+  sellerClearedAt DateTime? @map("seller_cleared_at")
+
   // Диалог физически удаляется (не скрывается) целиком, когда ОБА участника
   // уже удалили свои аккаунты — тогда он гарантированно бесхозный: ни один
   // из них не сможет в него зайти (AuthGuard отклоняет юзеров с deletedAt).

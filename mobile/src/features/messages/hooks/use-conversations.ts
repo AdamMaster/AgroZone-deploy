@@ -151,6 +151,8 @@ export function useDeleteConversation() {
       queryClient.setQueryData<ConversationListItem[]>(conversationsQueryKey, current =>
         current?.filter(item => item.id !== conversationId)
       )
+      // История начинается с чистого листа: старые сообщения из кэша убираем.
+      queryClient.removeQueries({ queryKey: conversationMessagesQueryKey(conversationId) })
       void queryClient.invalidateQueries({ queryKey: conversationsQueryKey, exact: true })
     },
     onError: showError

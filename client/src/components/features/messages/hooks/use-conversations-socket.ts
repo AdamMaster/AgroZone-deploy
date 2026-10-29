@@ -63,6 +63,7 @@ export function useConversationsSocket(enabled: boolean) {
       queryClient.setQueryData<IConversationListItem[]>(['conversations'], old =>
         old?.filter(item => item.id !== conversationId)
       )
+      queryClient.removeQueries({ queryKey: ['conversation-messages', conversationId] })
     })
 
     // (Пере)подключились — то, что пришло без нас, подтягиваем запросом.

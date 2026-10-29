@@ -19,6 +19,10 @@ export function useDeleteConversation() {
       queryClient.setQueryData<{ id: string }[]>(['conversations'], old =>
         old ? old.filter(item => item.id !== conversationId) : old
       )
+      // История удалённого диалога у этого пользователя начинается с чистого
+      // листа — старые сообщения из кэша убираем, иначе после нового сообщения
+      // собеседника они вернулись бы на экран.
+      queryClient.removeQueries({ queryKey: ['conversation-messages', conversationId] })
       queryClient.invalidateQueries({ queryKey: ['conversations'] })
     },
 

@@ -169,7 +169,11 @@ export class ConversationsService {
       const isBuyer = conversation.buyerId === userId
       const counterpart = isBuyer ? conversation.seller : conversation.buyer
       const lastReadAt = isBuyer ? conversation.buyerLastReadAt : conversation.sellerLastReadAt
-      const lastMessage = conversation.messages[0] ?? null
+      const clearedAt = isBuyer ? conversation.buyerClearedAt : conversation.sellerClearedAt
+      const latestMessage = conversation.messages[0] ?? null
+      // Сообщения до «Удалить переписку» этому участнику не показываются —
+      // ни в диалоге, ни в превью списка.
+      const lastMessage = latestMessage && (!clearedAt || latestMessage.createdAt > clearedAt) ? latestMessage : null
 
       // Объявление считаем "доступным" по ссылке, только пока оно реально
       // открывается публично (status PUBLISHED) — так же строго, как это уже
@@ -212,14 +216,22 @@ export class ConversationsService {
   }
 
   async getMessages(conversationId: string, userId: string, query: FindMessagesQueryDto) {
-    await this.getConversationForParticipant(conversationId, userId)
+    const conversation = await this.getConversationForParticipant(conversationId, userId)
 
     const limit = query.limit ?? 30
+    // Если участник «удалял переписку», его история начинается после этой
+    // отметки (см. Conversation.buyerClearedAt).
+    const clearedAt = conversation.buyerId === userId ? conversation.buyerClearedAt : conversation.sellerClearedAt
 
     const messages = await this.prisma.message.findMany({
       where: {
         conversationId,
-        ...(query.cursor && { createdAt: { lt: new Date(query.cursor) } })
+        ...((clearedAt || query.cursor) && {
+          createdAt: {
+            ...(clearedAt && { gt: clearedAt }),
+            ...(query.cursor && { lt: new Date(query.cursor) })
+          }
+        })
       },
       orderBy: { createdAt: 'desc' },
       take: limit
@@ -349,7 +361,9 @@ export class ConversationsService {
   }
 
   // "Удаление" диалога — по умолчанию скрывает его только у того, кто нажал
-  // удалить (см. комментарий к hiddenByBuyer/hiddenBySeller в schema.prisma):
+  // удалить, и начинает его историю с чистого листа (см. комментарий к
+  // hiddenByBuyer/hiddenBySeller и buyerClearedAt/sellerClearedAt в
+  // schema.prisma):
   // переписка принадлежит обоим участникам, физически стереть её по воле
   // одного было бы нечестно ко второму. НО если собеседник уже удалил свой
   // аккаунт (deletedAt) — это правило больше не применимо: второй стороне
@@ -399,7 +413,12 @@ export class ConversationsService {
     } else {
       await this.prisma.conversation.update({
         where: { id: conversationId },
-        data: isBuyer ? { hiddenByBuyer: true } : { hiddenBySeller: true }
+        // Скрываем и «обнуляем» историю для удалившего: если собеседник
+        // напишет снова, диалог вернётся, но старые сообщения — нет. У
+        // собеседника переписка остаётся целиком.
+        data: isBuyer
+          ? { hiddenByBuyer: true, buyerClearedAt: new Date() }
+          : { hiddenBySeller: true, sellerClearedAt: new Date() }
       })
     }
 

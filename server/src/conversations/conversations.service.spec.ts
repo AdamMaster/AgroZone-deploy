@@ -132,7 +132,10 @@ describe('ConversationsService: живые события', () => {
 
     await service.deleteConversation('c1', 'buyer')
 
-    expect(prisma.conversation.update).toHaveBeenCalledWith({ where: { id: 'c1' }, data: { hiddenByBuyer: true } })
+    expect(prisma.conversation.update).toHaveBeenCalledWith({
+      where: { id: 'c1' },
+      data: { hiddenByBuyer: true, buyerClearedAt: expect.any(Date) }
+    })
     expect(eventEmitter.emit).toHaveBeenCalledWith(CONVERSATION_REMOVED_EVENT, {
       conversationId: 'c1',
       userId: 'buyer'
@@ -573,6 +576,81 @@ describe('ConversationsService: живые события', () => {
       expect(prisma.message.count).toHaveBeenCalledWith({
         where: expect.objectContaining({ createdAt: expect.objectContaining({ gte: readAt }) })
       })
+    })
+  })
+  describe('«Удалить переписку»: история с чистого листа', () => {
+    const CLEARED = new Date('2026-10-20T10:00:00.000Z')
+    const OLD = new Date('2026-10-19T10:00:00.000Z')
+    const NEW = new Date('2026-10-21T10:00:00.000Z')
+
+    it('продавец удаляет — отметка ставится ему, а не покупателю', async () => {
+      prisma.conversation.findFirst.mockResolvedValue({
+        buyerId: 'buyer',
+        sellerId: 'seller',
+        buyer: { deletedAt: null },
+        seller: { deletedAt: null }
+      })
+
+      await service.deleteConversation('c1', 'seller')
+
+      expect(prisma.conversation.update).toHaveBeenCalledWith({
+        where: { id: 'c1' },
+        data: { hiddenBySeller: true, sellerClearedAt: expect.any(Date) }
+      })
+    })
+
+    it('история удалившего начинается после отметки, у собеседника — целиком', async () => {
+      prisma.conversation.findUnique.mockResolvedValue({ ...conversation, buyerClearedAt: CLEARED })
+
+      await service.getMessages('c1', 'buyer', { limit: 30 } as any)
+      expect(prisma.message.findMany).toHaveBeenLastCalledWith(
+        expect.objectContaining({ where: { conversationId: 'c1', createdAt: { gt: CLEARED } } })
+      )
+
+      await service.getMessages('c1', 'seller', { limit: 30 } as any)
+      expect(prisma.message.findMany).toHaveBeenLastCalledWith(
+        expect.objectContaining({ where: { conversationId: 'c1' } })
+      )
+    })
+
+    it('при подгрузке старых сообщений граница удаления сохраняется', async () => {
+      prisma.conversation.findUnique.mockResolvedValue({ ...conversation, buyerClearedAt: CLEARED })
+      const cursor = '2026-10-22T00:00:00.000Z'
+
+      await service.getMessages('c1', 'buyer', { limit: 30, cursor } as any)
+
+      expect(prisma.message.findMany).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          where: { conversationId: 'c1', createdAt: { gt: CLEARED, lt: new Date(cursor) } }
+        })
+      )
+    })
+
+    it('в списке старое последнее сообщение не показывается и не считается непрочитанным', async () => {
+      const row = (id: string, createdAt: Date) => ({
+        id,
+        buyerId: 'me',
+        sellerId: 'other',
+        dealConfirmedAt: null,
+        buyerLastReadAt: null,
+        sellerLastReadAt: null,
+        buyerClearedAt: CLEARED,
+        lastMessageAt: createdAt,
+        createdAt,
+        adTitleSnapshot: 'Трактор',
+        ad: null,
+        buyer: { id: 'me' },
+        seller: { id: 'other' },
+        messages: [{ id: `m-${id}`, senderId: 'other', createdAt }]
+      })
+      prisma.conversation.findMany.mockResolvedValue([row('old', OLD), row('new', NEW)])
+
+      const list = await service.getConversations('me')
+
+      expect(list.map(item => [item.id, item.lastMessage?.id ?? null, item.isUnread])).toEqual([
+        ['old', null, false],
+        ['new', 'm-new', true]
+      ])
     })
   })
 })

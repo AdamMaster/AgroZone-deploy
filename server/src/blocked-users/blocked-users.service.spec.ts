@@ -55,4 +55,37 @@ describe('BlockedUsersService: блокировка скрывает диало�
     expect(prisma.conversation.findMany).not.toHaveBeenCalled()
     expect(eventEmitter.emit).not.toHaveBeenCalled()
   })
+  describe('разблокировка', () => {
+    const CLEARED = new Date('2026-10-20T10:00:00.000Z')
+    const row = (id: string, buyerId: string, lastMessageAt: Date | null, clearedAt: Date | null) => ({
+      id,
+      buyerId,
+      lastMessageAt,
+      buyerClearedAt: buyerId === 'a' ? clearedAt : null,
+      sellerClearedAt: buyerId === 'a' ? null : clearedAt
+    })
+
+    it('возвращает скрытые блокировкой диалоги, но не те, что человек удалил сам и там тихо', async () => {
+      prisma.conversation.findMany.mockResolvedValue([
+        // Скрыт блокировкой, удалял давно, но потом были сообщения — вернуть.
+        row('restored-buyer', 'a', new Date('2026-10-21T10:00:00.000Z'), CLEARED),
+        // Не удалял вручную — вернуть (как продавец).
+        row('restored-seller', 'x', new Date('2026-10-01T10:00:00.000Z'), null),
+        // Удалил сам, новых сообщений нет — остаётся удалённым.
+        row('still-deleted', 'a', new Date('2026-10-19T10:00:00.000Z'), CLEARED)
+      ])
+
+      await service.unblockUser('a', 'b')
+
+      expect(prisma.conversation.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ['restored-buyer'] } },
+        data: { hiddenByBuyer: false }
+      })
+      expect(prisma.conversation.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ['restored-seller'] } },
+        data: { hiddenBySeller: false }
+      })
+      expect(prisma.blockedUser.deleteMany).toHaveBeenCalledWith({ where: { blockerId: 'a', blockedId: 'b' } })
+    })
+  })
 })

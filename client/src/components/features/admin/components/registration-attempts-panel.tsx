@@ -6,6 +6,8 @@ import { Button, Input } from '@/components/ui'
 
 import { formatPhoneNumber, pluralizeRu } from '@/shared/utils'
 
+import { cn } from '@/lib/utils'
+
 import { ADMIN_BUTTON_CLASS, fieldClassName, getAdminChipClassName } from '../constants/admin-ui.constants'
 import {
   REGISTRATION_ATTEMPT_FILTERS,
@@ -150,7 +152,7 @@ export const RegistrationAttemptsPanel = () => {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder='Телефон или почта (часть)'
-          className={fieldClassName}
+          className={cn(fieldClassName, 'pl-9')}
         />
       </div>
 

@@ -83,23 +83,37 @@ export class BlockedUsersService {
   // разблокировка (или разблокировка того, кого и не блокировали) не должна
   // падать 404.
   //
-  // Заодно возвращаем в список диалоги, которые скрылись именно из-за
-  // блокировки (см. blockUser выше) — иначе разблокировка выглядела бы так,
-  // будто ничего не изменилось: писать снова можно, а диалог в списке так и
-  // не появляется. Компромисс: если диалог был скрыт вручную через "Удалить
-  // переписку" ДО блокировки, он тоже вернётся — отдельного флага, откуда
-  // именно взялось скрытие, в схеме нет. Ради предсказуемого поведения
-  // ("разблокировал — эффект блокировки полностью снят") это осознанно
-  // принимаем.
+  // Заодно возвращаем в список диалоги, которые скрылись из-за блокировки
+  // (см. blockUser выше) — иначе разблокировка выглядела бы так, будто ничего
+  // не изменилось: писать снова можно, а диалог в списке так и не появляется.
+  // Диалог, который человек сам удалил («Удалить переписку») и в котором с тех
+  // пор нет новых сообщений, остаётся удалённым: возвращать нечего, у него
+  // пустая история (см. Conversation.buyerClearedAt).
   async unblockUser(blockerId: string, blockedId: string) {
+    const hidden = await this.prisma.conversation.findMany({
+      where: {
+        OR: [
+          { buyerId: blockerId, sellerId: blockedId, hiddenByBuyer: true },
+          { sellerId: blockerId, buyerId: blockedId, hiddenBySeller: true }
+        ]
+      },
+      select: { id: true, buyerId: true, lastMessageAt: true, buyerClearedAt: true, sellerClearedAt: true }
+    })
+
+    const restorable = hidden.filter(conversation => {
+      const clearedAt = conversation.buyerId === blockerId ? conversation.buyerClearedAt : conversation.sellerClearedAt
+
+      return !clearedAt || (conversation.lastMessageAt !== null && conversation.lastMessageAt > clearedAt)
+    })
+
     await this.prisma.$transaction([
       this.prisma.blockedUser.deleteMany({ where: { blockerId, blockedId } }),
       this.prisma.conversation.updateMany({
-        where: { buyerId: blockerId, sellerId: blockedId },
+        where: { id: { in: restorable.filter(item => item.buyerId === blockerId).map(item => item.id) } },
         data: { hiddenByBuyer: false }
       }),
       this.prisma.conversation.updateMany({
-        where: { sellerId: blockerId, buyerId: blockedId },
+        where: { id: { in: restorable.filter(item => item.buyerId !== blockerId).map(item => item.id) } },
         data: { hiddenBySeller: false }
       })
     ])
