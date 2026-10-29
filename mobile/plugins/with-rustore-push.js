@@ -9,7 +9,13 @@
 // работают (токен получить не удастся).
 const { withAndroidManifest, withProjectBuildGradle } = require('expo/config-plugins')
 
-const REPOSITORY_URL = 'https://nexus-external.rustore.ru/repository/maven-rustore-exposed/'
+// Репозитории VK/RuStore: сам SDK push и его зависимость ru.ok.tracer (отчёты о
+// сбоях SDK) лежат в разных местах; jitpack, стоящий в шаблоне Expo, на неё
+// отвечает 401 и ломает сборку.
+const REPOSITORY_URLS = [
+  'https://nexus-external.rustore.ru/repository/maven-rustore-exposed/',
+  'https://artifactory-external.vkpartner.ru/artifactory/maven'
+]
 const PROJECT_ID_META = 'ru.rustore.sdk.pushclient.project_id'
 
 function addProjectId(config, projectId) {
@@ -32,13 +38,17 @@ function addProjectId(config, projectId) {
 
 function addRepository(config) {
   return withProjectBuildGradle(config, mod => {
-    if (mod.modResults.language !== 'groovy' || mod.modResults.contents.includes(REPOSITORY_URL)) return mod
+    if (mod.modResults.language !== 'groovy') return mod
 
     // allprojects { repositories { ... } } — добавляем в начало списка.
-    mod.modResults.contents = mod.modResults.contents.replace(
-      /(allprojects\s*\{\s*repositories\s*\{)/,
-      `$1\n    maven { url '${REPOSITORY_URL}' }`
-    )
+    for (const url of REPOSITORY_URLS) {
+      if (mod.modResults.contents.includes(url)) continue
+
+      mod.modResults.contents = mod.modResults.contents.replace(
+        /(allprojects\s*\{\s*repositories\s*\{)/,
+        `$1\n    maven { url '${url}' }`
+      )
+    }
 
     return mod
   })
