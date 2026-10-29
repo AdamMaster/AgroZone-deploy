@@ -116,7 +116,13 @@ async function request<T>(method: HttpMethod, path: string, options: RequestOpti
     // react-query распознаёт её и не считает ошибкой запроса.
     if (signal?.aborted) throw error
 
-    throw new ApiError(0, requestSignal.isTimedOut() ? TIMEOUT_ERROR_MESSAGE : NETWORK_ERROR_MESSAGE)
+    // ВРЕМЕННО (диагностика загрузки фото, 29.10.2026): у запросов с файлами к
+    // тексту ошибки добавляется причина от телефона, чтобы понять, почему
+    // запрос не уходит. Убрать после починки.
+    const baseMessage = requestSignal.isTimedOut() ? TIMEOUT_ERROR_MESSAGE : NETWORK_ERROR_MESSAGE
+    const reason = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+
+    throw new ApiError(0, isMultipart ? `${baseMessage} [${reason}]` : baseMessage)
   } finally {
     requestSignal.cleanup()
   }

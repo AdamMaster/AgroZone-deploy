@@ -11,9 +11,7 @@
       "bundleIdentifier": "ru.agrozone.app",
       "icon": "./assets/images/icon.png",
       "supportsTablet": true,
-      "associatedDomains": [
-        "applinks:agro-zone.ru"
-      ]
+      "associatedDomains": ["applinks:agro-zone.ru"]
     },
     "android": {
       "package": "ru.agrozone.app",
@@ -40,21 +38,11 @@
               "pathPrefix": "/change-email"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ],
-      "permissions": [
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
-      ],
-      "blockedPermissions": [
-        "android.permission.SYSTEM_ALERT_WINDOW",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE"
-      ]
+      "permissions": ["android.permission.ACCESS_COARSE_LOCATION", "android.permission.ACCESS_FINE_LOCATION"],
+      "blockedPermissions": ["android.permission.SYSTEM_ALERT_WINDOW"]
     },
     "web": {
       "output": "single",
