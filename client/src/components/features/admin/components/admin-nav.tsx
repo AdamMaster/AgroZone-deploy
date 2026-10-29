@@ -1,6 +1,17 @@
 'use client'
 
-import { ArrowLeft, Building2, Flag, LayoutDashboard, Settings, ShieldCheck, Star, UserPlus, UserX } from 'lucide-react'
+import {
+  ArrowLeft,
+  Building2,
+  Flag,
+  LayoutDashboard,
+  Settings,
+  ShieldCheck,
+  Star,
+  UserCheck,
+  UserPlus,
+  UserX
+} from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -21,6 +32,7 @@ const items = [
   { label: 'Жалобы на продавцов', icon: UserX, id: 'seller-reports', href: '/admin/seller-reports' },
   { label: 'Фиды дилеров', icon: Building2, id: 'dealers', href: '/admin/dealers' },
   { label: 'Пользователи', icon: UserPlus, id: 'users', href: '/admin/users' },
+  { label: 'Регистрации', icon: UserCheck, id: 'registration-attempts', href: '/admin/registration-attempts' },
   { label: 'Настройки', icon: Settings, id: 'settings', href: '/admin/settings' }
 ]
 
@@ -34,7 +46,9 @@ export const AdminNav = () => {
       </Link>
       <ul className='flex flex-col gap-1 px-2'>
         {items.map(item => {
-          const isActive = item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`)
+          const isActive = item.exact
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(`${item.href}/`)
 
           return (
             <li key={item.id}>

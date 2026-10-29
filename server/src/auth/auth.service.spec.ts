@@ -13,7 +13,17 @@ import { PhoneConfirmationService } from '@/libs/phone-confirmation/phone-confir
 import { SupportGuestsService } from '@/support/support-guests.service'
 import { SecurityEventsService } from '@/security-events/security-events.service'
 import { SessionTokenService } from '@/session/session-token.service'
-import { AuthMethod, SecurityEventActor, SecurityEventType, TokenType, UserRole } from '@/generated/prisma/enums'
+import { RegistrationAttemptsService } from '@/registration-attempts/registration-attempts.service'
+import {
+  AuthMethod,
+  RegistrationAttemptStep,
+  RegistrationChannel,
+  RegistrationFailureReason,
+  SecurityEventActor,
+  SecurityEventType,
+  TokenType,
+  UserRole
+} from '@/generated/prisma/enums'
 
 jest.mock('argon2')
 
@@ -31,6 +41,7 @@ describe('AuthService', () => {
   let securityEventsService: any
   let configService: any
   let sessionTokenService: any
+  let registrationAttempts: any
 
   const createReq = () =>
     ({
@@ -99,6 +110,11 @@ describe('AuthService', () => {
     configService = { get: jest.fn().mockReturnValue(''), getOrThrow: jest.fn() }
     // По умолчанию запрос — с сайта: ключ сессии не выдаётся.
     sessionTokenService = { issueFor: jest.fn().mockReturnValue(undefined) }
+    registrationAttempts = {
+      progress: jest.fn().mockResolvedValue(undefined),
+      fail: jest.fn().mockResolvedValue(undefined),
+      complete: jest.fn().mockResolvedValue(undefined)
+    }
 
     mockedVerify.mockReset()
 
@@ -114,7 +130,8 @@ describe('AuthService', () => {
         { provide: PhoneConfirmationService, useValue: phoneConfirmationService },
         { provide: SupportGuestsService, useValue: supportGuestsService },
         { provide: SecurityEventsService, useValue: securityEventsService },
-        { provide: SessionTokenService, useValue: sessionTokenService }
+        { provide: SessionTokenService, useValue: sessionTokenService },
+        { provide: RegistrationAttemptsService, useValue: registrationAttempts }
       ]
     }).compile()
 
@@ -165,6 +182,47 @@ describe('AuthService', () => {
 
       await expect(service.registerSmsStart({ phone: '123' } as any)).rejects.toThrow(BadRequestException)
     })
+
+    describe('журнал попыток регистрации', () => {
+      const key = { channel: RegistrationChannel.PHONE, contact: '79991234567' }
+
+      it('занятый номер пишется как «уже зарегистрирован»', async () => {
+        userService.findByPhone.mockResolvedValue(baseUser())
+
+        await expect(service.registerSmsStart({ phone: '+7 (999) 123-45-67' } as any)).rejects.toThrow(
+          ConflictException
+        )
+
+        expect(registrationAttempts.fail).toHaveBeenCalledWith(key, RegistrationFailureReason.ALREADY_REGISTERED)
+        expect(registrationAttempts.progress).not.toHaveBeenCalled()
+      })
+
+      it('после выданного номера для звонка попытка переходит на шаг «подтверждение отправлено»', async () => {
+        userService.findByPhone.mockResolvedValue(null)
+        phoneConfirmationService.requestCallbackConfirmation.mockResolvedValue({ callId: 'call-1', number: '+7 930' })
+
+        await service.registerSmsStart({ phone: '+7 (999) 123-45-67' } as any)
+
+        expect(registrationAttempts.progress).toHaveBeenCalledWith(key, RegistrationAttemptStep.CONFIRMATION_SENT)
+        expect(registrationAttempts.fail).not.toHaveBeenCalled()
+      })
+
+      it('сбой провайдера звонков пишется в журнал и пробрасывается дальше', async () => {
+        userService.findByPhone.mockResolvedValue(null)
+        phoneConfirmationService.requestCallbackConfirmation.mockRejectedValue(new Error('sms.ru недоступен'))
+
+        await expect(service.registerSmsStart({ phone: '+7 (999) 123-45-67' } as any)).rejects.toThrow(
+          'sms.ru недоступен'
+        )
+
+        expect(registrationAttempts.fail).toHaveBeenCalledWith(
+          key,
+          RegistrationFailureReason.PROVIDER_ERROR,
+          'sms.ru недоступен'
+        )
+        expect(registrationAttempts.progress).not.toHaveBeenCalled()
+      })
+    })
   })
 
   describe('verifySms / checkRegisterCode: звонок перепроверяется у провайдера', () => {
@@ -191,6 +249,20 @@ describe('AuthService', () => {
       prisma.token.findFirst.mockResolvedValue(token)
 
       await expect(service.checkRegisterCode(dto)).resolves.toEqual({ success: true })
+    })
+
+    it('«звонок не получен» пишется в журнал, но новую попытку из-за входа не заводит', async () => {
+      prisma.token.findFirst.mockResolvedValue(token)
+      phoneConfirmationService.checkCallbackConfirmed.mockResolvedValue(false)
+
+      await expect(service.verifySms(createReq(), dto)).rejects.toThrow('Звонок не получен')
+
+      expect(registrationAttempts.fail).toHaveBeenCalledWith(
+        { channel: RegistrationChannel.PHONE, contact: '79991234567' },
+        RegistrationFailureReason.CALL_NOT_RECEIVED,
+        'Звонок не получен. Позвоните на указанный номер и попробуйте снова.',
+        { createIfMissing: false }
+      )
     })
   })
 
@@ -260,6 +332,32 @@ describe('AuthService', () => {
       )
       expect(prisma.token.delete).toHaveBeenCalledWith({ where: { id: 'token-1' } })
       expect(req.session.userId).toBe('new-user')
+      expect(registrationAttempts.complete).toHaveBeenCalledWith(
+        { channel: RegistrationChannel.PHONE, contact: '79991234567' },
+        'new-user'
+      )
+    })
+
+    it('в журнал попадают неверный код, истёкший код и сбой создания аккаунта', async () => {
+      const key = { channel: RegistrationChannel.PHONE, contact: '79991234567' }
+
+      prisma.token.findFirst.mockResolvedValueOnce(null)
+      await expect(service.registerSmsComplete(createReq(), dto)).rejects.toThrow()
+      expect(registrationAttempts.fail).toHaveBeenLastCalledWith(key, RegistrationFailureReason.CODE_INVALID)
+
+      prisma.token.findFirst.mockResolvedValueOnce({ id: 'token-1', expiresIn: new Date(Date.now() - 1000) })
+      await expect(service.registerSmsComplete(createReq(), dto)).rejects.toThrow()
+      expect(registrationAttempts.fail).toHaveBeenLastCalledWith(key, RegistrationFailureReason.CODE_EXPIRED)
+
+      prisma.token.findFirst.mockResolvedValueOnce({ id: 'token-1', expiresIn: new Date(Date.now() + 60_000) })
+      userService.create.mockRejectedValueOnce(new ConflictException('Номер уже занят'))
+      await expect(service.registerSmsComplete(createReq(), dto)).rejects.toThrow('Номер уже занят')
+      expect(registrationAttempts.fail).toHaveBeenLastCalledWith(
+        key,
+        RegistrationFailureReason.ALREADY_REGISTERED,
+        'Номер уже занят'
+      )
+      expect(registrationAttempts.complete).not.toHaveBeenCalled()
     })
   })
 

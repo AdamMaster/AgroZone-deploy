@@ -10,7 +10,16 @@ import {
 } from '@nestjs/common'
 import { RegisterDto } from './dto/register.dto'
 import { UserService } from '@/user/user.service'
-import { AuthMethod, SecurityEventActor, SecurityEventType, TokenType, UserRole } from '@/generated/prisma/enums'
+import {
+  AuthMethod,
+  RegistrationAttemptStep,
+  RegistrationChannel,
+  RegistrationFailureReason,
+  SecurityEventActor,
+  SecurityEventType,
+  TokenType,
+  UserRole
+} from '@/generated/prisma/enums'
 import { User } from '@/generated/prisma/client'
 import { Request, Response } from 'express'
 import { LoginDto } from './dto/login.dto'
@@ -28,6 +37,11 @@ import { getClientIp } from '@/libs/common/utils/request-ip.util'
 import { SupportGuestsService } from '@/support/support-guests.service'
 import { LoginMethod, SecurityEventsService } from '@/security-events/security-events.service'
 import { SessionTokenService } from '@/session/session-token.service'
+import {
+  RegistrationAttemptKey,
+  RegistrationAttemptsService,
+  describeRegistrationError
+} from '@/registration-attempts/registration-attempts.service'
 
 @Injectable()
 export class AuthService {
@@ -41,8 +55,42 @@ export class AuthService {
     private readonly phoneConfirmationService: PhoneConfirmationService,
     private readonly supportGuestsService: SupportGuestsService,
     private readonly securityEventsService: SecurityEventsService,
-    private readonly sessionTokenService: SessionTokenService
+    private readonly sessionTokenService: SessionTokenService,
+    private readonly registrationAttempts: RegistrationAttemptsService
   ) {}
+
+  // Журнал попыток регистрации (админка → «Регистрации») пишется сразу в
+  // местах, где регистрация идёт или ломается. Все вызовы журнала безопасны:
+  // сбой записи регистрацию не прерывает (см. RegistrationAttemptsService).
+  private classifyRegistrationError(error: unknown): RegistrationFailureReason {
+    if (error instanceof ConflictException) return RegistrationFailureReason.ALREADY_REGISTERED
+    if (error instanceof BadRequestException) return RegistrationFailureReason.INVALID_DATA
+
+    return RegistrationFailureReason.UNKNOWN_ERROR
+  }
+
+  // assertCallConfirmed + запись в журнал: «звонок не получен» (BadRequest) и
+  // сбой провайдера звонков (всё остальное) — разные причины.
+  private async assertCallConfirmedTracked(
+    key: RegistrationAttemptKey,
+    token: string,
+    options: { createIfMissing?: boolean } = {}
+  ) {
+    try {
+      await this.assertCallConfirmed(key.contact, token)
+    } catch (error) {
+      await this.registrationAttempts.fail(
+        key,
+        error instanceof BadRequestException
+          ? RegistrationFailureReason.CALL_NOT_RECEIVED
+          : RegistrationFailureReason.PROVIDER_ERROR,
+        describeRegistrationError(error),
+        options
+      )
+
+      throw error
+    }
+  }
 
   // Токен из БД сам по себе звонка не доказывает: он создаётся ещё на старте
   // и содержит id проверки у провайдера. Поэтому перед любым действием,
@@ -58,18 +106,37 @@ export class AuthService {
 
   async registerSmsStart(dto: SmsRegisterDto, ip?: string) {
     const phone = normalizePhone(dto.phone)
+    const key = { channel: RegistrationChannel.PHONE, contact: phone }
 
     const isExists = await this.userService.findByPhone(phone)
 
     if (isExists) {
+      await this.registrationAttempts.fail(key, RegistrationFailureReason.ALREADY_REGISTERED)
       throw new ConflictException('Пользователь с таким номером телефона уже зарегистрирован.')
     }
 
-    return this.sendSmsCode(phone, TokenType.SMS_VERIFICATION, ip)
+    try {
+      const result = await this.sendSmsCode(phone, TokenType.SMS_VERIFICATION, ip)
+
+      await this.registrationAttempts.progress(key, RegistrationAttemptStep.CONFIRMATION_SENT)
+
+      return result
+    } catch (error) {
+      // Звонок не заказан (провайдер недоступен, номер отклонён): токена в
+      // базе нет, и увидеть такую попытку можно только в журнале.
+      await this.registrationAttempts.fail(
+        key,
+        RegistrationFailureReason.PROVIDER_ERROR,
+        describeRegistrationError(error)
+      )
+
+      throw error
+    }
   }
 
   async registerSmsComplete(req: Request, dto: SmsCompleteDto) {
     const phone = normalizePhone(dto.phone)
+    const key = { channel: RegistrationChannel.PHONE, contact: phone }
     const smsToken = await this.prismaService.token.findFirst({
       where: {
         phone: phone,
@@ -79,29 +146,40 @@ export class AuthService {
     })
 
     if (!smsToken) {
+      await this.registrationAttempts.fail(key, RegistrationFailureReason.CODE_INVALID)
       throw new BadRequestException('Неверный код подтверждения')
     }
 
     if (new Date() > smsToken.expiresIn) {
       await this.prismaService.token.delete({ where: { id: smsToken.id } })
+      await this.registrationAttempts.fail(key, RegistrationFailureReason.CODE_EXPIRED)
       throw new BadRequestException('Срок действия кода истек. Запросите новый.')
     }
 
-    await this.assertCallConfirmed(phone, smsToken.token)
+    await this.assertCallConfirmedTracked(key, smsToken.token)
 
-    const newUser = await this.userService.create(
-      null,
-      dto.password,
-      dto.name,
-      phone,
-      '',
-      AuthMethod.CREDENTIALS,
-      true,
-      dto.personalDataConsent,
-      { ip: getClientIp(req), userAgent: req.headers['user-agent'] }
-    )
+    let newUser: Awaited<ReturnType<UserService['create']>>
+
+    try {
+      newUser = await this.userService.create(
+        null,
+        dto.password,
+        dto.name,
+        phone,
+        '',
+        AuthMethod.CREDENTIALS,
+        true,
+        dto.personalDataConsent,
+        { ip: getClientIp(req), userAgent: req.headers['user-agent'] }
+      )
+    } catch (error) {
+      await this.registrationAttempts.fail(key, this.classifyRegistrationError(error), describeRegistrationError(error))
+
+      throw error
+    }
 
     await this.prismaService.token.delete({ where: { id: smsToken.id } })
+    await this.registrationAttempts.complete(key, newUser.id)
 
     return this.saveSession(req, newUser, 'sms')
   }
@@ -113,33 +191,73 @@ export class AuthService {
 
     const phone = dto.phone ? normalizePhone(dto.phone) : null
 
+    // Попытка в журнале: по почте, если почта указана, иначе по телефону.
+    const key = dto.email
+      ? { channel: RegistrationChannel.EMAIL, contact: dto.email }
+      : { channel: RegistrationChannel.PHONE, contact: phone as string }
+
     const emailExists = dto.email ? await this.userService.findByEmail(dto.email) : null
 
     const phoneExists = phone ? await this.userService.findByPhone(phone) : null
 
     if (emailExists || phoneExists) {
+      await this.registrationAttempts.fail(key, RegistrationFailureReason.ALREADY_REGISTERED)
       throw new ConflictException('Пользователь с таким email или номером телефона уже существует.')
     }
 
-    const newUser = await this.userService.create(
-      dto.email ?? null,
-      dto.password,
-      dto.name,
-      phone,
-      '',
-      AuthMethod.CREDENTIALS,
-      false,
-      dto.personalDataConsent,
-      { ip: getClientIp(req), userAgent: req.headers['user-agent'] }
-    )
+    let newUser: Awaited<ReturnType<UserService['create']>>
+
+    try {
+      newUser = await this.userService.create(
+        dto.email ?? null,
+        dto.password,
+        dto.name,
+        phone,
+        '',
+        AuthMethod.CREDENTIALS,
+        false,
+        dto.personalDataConsent,
+        { ip: getClientIp(req), userAgent: req.headers['user-agent'] }
+      )
+    } catch (error) {
+      await this.registrationAttempts.fail(key, this.classifyRegistrationError(error), describeRegistrationError(error))
+
+      throw error
+    }
 
     if (newUser.email) {
-      await this.emailConfirmationService.sendVerificationToken(newUser.email)
+      try {
+        await this.emailConfirmationService.sendVerificationToken(newUser.email)
+      } catch (error) {
+        await this.registrationAttempts.fail(
+          key,
+          RegistrationFailureReason.PROVIDER_ERROR,
+          describeRegistrationError(error)
+        )
+
+        throw error
+      }
+
+      await this.registrationAttempts.progress(key, RegistrationAttemptStep.CONFIRMATION_SENT)
+
       return { message: 'Пожалуйста, подтвердите ваш email.' }
     }
 
     if (newUser.phones.length) {
-      await this.sendSmsCode(newUser.phones[0].phone, TokenType.SMS_VERIFICATION, getClientIp(req))
+      try {
+        await this.sendSmsCode(newUser.phones[0].phone, TokenType.SMS_VERIFICATION, getClientIp(req))
+      } catch (error) {
+        await this.registrationAttempts.fail(
+          key,
+          RegistrationFailureReason.PROVIDER_ERROR,
+          describeRegistrationError(error)
+        )
+
+        throw error
+      }
+
+      await this.registrationAttempts.progress(key, RegistrationAttemptStep.CONFIRMATION_SENT)
+
       return { message: 'Код подтверждения отправлен на ваш телефон.' }
     }
 
@@ -281,6 +399,10 @@ export class AuthService {
 
   async verifySms(req: Request, dto: VerifySmsDto) {
     const phone = normalizePhone(dto.phone)
+    // Подтверждение номера нужно и при обычном входе, поэтому в журнал
+    // регистраций пишем только для уже начатой попытки (createIfMissing).
+    const key = { channel: RegistrationChannel.PHONE, contact: phone }
+    const onlyOpen = { createIfMissing: false }
 
     const smsToken = await this.prismaService.token.findFirst({
       where: {
@@ -291,15 +413,17 @@ export class AuthService {
     })
 
     if (!smsToken) {
+      await this.registrationAttempts.fail(key, RegistrationFailureReason.CODE_INVALID, undefined, onlyOpen)
       throw new BadRequestException('Неверный код подтверждения или номер телефона')
     }
 
     if (new Date() > smsToken.expiresIn) {
       await this.prismaService.token.delete({ where: { id: smsToken.id } })
+      await this.registrationAttempts.fail(key, RegistrationFailureReason.CODE_EXPIRED, undefined, onlyOpen)
       throw new BadRequestException('Срок действия кода истек. Запросите новый.')
     }
 
-    await this.assertCallConfirmed(phone, smsToken.token)
+    await this.assertCallConfirmedTracked(key, smsToken.token, onlyOpen)
 
     const user = await this.userService.findByPhone(phone)
 
@@ -313,12 +437,15 @@ export class AuthService {
     })
 
     await this.prismaService.token.delete({ where: { id: smsToken.id } })
+    await this.registrationAttempts.complete(key, user.id, onlyOpen)
 
     return this.saveSession(req, user, 'sms')
   }
 
   async checkRegisterCode(dto: { phone: string; code: string }) {
     const phone = normalizePhone(dto.phone)
+    const key = { channel: RegistrationChannel.PHONE, contact: phone }
+    const onlyOpen = { createIfMissing: false }
 
     const smsToken = await this.prismaService.token.findFirst({
       where: {
@@ -329,15 +456,17 @@ export class AuthService {
     })
 
     if (!smsToken) {
+      await this.registrationAttempts.fail(key, RegistrationFailureReason.CODE_INVALID, undefined, onlyOpen)
       throw new BadRequestException('Неверный код подтверждения')
     }
 
     if (new Date() > smsToken.expiresIn) {
       await this.prismaService.token.delete({ where: { id: smsToken.id } })
+      await this.registrationAttempts.fail(key, RegistrationFailureReason.CODE_EXPIRED, undefined, onlyOpen)
       throw new BadRequestException('Срок действия кода истек. Запросите новый.')
     }
 
-    await this.assertCallConfirmed(phone, smsToken.token)
+    await this.assertCallConfirmedTracked(key, smsToken.token, onlyOpen)
 
     return { success: true }
   }

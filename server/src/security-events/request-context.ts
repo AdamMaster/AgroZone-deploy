@@ -62,3 +62,17 @@ export function getRequestMeta(): RequestMeta | null {
     actingUserRole: req.user?.role ?? req.session?.userRole ?? null
   }
 }
+
+// Значение заголовка текущего запроса (null — вне HTTP-запроса или заголовка
+// нет). Нужен там, где из контекста нужно больше, чем IP и User-Agent:
+// например, чтобы отличить запрос приложения (X-Auth-Transport: token) от
+// запроса сайта.
+export function getRequestHeader(name: string): string | null {
+  const value = storage.getStore()?.headers[name.toLowerCase()]
+
+  if (Array.isArray(value)) {
+    return value[0] ?? null
+  }
+
+  return typeof value === 'string' ? value : null
+}

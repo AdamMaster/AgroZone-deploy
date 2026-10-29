@@ -3,12 +3,13 @@ import { PrismaService } from '@/prisma/prisma.service'
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common'
 import { ModuleRef } from '@nestjs/core'
 import { Request } from 'express'
-import { TokenType } from '@/generated/prisma/enums'
+import { RegistrationChannel, RegistrationFailureReason, TokenType } from '@/generated/prisma/enums'
 import { v4 as uuidv4 } from 'uuid'
 import { ConfirmationDto } from './dto/confirmation.dto'
 import { User } from '@/generated/prisma/client'
 import { MailService } from '@/libs/mail/mail.service'
 import { AuthService } from '../auth.service'
+import { RegistrationAttemptsService } from '@/registration-attempts/registration-attempts.service'
 
 @Injectable()
 export class EmailConfirmationService {
@@ -24,7 +25,8 @@ export class EmailConfirmationService {
     // "Cannot access 'AuthService' before initialization". ModuleRef
     // достаёт сервис лениво, в момент вызова метода, когда все модули уже
     // точно загружены — это официальный способ Nest обходить такие циклы.
-    private readonly moduleRef: ModuleRef
+    private readonly moduleRef: ModuleRef,
+    private readonly registrationAttempts: RegistrationAttemptsService
   ) {}
 
   async newVirification(req: Request, dto: ConfirmationDto) {
@@ -42,6 +44,17 @@ export class EmailConfirmationService {
     const hasExpired = new Date(existingToken.expiresIn) < new Date()
 
     if (hasExpired) {
+      // Письмо подтверждения нужно только для регистрации; пишем в журнал, лишь
+      // если такая попытка уже есть.
+      if (existingToken.email) {
+        await this.registrationAttempts.fail(
+          { channel: RegistrationChannel.EMAIL, contact: existingToken.email },
+          RegistrationFailureReason.LINK_EXPIRED,
+          undefined,
+          { createIfMissing: false }
+        )
+      }
+
       throw new BadRequestException('Токен подтверждения истек. Пожалуйста, запросите новый токен для подтвержденияю')
     }
 
@@ -72,6 +85,12 @@ export class EmailConfirmationService {
         type: TokenType.VERIFICATION
       }
     })
+
+    await this.registrationAttempts.complete(
+      { channel: RegistrationChannel.EMAIL, contact: existingToken.email },
+      existingUser.id,
+      { createIfMissing: false }
+    )
 
     const authService = this.moduleRef.get(AuthService, { strict: false })
 

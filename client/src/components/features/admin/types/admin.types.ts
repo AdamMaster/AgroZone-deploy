@@ -284,3 +284,50 @@ export interface ISellerReportCard {
   sanctions: ISellerSanctionEntry[]
   reviewSignals: ISellerReviewSignals
 }
+
+// Журнал попыток регистрации (/admin/registration-attempts). Значения —
+// строго как в enum'ах RegistrationAttempt* на бэкенде. ABANDONED — не
+// значение из базы: сервер показывает так попытку «в процессе», которая
+// давно не двигалась.
+export type RegistrationAttemptChannel = 'PHONE' | 'EMAIL'
+export type RegistrationAttemptPlatform = 'SITE' | 'APP' | 'UNKNOWN'
+export type RegistrationAttemptStatus = 'IN_PROGRESS' | 'FAILED' | 'COMPLETED' | 'ABANDONED'
+export type RegistrationAttemptStep = 'STARTED' | 'CONFIRMATION_SENT' | 'COMPLETED'
+export type RegistrationFailureReason =
+  | 'ALREADY_REGISTERED'
+  | 'PROVIDER_ERROR'
+  | 'CODE_INVALID'
+  | 'CODE_EXPIRED'
+  | 'CALL_NOT_RECEIVED'
+  | 'LINK_EXPIRED'
+  | 'INVALID_DATA'
+  | 'UNKNOWN_ERROR'
+
+export type RegistrationAttemptFilter = 'problems' | 'all' | 'completed'
+
+export interface IRegistrationAttempt {
+  id: string
+  channel: RegistrationAttemptChannel
+  contact: string
+  platform: RegistrationAttemptPlatform
+  status: RegistrationAttemptStatus
+  step: RegistrationAttemptStep
+  failureReason: RegistrationFailureReason | null
+  failureDetail: string | null
+  failuresCount: number
+  ip: string | null
+  device: string | null
+  createdAt: string
+  updatedAt: string
+  completedAt: string | null
+  // По этому телефону или почте теперь есть аккаунт — человек всё же вошёл.
+  registeredLater: boolean
+}
+
+export interface IRegistrationAttemptsPage {
+  items: IRegistrationAttempt[]
+  total: number
+  page: number
+  limit: number
+  summary: { days: number; total: number; completed: number; problems: number }
+}

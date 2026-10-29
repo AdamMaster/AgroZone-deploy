@@ -78,6 +78,8 @@ model User {
 
   securityEvents UserSecurityEvent[]
 
+  registrationAttempts RegistrationAttempt[]
+
   deletedAt DateTime? @map("deleted_at")
 
   method   AuthMethod
@@ -250,6 +252,48 @@ model UserSecurityEvent {
   @@index([userId, type])
   @@index([createdAt])
   @@map("user_security_events")
+}
+
+// Журнал попыток регистрации (админка → «Регистрации»): помогает увидеть,
+// где люди застревают и не ломается ли регистрация (ошибка провайдера звонков
+// или почты, не пришёл звонок, не открыли письмо). Одна запись — одна попытка
+// зарегистрироваться по телефону или почте; шаги и ошибки внутри попытки
+// обновляют ту же запись (RegistrationAttemptsService). Хранит телефон/почту
+// и IP людей, которые могли так и не зарегистрироваться, поэтому срок
+// хранения ограничен (REGISTRATION_ATTEMPTS_RETENTION_DAYS) и указан в
+// политике конфиденциальности. userId — аккаунт, если регистрация завершилась.
+model RegistrationAttempt {
+  id String @id @default(uuid())
+
+  channel  RegistrationChannel
+  // Нормализованный телефон или email, с которого начали регистрацию.
+  contact  String
+  platform RegistrationPlatform @default(UNKNOWN)
+
+  status RegistrationAttemptStatus @default(IN_PROGRESS)
+  step   RegistrationAttemptStep   @default(STARTED)
+
+  // Последняя ошибка на этой попытке; остаётся, даже если человек потом
+  // продвинулся дальше — так видно, на чём он спотыкался.
+  failureReason RegistrationFailureReason? @map("failure_reason")
+  failureDetail String?                    @map("failure_detail")
+  failuresCount Int                        @default(0) @map("failures_count")
+
+  ip        String?
+  userAgent String? @map("user_agent")
+  device    String?
+
+  userId String? @map("user_id")
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  completedAt DateTime? @map("completed_at")
+
+  @@index([status, updatedAt(sort: Desc)])
+  @@index([channel, contact, updatedAt(sort: Desc)])
+  @@index([updatedAt])
+  @@map("registration_attempts")
 }
 
 // Факт показа телефона продавца: покупатель нажал «Показать телефон» (см.
@@ -1666,4 +1710,41 @@ enum NotificationType {
   SELLER_REVIEW_REPLIED
   // Покупателю: продавец отметил сделку состоявшейся — можно оценить его.
   SELLER_DEAL_CONFIRMED
+}
+
+enum RegistrationChannel {
+  PHONE
+  EMAIL
+}
+
+enum RegistrationPlatform {
+  SITE
+  APP
+  UNKNOWN
+}
+
+enum RegistrationAttemptStatus {
+  IN_PROGRESS
+  FAILED
+  COMPLETED
+}
+
+// До какого шага дошла попытка: STARTED — только ввели данные,
+// CONFIRMATION_SENT — человеку выдан номер для звонка или отправлено письмо,
+// COMPLETED — регистрация завершена.
+enum RegistrationAttemptStep {
+  STARTED
+  CONFIRMATION_SENT
+  COMPLETED
+}
+
+enum RegistrationFailureReason {
+  ALREADY_REGISTERED
+  PROVIDER_ERROR
+  CODE_INVALID
+  CODE_EXPIRED
+  CALL_NOT_RECEIVED
+  LINK_EXPIRED
+  INVALID_DATA
+  UNKNOWN_ERROR
 }
