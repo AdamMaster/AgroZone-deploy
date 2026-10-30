@@ -41,7 +41,7 @@ export const ConversationListItem = ({ conversation, isActive, onClick }: Conver
       <div className='relative'>
         <UserAvatar
           user={counterpart}
-          className='absolute -top-2 -left-2 z-10 hidden size-9 border-2 border-white sm:block'
+          className='absolute -top-2 -left-2 z-10 hidden size-9 border-2 border-white sm:block dark:border-neutral-100'
         />
         <div className='relative flex size-15 items-center justify-center overflow-hidden rounded-lg bg-gray-100'>
           {ad.images?.[0] ? (

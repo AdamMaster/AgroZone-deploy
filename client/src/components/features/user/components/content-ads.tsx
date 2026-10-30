@@ -127,7 +127,12 @@ export const ContentAds = () => {
         Мои объявления
       </Heading>
       <Tabs defaultValue='published'>
-        <div className='mb-4 overflow-x-auto'>
+        {/* Подчёркивание активной вкладки выступает на 3px ниже списка
+            (tabs.tsx, after:bottom-[-5px]). Из-за overflow-x-auto браузер
+            считает overflow-y тоже auto и показывал крошечный вертикальный
+            скролл со стрелками. pb-2 оставляет подчёркиванию место, а
+            overflow-y-hidden не даёт скроллу появиться. */}
+        <div className='mb-2 scrollbar-none overflow-x-auto overflow-y-hidden pb-2'>
           <TabsList variant='line'>
             {tabs.map(tab => (
               <TabsTrigger key={tab.value} value={tab.value} className='p-0'>
