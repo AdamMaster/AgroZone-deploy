@@ -15,6 +15,12 @@ export class UpdateUserDto {
   @IsBoolean({ message: 'isTwoFactorEnabled должно быть булевым значением.' })
   isTwoFactorEnabled?: boolean
 
+  // Письма о новых сообщениях в чате (переключатель в настройках). Служебные
+  // письма (пароль, подтверждение почты, модерация) он не отключает.
+  @IsOptional()
+  @IsBoolean({ message: 'chatEmailNotifications должно быть булевым значением.' })
+  chatEmailNotifications?: boolean
+
   // Частное лицо / ИП / компания — чисто информационная метка на карточке
   // продавца, без привязанных к ней привилегий на площадке.
   @IsOptional()

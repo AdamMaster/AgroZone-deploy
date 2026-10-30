@@ -2,17 +2,54 @@
 
 import Link from 'next/link'
 
-import { Heading, Skeleton } from '@/components/ui'
+import { Field, FieldDescription, Heading, Label, Skeleton, Switch } from '@/components/ui'
+
+import { useProfile } from '@/shared/hooks'
 
 import { cn } from '@/lib/utils'
 
 import { useMarkAllNotificationsAsRead, useMarkNotificationAsRead, useNotifications } from '../../notifications/hooks'
 import { INotification } from '../../notifications/types/notification.types'
 import { formatNotificationDate } from '../../notifications/utils'
+import { useChatEmailNotificationsMutation } from '../hooks/use-chat-email-notifications-mutation'
 
 const NOTIFICATIONS_LIMIT = 50
 
 const ITEM_CLASS_NAME = 'flex flex-col gap-1 rounded-xl p-4 text-left  hover:bg-gray-50'
+
+// Письма о новых сообщениях в чате: приходят, только если сообщение осталось
+// непрочитанным (через полчаса). Служебные письма (пароль, подтверждение
+// почты, решения модерации) этим переключателем не отключаются.
+const ChatEmailNotificationsSetting = () => {
+  const { user, isLoading } = useProfile()
+  const { setChatEmailNotifications, isChatEmailNotificationsLoading } = useChatEmailNotificationsMutation()
+
+  if (isLoading) {
+    return <Skeleton className='rounded-1 mb-8 h-17 w-full' />
+  }
+
+  // Без почты письма слать некуда — переключатель не имеет смысла.
+  if (!user?.email) return null
+
+  return (
+    <Field className='group mb-8 rounded-lg border bg-gray-50 px-4 py-4'>
+      <div className='flex items-center justify-between gap-4'>
+        <div className='space-y-0.5'>
+          <Label>Письма о новых сообщениях</Label>
+          <FieldDescription>
+            Присылать на почту, если вы не прочитали сообщение в чате в течение получаса. Письма о безопасности и
+            модерации приходят всегда.
+          </FieldDescription>
+        </div>
+        <Switch
+          checked={user.chatEmailNotifications ?? true}
+          onCheckedChange={checked => setChatEmailNotifications(checked)}
+          disabled={isChatEmailNotificationsLoading}
+        />
+      </div>
+    </Field>
+  )
+}
 
 export const ContentNotifications = () => {
   const { notifications, isLoadingNotifications } = useNotifications({ limit: NOTIFICATIONS_LIMIT })
@@ -33,6 +70,7 @@ export const ContentNotifications = () => {
         <Heading level={2} className='mb-8'>
           Уведомления
         </Heading>
+        <ChatEmailNotificationsSetting />
         <div className='flex flex-col gap-3'>
           <Skeleton className='h-20 w-full rounded-xl' />
           <Skeleton className='h-20 w-full rounded-xl' />
@@ -57,6 +95,8 @@ export const ContentNotifications = () => {
           </button>
         )}
       </div>
+
+      <ChatEmailNotificationsSetting />
 
       {notifications.length === 0 ? (
         <div>

@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router'
 import { Pressable, Text, View } from 'react-native'
 
 import { useAdNavigation } from '@/features/ads/hooks/use-ad-navigation'
+import { useProfile } from '@/features/auth/hooks/use-profile'
 import { useChatNavigation } from '@/features/messages/hooks/use-chat-navigation'
 import {
   useMarkAllNotificationsRead,
@@ -13,11 +14,38 @@ import type { AppNotification } from '@/features/notifications/types/notificatio
 
 import { Heading } from '@/shared/components/heading'
 import { QueryState } from '@/shared/components/query-state'
+import { Switch } from '@/shared/components/switch'
 import { useRefetchOnFocus } from '@/shared/hooks/use-refetch-on-focus'
 import { formatTimeOrDayMonth } from '@/shared/utils/date'
 import { openSitePage } from '@/shared/utils/open-site-page'
 
+import { useUpdateChatEmailNotifications } from '../hooks/use-profile-mutations'
 import { ProfileSectionScreen } from './profile-section-screen'
+import { SettingsCard } from './settings-card'
+
+// Переключатель писем о сообщениях: без почты письмо слать некуда.
+function ChatEmailNotificationsSetting() {
+  const { data: profile } = useProfile()
+  const { mutate: update } = useUpdateChatEmailNotifications()
+
+  if (!profile?.email) return null
+
+  return (
+    <View className='mb-6'>
+      <SettingsCard
+        label='Письма о новых сообщениях'
+        description='Присылать на почту, если вы не прочитали сообщение в чате в течение получаса. Письма о безопасности и модерации приходят всегда.'
+        action={
+          <Switch
+            value={profile.chatEmailNotifications}
+            onValueChange={update}
+            accessibilityLabel='Письма о новых сообщениях'
+          />
+        }
+      />
+    </View>
+  )
+}
 
 // «Уведомления» — как /profile/settings/notifications сайта. Нажатие
 // помечает уведомление прочитанным и, если у него есть ссылка, открывает
@@ -56,6 +84,7 @@ export function ProfileNotificationsScreen() {
 
   return (
     <ProfileSectionScreen title='Уведомления' onRefresh={notificationsQuery.refetch}>
+      <ChatEmailNotificationsSetting />
       <QueryState query={notificationsQuery} errorTitle='Не удалось загрузить уведомления'>
         {notifications =>
           notifications.length === 0 ? (

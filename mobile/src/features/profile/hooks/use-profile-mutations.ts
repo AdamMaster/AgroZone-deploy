@@ -109,6 +109,27 @@ export function useRemovePresentation() {
   })
 }
 
+// Переключатель переключается сразу, не дожидаясь ответа сервера; при ошибке
+// возвращаем прежнее значение.
+export function useUpdateChatEmailNotifications() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (enabled: boolean) => profileApi.updateChatEmailNotifications(enabled),
+    onMutate: async enabled => {
+      await queryClient.cancelQueries({ queryKey: profileQueryKey })
+      const previous = queryClient.getQueryData<UserProfile>(profileQueryKey)
+      if (previous) queryClient.setQueryData(profileQueryKey, { ...previous, chatEmailNotifications: enabled })
+      return { previous }
+    },
+    onError: (error, _enabled, context) => {
+      if (context?.previous) queryClient.setQueryData(profileQueryKey, context.previous)
+      showError(error)
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: profileQueryKey })
+  })
+}
+
 export function useToggleTwoFactor() {
   const applyProfile = useApplyProfile()
 

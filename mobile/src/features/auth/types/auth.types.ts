@@ -27,6 +27,8 @@ export interface UserProfile {
   // Подтверждён ли аккаунт — без этого нельзя включить двухфакторную защиту.
   isVerified: boolean
   isTwoFactorEnabled: boolean
+  // Письмо о непрочитанном сообщении в чате (через полчаса). Служебные письма приходят всегда.
+  chatEmailNotifications: boolean
   type: SellerType
   // ИП/компания, подтверждённые по ИНН через DaData.
   businessInn: string | null

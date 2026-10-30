@@ -59,6 +59,9 @@ export const profileApi = {
 
   updatePassword: (body: UpdatePasswordParams) => apiClient.patch<UserProfile>('/users/profile/password', body),
 
+  updateChatEmailNotifications: (chatEmailNotifications: boolean) =>
+    apiClient.patch<UserProfile>('/users/profile', { chatEmailNotifications }),
+
   toggleTwoFactor: () => apiClient.patch<UserProfile>('/users/2fa'),
 
   // Новый номер подтверждается звонком, как при регистрации: сервер выдаёт

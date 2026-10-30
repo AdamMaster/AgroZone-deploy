@@ -47,6 +47,9 @@ export interface IUser {
   role: UserRole
   isVerified: boolean
   isTwoFactorEnabled: boolean
+  // Письма о новых сообщениях в чате (переключатель в настройках уведомлений);
+  // служебные письма им не отключаются.
+  chatEmailNotifications: boolean
   method: AuthMethod
   accounts: IAccount[]
   maxUploadLimit: number

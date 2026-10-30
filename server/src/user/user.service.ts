@@ -569,6 +569,7 @@ export class UserService {
       data: {
         displayName: dto.name,
         ...(dto.type !== undefined && { type: dto.type }),
+        ...(dto.chatEmailNotifications !== undefined && { chatEmailNotifications: dto.chatEmailNotifications }),
         // Смена типа продавца сбрасывает уже подтверждённые через ИНН
         // бизнес-данные — иначе, например, при переключении вручную с
         // подтверждённого "Компания" на "ИП" (без повторной проверки через

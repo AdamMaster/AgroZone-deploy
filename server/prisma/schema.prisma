@@ -58,6 +58,12 @@ model User {
   isVerified         Boolean @default(false) @map("is_verified")
   isTwoFactorEnabled Boolean @default(false) @map("is_two_factor_enabled")
 
+  // Письма о новых сообщениях в чате (см. ChatEmailRemindersService): включены
+  // по умолчанию, пользователь отключает их в настройках. Служебные письма
+  // (сброс пароля, подтверждение почты, решения модерации) этим флагом не
+  // управляются и приходят всегда.
+  chatEmailNotifications Boolean @default(true) @map("chat_email_notifications")
+
   // Момент, когда пользователь дал согласие на обработку персональных
   // данных (152-ФЗ) — проставляется при регистрации (чекбокс на форме email
   // /SMS-регистрации, обязателен к отметке; для OAuth-регистрации согласие
@@ -80,6 +86,7 @@ model User {
 
   registrationAttempts RegistrationAttempt[]
   pushDevices          PushDevice[]
+  chatEmailReminders   ChatEmailReminder[]
 
   deletedAt DateTime? @map("deleted_at")
 
@@ -1413,6 +1420,8 @@ model Conversation {
 
   messages Message[]
 
+  chatEmailReminders ChatEmailReminder[]
+
   // Отзывы, оставленные покупателем по этому диалогу (см. SellerReview).
   sellerReviews SellerReview[]
 
@@ -1784,4 +1793,27 @@ model PushDevice {
   @@unique([provider, token])
   @@index([userId])
   @@map("push_devices")
+}
+
+// Отложенное письмо о новом сообщении в чате: «через CHAT_EMAIL_DELAY_MS
+// проверить, прочитал ли получатель, и если нет — написать ему на почту».
+// Строка создаётся на первое непрочитанное сообщение диалога для получателя и
+// удаляется воркером в момент отправки (или решения не отправлять), поэтому
+// таблица всегда короткая. Уникальность по (диалог, получатель) не даёт
+// плодить напоминания на каждое сообщение серии.
+model ChatEmailReminder {
+  id String @id @default(uuid())
+
+  conversationId String       @map("conversation_id")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  recipientId String @map("recipient_id")
+  recipient   User   @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  dueAt     DateTime @map("due_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([conversationId, recipientId])
+  @@index([dueAt])
+  @@map("chat_email_reminders")
 }

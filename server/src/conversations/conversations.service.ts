@@ -19,7 +19,7 @@ import {
   ConversationMessageCreatedPayload,
   ConversationUserPayload
 } from './conversations.events'
-import { CHAT_EMAIL_COOLDOWN_MS } from './constants/conversations.constants'
+import { ChatEmailRemindersService } from './chat-email-reminders.service'
 import { FindMessagesQueryDto } from './dto/find-messages-query.dto'
 import { SendMessageDto } from './dto/send-message.dto'
 import { StartConversationDto } from './dto/start-conversation.dto'
@@ -32,6 +32,7 @@ export class ConversationsService {
     private readonly prisma: PrismaService,
     private readonly blockedUsersService: BlockedUsersService,
     private readonly notificationsService: NotificationsService,
+    private readonly chatEmailRemindersService: ChatEmailRemindersService,
     private readonly fileService: FileService,
     private readonly eventEmitter: EventEmitter2,
     private readonly siteSettingsService: SiteSettingsService
@@ -91,7 +92,7 @@ export class ConversationsService {
       })
     )
 
-    await this.publishMessage(message, ad.userId, ad.title)
+    await this.publishMessage(message, ad.userId)
 
     return { conversation, message }
   }
@@ -121,7 +122,7 @@ export class ConversationsService {
       this.prisma.$transaction(tx => this.saveMessage(tx, conversationId, userId, text, attachments))
     )
 
-    await this.publishMessage(message, counterpartId, conversation.adTitleSnapshot ?? '')
+    await this.publishMessage(message, counterpartId)
 
     return message
   }
@@ -479,7 +480,7 @@ export class ConversationsService {
   }
 
   // Что происходит после сохранения сообщения: живая доставка и уведомление.
-  private async publishMessage(message: Message, recipientId: string, adTitle: string) {
+  private async publishMessage(message: Message, recipientId: string) {
     // senderId у сообщений этого сервиса всегда есть (гостевые — только в
     // SUPPORT), тип Message его лишь допускает пустым.
     const senderId = message.senderId!
@@ -491,57 +492,11 @@ export class ConversationsService {
       participantIds: [senderId, recipientId]
     } satisfies ConversationMessageCreatedPayload)
 
-    // Письмо получателю о новом сообщении (в список уведомлений оно не
-    // попадает, см. NotificationsService.notifyNewMessageByEmail) —
-    // best-effort: провал не должен ронять отправку самого сообщения.
-    // Здесь (в отличие от AdsService.reject/NotificationsService.notifyAdRejected,
-    // где в try/catch обёрнута только email-часть) в try/catch весь блок
-    // целиком — этот метод вызывается на порядки чаще, и создание самой
-    // записи Message не должно зависеть от доступности почты.
-    try {
-      if (!(await this.shouldEmailRecipient(message, recipientId))) return
-
-      const sender = await this.prisma.user.findUnique({ where: { id: senderId }, select: { displayName: true } })
-      await this.notificationsService.notifyNewMessageByEmail(
-        recipientId,
-        message.conversationId,
-        adTitle,
-        sender?.displayName ?? 'Пользователь',
-        // Сообщение только с фото: в превью уведомления вместо пустого текста.
-        message.text.trim() || (message.attachments.length ? 'Фото' : '')
-      )
-    } catch (error) {
-      this.logger.error(`Не удалось отправить уведомление о новом сообщении: ${(error as Error).message}`)
-    }
-  }
-
-  // Письмо — на первое непрочитанное сообщение, а не на каждое: пока
-  // получатель не открыл диалог, новые сообщения того же отправителя в течение
-  // CHAT_EMAIL_COOLDOWN_MS писем не порождают (быстрая переписка из 30
-  // сообщений — одно письмо, а не тридцать). Если получатель молчит дольше,
-  // следующее сообщение напомнит о себе новым письмом.
-  private async shouldEmailRecipient(message: Message, recipientId: string): Promise<boolean> {
-    const conversation = await this.prisma.conversation.findUnique({
-      where: { id: message.conversationId },
-      select: { buyerId: true, buyerLastReadAt: true, sellerLastReadAt: true }
-    })
-
-    if (!conversation) return false
-
-    const lastReadAt =
-      conversation.buyerId === recipientId ? conversation.buyerLastReadAt : conversation.sellerLastReadAt
-    const windowStart = new Date(message.createdAt.getTime() - CHAT_EMAIL_COOLDOWN_MS)
-    const since = lastReadAt && lastReadAt > windowStart ? lastReadAt : windowStart
-
-    const earlierUnread = await this.prisma.message.count({
-      where: {
-        conversationId: message.conversationId,
-        senderId: message.senderId,
-        createdAt: { gte: since, lt: message.createdAt }
-      }
-    })
-
-    return earlierUnread === 0
+    // Письмо получателю — не сразу, а через CHAT_EMAIL_DELAY_MS и только если он
+    // за это время сообщение так и не прочитал (см. ChatEmailRemindersService;
+    // в список уведомлений письмо не попадает). Постановка напоминания не бросает:
+    // создание самой записи Message от почты не зависит.
+    await this.chatEmailRemindersService.scheduleForMessage(message, recipientId)
   }
 
   private async getConversationForParticipant(conversationId: string, userId: string) {

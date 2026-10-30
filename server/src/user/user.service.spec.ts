@@ -945,6 +945,30 @@ describe('UserService', () => {
     })
   })
 
+  describe('update: письма о сообщениях в чате', () => {
+    beforeEach(() => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', type: 'INDIVIDUAL', accounts: [], phones: [] })
+      prisma.user.update.mockResolvedValue({ id: 'user-1' })
+    })
+
+    it.each([true, false])('сохраняет переключатель chatEmailNotifications = %s', async value => {
+      await service.update('user-1', { chatEmailNotifications: value })
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: expect.objectContaining({ chatEmailNotifications: value })
+      })
+    })
+
+    it('если переключатель не передан, настройка не затрагивается', async () => {
+      await service.update('user-1', { name: 'Иван' })
+
+      const { data } = prisma.user.update.mock.calls[0][0] as { data: Record<string, unknown> }
+
+      expect(data).not.toHaveProperty('chatEmailNotifications')
+    })
+  })
+
   describe('updateAvatar', () => {
     const OLD = 'https://cdn.example/avatars/old.jpg'
     const NEW = 'https://cdn.example/avatars/new.jpg'

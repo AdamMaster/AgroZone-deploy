@@ -11,13 +11,14 @@ import {
   CONVERSATION_READ_EVENT,
   CONVERSATION_REMOVED_EVENT
 } from './conversations.events'
-import { CHAT_EMAIL_COOLDOWN_MS } from './constants/conversations.constants'
+import type { ChatEmailRemindersService } from './chat-email-reminders.service'
 import { ConversationsService } from './conversations.service'
 
 describe('ConversationsService: живые события', () => {
   let prisma: any
   let blockedUsersService: any
   let notificationsService: any
+  let chatEmailRemindersService: { scheduleForMessage: jest.Mock }
   let siteSettingsService: { getFlags: jest.Mock }
   let fileService: { uploadChatPhotos: jest.Mock; deleteFilesQuietly: jest.Mock }
   let eventEmitter: { emit: jest.Mock }
@@ -72,9 +73,9 @@ describe('ConversationsService: живые события', () => {
     }
     blockedUsersService = { isBlocked: jest.fn().mockResolvedValue(false) }
     notificationsService = {
-      notifyNewMessageByEmail: jest.fn().mockResolvedValue(undefined),
       notifyDealConfirmed: jest.fn().mockResolvedValue(undefined)
     }
+    chatEmailRemindersService = { scheduleForMessage: jest.fn().mockResolvedValue(undefined) }
     siteSettingsService = { getFlags: jest.fn().mockResolvedValue({ sellerRatings: true }) }
     fileService = {
       uploadChatPhotos: jest.fn().mockResolvedValue([]),
@@ -86,6 +87,7 @@ describe('ConversationsService: живые события', () => {
       prisma,
       blockedUsersService,
       notificationsService,
+      chatEmailRemindersService as unknown as ChatEmailRemindersService,
       fileService as unknown as FileService,
       eventEmitter as unknown as EventEmitter2,
       siteSettingsService as unknown as SiteSettingsService
@@ -106,14 +108,6 @@ describe('ConversationsService: живые события', () => {
 
     await expect(service.sendMessage('c1', 'buyer', { text: 'Привет' })).rejects.toBeInstanceOf(ForbiddenException)
     expect(eventEmitter.emit).not.toHaveBeenCalled()
-  })
-
-  it('провал уведомления не отменяет рассылку сообщения', async () => {
-    notificationsService.notifyNewMessageByEmail.mockRejectedValue(new Error('push down'))
-
-    await service.sendMessage('c1', 'buyer', { text: 'Привет' })
-
-    expect(eventEmitter.emit).toHaveBeenCalledWith(CONVERSATION_MESSAGE_CREATED_EVENT, expect.anything())
   })
 
   it('прочтение сообщает событие пользователю', async () => {
@@ -380,30 +374,6 @@ describe('ConversationsService: живые события', () => {
       })
     })
 
-    it('в уведомлении сообщение только с фото подписано «Фото»', async () => {
-      const photoMessage = {
-        id: 'm2',
-        conversationId: 'c1',
-        senderId: 'buyer',
-        text: '',
-        attachments: [PHOTO],
-        createdAt: new Date('2026-10-29T12:00:00.000Z')
-      }
-
-      fileService.uploadChatPhotos.mockResolvedValue([PHOTO])
-      prisma.message.create.mockReturnValue(photoMessage)
-
-      await service.sendMessage('c1', 'buyer', {}, [file])
-
-      expect(notificationsService.notifyNewMessageByEmail).toHaveBeenCalledWith(
-        'seller',
-        'c1',
-        'Трактор',
-        'Иван',
-        'Фото'
-      )
-    })
-
     it('заблокированному фото не загружаются', async () => {
       blockedUsersService.isBlocked.mockResolvedValue(true)
 
@@ -537,45 +507,26 @@ describe('ConversationsService: живые события', () => {
   })
 
   describe('письмо о новом сообщении', () => {
-    it('первое непрочитанное сообщение — письмо уходит', async () => {
-      await service.sendMessage('c1', 'buyer', { text: 'Привет' })
+    it('после сохранения сообщения ставится отложенное письмо получателю', async () => {
+      const message = await service.sendMessage('c1', 'buyer', { text: 'Привет' })
 
-      expect(notificationsService.notifyNewMessageByEmail).toHaveBeenCalledTimes(1)
+      expect(chatEmailRemindersService.scheduleForMessage).toHaveBeenCalledWith(message, 'seller')
     })
 
-    it('пока получатель не прочёл предыдущее сообщение, новые писем не порождают', async () => {
-      prisma.message.count.mockResolvedValue(1)
-
-      await service.sendMessage('c1', 'buyer', { text: 'Ещё одно' })
-
-      expect(notificationsService.notifyNewMessageByEmail).not.toHaveBeenCalled()
-      // Сообщение при этом доставляется как обычно.
-      expect(eventEmitter.emit).toHaveBeenCalledWith(CONVERSATION_MESSAGE_CREATED_EVENT, expect.anything())
-    })
-
-    it('предыдущие сообщения ищутся за период напоминания, если получатель давно не читал', async () => {
+    it('сообщение рассылается живьём раньше, чем планируется письмо', async () => {
       await service.sendMessage('c1', 'buyer', { text: 'Привет' })
 
-      const { createdAt } = (await prisma.message.create.mock.results[0].value) as { createdAt: Date }
-
-      expect(prisma.message.count).toHaveBeenCalledWith({
-        where: {
-          conversationId: 'c1',
-          senderId: 'buyer',
-          createdAt: { gte: new Date(createdAt.getTime() - CHAT_EMAIL_COOLDOWN_MS), lt: createdAt }
-        }
-      })
+      expect(eventEmitter.emit.mock.invocationCallOrder[0]).toBeLessThan(
+        chatEmailRemindersService.scheduleForMessage.mock.invocationCallOrder[0]
+      )
     })
 
-    it('если получатель недавно открывал диалог, учитываются только сообщения после этого', async () => {
-      const readAt = new Date('2026-10-29T11:30:00.000Z')
-      prisma.conversation.findUnique.mockResolvedValue({ ...conversation, sellerLastReadAt: readAt })
+    it('заблокированному письмо не планируется', async () => {
+      blockedUsersService.isBlocked.mockResolvedValue(true)
 
-      await service.sendMessage('c1', 'buyer', { text: 'Привет' })
+      await expect(service.sendMessage('c1', 'buyer', { text: 'Привет' })).rejects.toBeInstanceOf(ForbiddenException)
 
-      expect(prisma.message.count).toHaveBeenCalledWith({
-        where: expect.objectContaining({ createdAt: expect.objectContaining({ gte: readAt }) })
-      })
+      expect(chatEmailRemindersService.scheduleForMessage).not.toHaveBeenCalled()
     })
   })
   describe('«Удалить переписку»: история с чистого листа', () => {

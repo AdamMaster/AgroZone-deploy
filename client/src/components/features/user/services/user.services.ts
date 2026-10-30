@@ -4,8 +4,8 @@ import { api } from '@/shared/api'
 
 import { IUser } from '../../auth/types'
 import { TypeSettingsSchema } from '../schemes'
-import { TypePasswordChangeSchema } from '../schemes/password-change.schema'
 import { TypeDeleteAccountSchema } from '../schemes/delete-account.schema'
+import { TypePasswordChangeSchema } from '../schemes/password-change.schema'
 
 class UserServices {
   async findProfile() {
@@ -16,6 +16,12 @@ class UserServices {
 
   async updateProfile(body: TypeSettingsSchema) {
     const response = await api.patch<IUser>('users/profile', body)
+
+    return response
+  }
+
+  async updateChatEmailNotifications(chatEmailNotifications: boolean) {
+    const response = await api.patch<IUser>('users/profile', { chatEmailNotifications })
 
     return response
   }
@@ -56,7 +62,7 @@ class UserServices {
     return response
   }
 
-    async updatePassword(data: TypePasswordChangeSchema) {
+  async updatePassword(data: TypePasswordChangeSchema) {
     const { confirmPassword, ...payload } = data
 
     const response = await api.patch<boolean>('users/profile/password', payload)
