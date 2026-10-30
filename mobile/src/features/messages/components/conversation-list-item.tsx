@@ -31,7 +31,7 @@ export const ConversationListItem = memo(function ConversationListItem({
   onOpen,
   onOpenMenu
 }: ConversationListItemProps) {
-  const { ad, counterpart, lastMessage, isUnread } = conversation
+  const { ad, counterpart, lastMessage, isUnread, unreadCount } = conversation
   const isDeleted = !!counterpart.deletedAt
   const iconColor = useThemeColor('--color-gray-400')
   const name = isDeleted ? 'Пользователь удалил аккаунт' : (counterpart.displayName ?? 'Пользователь')
@@ -52,7 +52,7 @@ export const ConversationListItem = memo(function ConversationListItem({
   return (
     <Pressable
       accessibilityRole='button'
-      accessibilityLabel={`${isUnread ? 'Есть новые сообщения. ' : ''}${name}, ${ad.title}`}
+      accessibilityLabel={`${isUnread ? `Новых сообщений: ${unreadCount}. ` : ''}${name}, ${ad.title}`}
       accessibilityActions={[{ name: MENU_ACTION, label: 'Заблокировать или удалить переписку' }]}
       onAccessibilityAction={event => {
         if (event.nativeEvent.actionName === MENU_ACTION) onOpenMenu(conversation)
@@ -80,7 +80,11 @@ export const ConversationListItem = memo(function ConversationListItem({
           {lastMessage && (
             <View className='flex-row items-center gap-3'>
               <Text className='text-xs text-gray-400'>{formatMessageTime(lastMessage.createdAt)}</Text>
-              {isUnread && <View className='size-2 rounded-full bg-primary' />}
+              {isUnread && (
+                <View className='h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1'>
+                  <Text className='text-[11px] font-medium text-white'>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                </View>
+              )}
             </View>
           )}
         </View>

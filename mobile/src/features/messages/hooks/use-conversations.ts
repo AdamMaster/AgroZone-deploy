@@ -118,7 +118,7 @@ export function useMarkConversationRead() {
     mutationFn: (conversationId: string) => conversationsApi.markRead(conversationId),
     onSuccess: (_data, conversationId) =>
       queryClient.setQueryData<ConversationListItem[]>(conversationsQueryKey, current =>
-        current?.map(item => (item.id === conversationId ? { ...item, isUnread: false } : item))
+        current?.map(item => (item.id === conversationId ? { ...item, isUnread: false, unreadCount: 0 } : item))
       )
   })
 }

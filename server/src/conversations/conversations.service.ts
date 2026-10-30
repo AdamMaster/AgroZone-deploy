@@ -166,6 +166,8 @@ export class ConversationsService {
       conversations.filter(conversation => conversation.sellerId === userId).map(conversation => conversation.id)
     )
 
+    const unreadCounts = await this.countUnreadMessages(userId, conversations)
+
     return conversations.map(conversation => {
       const isBuyer = conversation.buyerId === userId
       const counterpart = isBuyer ? conversation.seller : conversation.buyer
@@ -187,6 +189,9 @@ export class ConversationsService {
       // отдаём id: null, а заголовок берём из живых данных, если строка ещё
       // есть, иначе — из снепшота, снятого при создании диалога.
       const ad = conversation.ad
+      // Своё же сообщение не считается непрочитанным.
+      const isUnread =
+        !!lastMessage && lastMessage.senderId !== userId && (!lastReadAt || lastMessage.createdAt > lastReadAt)
 
       return {
         id: conversation.id,
@@ -208,9 +213,12 @@ export class ConversationsService {
         isSeller: !isBuyer,
         canConfirmDeal: repliedConversationIds.has(conversation.id),
         dealConfirmedAt: conversation.dealConfirmedAt,
-        // Своё же сообщение не считается непрочитанным.
-        isUnread:
-          !!lastMessage && lastMessage.senderId !== userId && (!lastReadAt || lastMessage.createdAt > lastReadAt),
+        isUnread,
+        // Сколько сообщений собеседника ещё не прочитано — число в кружке
+        // у диалога. Согласовано с isUnread: непрочитанный диалог — минимум 1
+        // (например, если последнее сообщение пришло, пока считали), а
+        // прочитанный — всегда 0.
+        unreadCount: isUnread ? Math.max(unreadCounts.get(conversation.id) ?? 0, 1) : 0,
         updatedAt: conversation.lastMessageAt ?? conversation.createdAt
       }
     })
@@ -253,6 +261,47 @@ export class ConversationsService {
     })
 
     this.eventEmitter.emit(CONVERSATION_READ_EVENT, { conversationId, userId } satisfies ConversationUserPayload)
+  }
+
+  // Непрочитанные сообщения собеседника по каждому диалогу списка — одним
+  // запросом, а не по запросу на диалог. Непрочитанное — всё новее курсора
+  // прочтения и новее «Удалить переписку» (удалённое участнику не показывается
+  // и числиться непрочитанным не может). Диалог без единого курсора считается
+  // прочитанным с нуля, то есть учитываются все сообщения собеседника.
+  private async countUnreadMessages(
+    userId: string,
+    conversations: Array<{
+      id: string
+      buyerId: string | null
+      buyerLastReadAt: Date | null
+      sellerLastReadAt: Date | null
+      buyerClearedAt: Date | null
+      sellerClearedAt: Date | null
+    }>
+  ): Promise<Map<string, number>> {
+    if (conversations.length === 0) return new Map()
+
+    const rows = await this.prisma.message.groupBy({
+      by: ['conversationId'],
+      where: {
+        deletedAt: null,
+        senderId: { not: userId },
+        OR: conversations.map(conversation => {
+          const isBuyer = conversation.buyerId === userId
+          const lastReadAt = isBuyer ? conversation.buyerLastReadAt : conversation.sellerLastReadAt
+          const clearedAt = isBuyer ? conversation.buyerClearedAt : conversation.sellerClearedAt
+          const since = [lastReadAt, clearedAt].reduce<Date | null>(
+            (latest, date) => (date && (!latest || date > latest) ? date : latest),
+            null
+          )
+
+          return { conversationId: conversation.id, ...(since && { createdAt: { gt: since } }) }
+        })
+      },
+      _count: { _all: true }
+    })
+
+    return new Map(rows.map(row => [row.conversationId, row._count._all]))
   }
 
   // Из переданных диалогов, где пользователь продавец, — те, где он сам хоть

@@ -45,6 +45,8 @@ export interface ConversationListItem {
   // Когда продавец отметил сделку состоявшейся; null — не отмечена.
   dealConfirmedAt: string | null
   isUnread: boolean
+  // Сколько сообщений собеседника не прочитано — число в кружке у диалога.
+  unreadCount: number
   updatedAt: string
 }
 

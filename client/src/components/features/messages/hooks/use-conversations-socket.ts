@@ -46,7 +46,7 @@ export function useConversationsSocket(enabled: boolean) {
     // Прочитано на другом устройстве или в другой вкладке.
     socket.on('conversations:read', ({ conversationId }: IConversationSocketEvent) => {
       queryClient.setQueryData<IConversationListItem[]>(['conversations'], old =>
-        old?.map(item => (item.id === conversationId ? { ...item, isUnread: false } : item))
+        old?.map(item => (item.id === conversationId ? { ...item, isUnread: false, unreadCount: 0 } : item))
       )
     })
 

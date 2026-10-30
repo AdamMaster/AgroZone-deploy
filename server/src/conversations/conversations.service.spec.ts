@@ -66,6 +66,7 @@ describe('ConversationsService: живые события', () => {
       message: {
         create: jest.fn().mockReturnValue(message),
         findMany: jest.fn().mockResolvedValue([]),
+        groupBy: jest.fn().mockResolvedValue([]),
         count: jest.fn().mockResolvedValue(0)
       },
       user: { findUnique: jest.fn().mockResolvedValue({ displayName: 'Иван', deletedAt: null }) },
@@ -342,6 +343,96 @@ describe('ConversationsService: живые события', () => {
       ])
     })
 
+    it('в списке у диалога есть число непрочитанных сообщений, одним запросом на весь список', async () => {
+      const READ = new Date('2026-10-28T10:00:00.000Z')
+      const LATER = new Date('2026-10-29T10:00:00.000Z')
+      const row = (id: string, overrides: Record<string, unknown>) => ({
+        id,
+        buyerId: 'me',
+        sellerId: 'other',
+        dealConfirmedAt: null,
+        buyerLastReadAt: null,
+        sellerLastReadAt: null,
+        buyerClearedAt: null,
+        sellerClearedAt: null,
+        lastMessageAt: LATER,
+        createdAt: READ,
+        adTitleSnapshot: 'Трактор',
+        ad: null,
+        buyer: { id: 'me' },
+        seller: { id: 'other' },
+        messages: [{ id: `m-${id}`, senderId: 'other', createdAt: LATER }],
+        ...overrides
+      })
+      prisma.conversation.findMany.mockResolvedValue([
+        row('several', { buyerLastReadAt: READ }),
+        row('read', { buyerLastReadAt: LATER }),
+        row('mine', { messages: [{ id: 'm-mine', senderId: 'me', createdAt: LATER }] }),
+        row('as-seller', { buyerId: 'other', sellerId: 'me', sellerLastReadAt: READ, buyerLastReadAt: LATER })
+      ])
+      prisma.message.groupBy.mockResolvedValue([
+        { conversationId: 'several', _count: { _all: 5 } },
+        { conversationId: 'as-seller', _count: { _all: 2 } }
+      ])
+
+      const list = await service.getConversations('me')
+
+      expect(prisma.message.groupBy).toHaveBeenCalledTimes(1)
+      expect(prisma.message.groupBy).toHaveBeenCalledWith({
+        by: ['conversationId'],
+        where: {
+          deletedAt: null,
+          senderId: { not: 'me' },
+          // Для каждого диалога — курсор прочтения именно этого участника.
+          OR: [
+            { conversationId: 'several', createdAt: { gt: READ } },
+            { conversationId: 'read', createdAt: { gt: LATER } },
+            { conversationId: 'mine' },
+            { conversationId: 'as-seller', createdAt: { gt: READ } }
+          ]
+        },
+        _count: { _all: true }
+      })
+      expect(list.map(item => [item.id, item.isUnread, item.unreadCount])).toEqual([
+        ['several', true, 5],
+        ['read', false, 0],
+        ['mine', false, 0],
+        ['as-seller', true, 2]
+      ])
+    })
+
+    it('«Удалить переписку» после прочтения сдвигает границу подсчёта', async () => {
+      const READ = new Date('2026-10-28T10:00:00.000Z')
+      const CLEARED_LATER = new Date('2026-10-29T08:00:00.000Z')
+      prisma.conversation.findMany.mockResolvedValue([
+        {
+          id: 'c',
+          buyerId: 'me',
+          sellerId: 'other',
+          dealConfirmedAt: null,
+          buyerLastReadAt: READ,
+          sellerLastReadAt: null,
+          buyerClearedAt: CLEARED_LATER,
+          sellerClearedAt: null,
+          lastMessageAt: null,
+          createdAt: READ,
+          adTitleSnapshot: 'Трактор',
+          ad: null,
+          buyer: { id: 'me' },
+          seller: { id: 'other' },
+          messages: []
+        }
+      ])
+
+      await service.getConversations('me')
+
+      expect(prisma.message.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ OR: [{ conversationId: 'c', createdAt: { gt: CLEARED_LATER } }] })
+        })
+      )
+    })
+
     it('если пользователь нигде не продавец, ответы не запрашиваются', async () => {
       prisma.conversation.findMany.mockResolvedValue([])
 
@@ -598,9 +689,9 @@ describe('ConversationsService: живые события', () => {
 
       const list = await service.getConversations('me')
 
-      expect(list.map(item => [item.id, item.lastMessage?.id ?? null, item.isUnread])).toEqual([
-        ['old', null, false],
-        ['new', 'm-new', true]
+      expect(list.map(item => [item.id, item.lastMessage?.id ?? null, item.isUnread, item.unreadCount])).toEqual([
+        ['old', null, false, 0],
+        ['new', 'm-new', true, 1]
       ])
     })
   })

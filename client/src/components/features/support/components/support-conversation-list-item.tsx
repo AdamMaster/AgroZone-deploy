@@ -20,7 +20,7 @@ export const SupportConversationListItem = ({ isAdmin, onClick }: SupportConvers
     <button
       type='button'
       onClick={onClick}
-      className='flex w-full cursor-pointer items-center gap-3 border-b border-gray-100 py-2 text-left transition-colors hover:bg-gray-100 sm:rounded-lg sm:px-3 sm:py-3'
+      className='flex w-full cursor-pointer items-center gap-3 py-2 text-left transition-colors hover:bg-gray-100 sm:rounded-lg sm:px-3 sm:py-3 dark:hover:bg-gray-100/20'
     >
       <span className='bg-primary flex size-15 shrink-0 items-center justify-center rounded-lg text-white'>
         <Headset className='size-6' />

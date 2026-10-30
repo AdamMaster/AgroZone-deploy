@@ -38,7 +38,7 @@ function createHandlers(queryClient: QueryClient) {
     // Прочитано на другом устройстве.
     onRead: ({ conversationId }: ConversationEvent) =>
       queryClient.setQueryData<ConversationListItem[]>(conversationsQueryKey, current =>
-        current?.map(item => (item.id === conversationId ? { ...item, isUnread: false } : item))
+        current?.map(item => (item.id === conversationId ? { ...item, isUnread: false, unreadCount: 0 } : item))
       ),
     // Продавец отметил (или снял) «сделка состоялась» — на другом устройстве
     // или у собеседника.
