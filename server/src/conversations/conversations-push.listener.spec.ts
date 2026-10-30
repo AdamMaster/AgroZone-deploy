@@ -28,17 +28,23 @@ describe('ConversationsPushListener', () => {
   it('получателю не в сети уходит push с именем, текстом и ссылкой на чат', async () => {
     await listener.handleMessageCreated(event())
 
-    expect(pushService.sendToUser).toHaveBeenCalledWith('seller', {
-      title: 'Иван',
-      body: 'Здравствуйте, трактор ещё продаётся?',
-      link: 'agrozone://chat/c1',
-      data: { conversationId: 'c1' }
-    })
+    expect(pushService.sendToUser).toHaveBeenCalledWith(
+      'seller',
+      {
+        title: 'Иван',
+        body: 'Здравствуйте, трактор ещё продаётся?',
+        link: 'agrozone://chat/c1',
+        data: { conversationId: 'c1' }
+      },
+      { followUp: false }
+    )
   })
 
   it('сообщение только с фото подписано «Фото», длинный текст обрезается', async () => {
     await listener.handleMessageCreated(event('', { attachments: ['x'] }))
-    expect(pushService.sendToUser).toHaveBeenLastCalledWith('seller', expect.objectContaining({ body: 'Фото' }))
+    expect(pushService.sendToUser).toHaveBeenLastCalledWith('seller', expect.objectContaining({ body: 'Фото' }), {
+      followUp: false
+    })
 
     await listener.handleMessageCreated(event('я'.repeat(500)))
     const { body } = pushService.sendToUser.mock.calls[1][1] as { body: string }
@@ -53,12 +59,14 @@ describe('ConversationsPushListener', () => {
     expect(pushService.sendToUser).not.toHaveBeenCalled()
   })
 
-  it('серия сообщений подряд — один push', async () => {
+  it('серия сообщений подряд — продолжение серии: уходит с followUp, чтобы обновить уведомление', async () => {
     prisma.message.count.mockResolvedValue(1)
 
-    await listener.handleMessageCreated(event())
+    await listener.handleMessageCreated(event('Ещё вопрос'))
 
-    expect(pushService.sendToUser).not.toHaveBeenCalled()
+    expect(pushService.sendToUser).toHaveBeenCalledWith('seller', expect.objectContaining({ body: 'Ещё вопрос' }), {
+      followUp: true
+    })
   })
 
   it('прочтённые получателем сообщения серию не продлевают', async () => {

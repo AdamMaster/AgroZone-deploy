@@ -44,29 +44,31 @@ export class ConversationsPushListener {
       const lastReadAt =
         conversation.buyerId === recipientId ? conversation.buyerLastReadAt : conversation.sellerLastReadAt
 
-      if (await this.hasRecentUnreadFromSender(message, senderId, lastReadAt)) {
-        this.logger.log(`Push не нужен: получатель ${recipientId} уже оповещён о предыдущих сообщениях`)
-
-        return
-      }
+      // Продолжение серии: новое сообщение лишь обновляет текст уведомления
+      // там, где это возможно (FCM); остальные каналы уже оповещены.
+      const followUp = await this.hasRecentUnreadFromSender(message, senderId, lastReadAt)
 
       const sender = await this.prisma.user.findUnique({ where: { id: senderId }, select: { displayName: true } })
       const text = message.text.trim()
 
-      await this.pushService.sendToUser(recipientId, {
-        title: sender?.displayName ?? 'Новое сообщение',
-        body: text ? this.truncate(text) : 'Фото',
-        // Нажатие открывает именно этот чат в приложении (экран chat/[id]).
-        link: `agrozone://chat/${message.conversationId}`,
-        data: { conversationId: message.conversationId }
-      })
+      await this.pushService.sendToUser(
+        recipientId,
+        {
+          title: sender?.displayName ?? 'Новое сообщение',
+          body: text ? this.truncate(text) : 'Фото',
+          // Нажатие открывает именно этот чат в приложении (экран chat/[id]).
+          link: `agrozone://chat/${message.conversationId}`,
+          data: { conversationId: message.conversationId }
+        },
+        { followUp }
+      )
     } catch (error) {
       this.logger.error(`Не удалось отправить push о сообщении: ${(error as Error).message}`)
     }
   }
 
-  // Серия сообщений подряд — один звонок: пока получатель не прочёл
-  // предыдущее, новые в течение PUSH_CONVERSATION_COOLDOWN_MS не повторяются.
+  // Серия сообщений подряд: пока получатель не прочёл предыдущее, новые в
+  // течение PUSH_CONVERSATION_COOLDOWN_MS — продолжение серии (см. followUp).
   private async hasRecentUnreadFromSender(
     message: ConversationMessageCreatedPayload['message'],
     senderId: string,

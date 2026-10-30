@@ -3,6 +3,7 @@ import { Platform } from 'react-native'
 
 interface FirebasePushNativeModule {
   getToken(): Promise<string>
+  clearNotifications(): void
 }
 
 // Сколько ждём токен FCM: на телефонах без сервисов Google или при недоступном
@@ -27,5 +28,15 @@ export async function getFcmToken(): Promise<string | null> {
     ])
   } catch {
     return null
+  }
+}
+
+// Убирает уведомления приложения из шторки (человек открыл приложение и видит
+// новые сообщения в нём). Старые сборки без этой функции просто пропускаем.
+export function clearPushNotifications(): void {
+  try {
+    nativeModule?.clearNotifications?.()
+  } catch {
+    // Уведомления в шторке — не повод для ошибки.
   }
 }

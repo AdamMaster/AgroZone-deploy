@@ -36,8 +36,8 @@ class MessagingService : FirebaseMessagingService() {
 
     createChannel()
 
-    // Одно уведомление на диалог: новое сообщение обновляет прежнее, а не
-    // складывает десяток одинаковых.
+    // Одно уведомление на диалог: новое сообщение заменяет прежнее (тот же id),
+    // а не складывает десяток одинаковых.
     val notificationId = (conversationId ?: title).hashCode()
 
     val notification = NotificationCompat.Builder(this, CHANNEL_ID)
@@ -48,6 +48,9 @@ class MessagingService : FirebaseMessagingService() {
       .setStyle(NotificationCompat.BigTextStyle().bigText(body))
       .setCategory(NotificationCompat.CATEGORY_MESSAGE)
       .setPriority(NotificationCompat.PRIORITY_HIGH)
+      // Следующее сообщение того же чата обновляет текст в этом же уведомлении и
+      // не звенит повторно (пока человек не смахнул его — тогда звонок снова).
+      .setOnlyAlertOnce(true)
       .setAutoCancel(true)
       .setContentIntent(contentIntent(link, notificationId))
       .build()

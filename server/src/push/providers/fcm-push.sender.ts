@@ -2,11 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { createSign } from 'node:crypto'
 
-import {
-  FCM_MESSAGE_TTL_SECONDS,
-  FCM_TOKEN_REFRESH_MARGIN_MS,
-  PUSH_SEND_TIMEOUT_MS
-} from '../constants/push.constants'
+import { FCM_MESSAGE_TTL_SECONDS, FCM_TOKEN_REFRESH_MARGIN_MS, PUSH_SEND_TIMEOUT_MS } from '../constants/push.constants'
 import type { PushNotificationPayload, PushSendResult } from '../push.types'
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'

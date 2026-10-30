@@ -13,7 +13,11 @@ const { privateKey, publicKey } = generateKeyPairSync('rsa', {
 
 const encodeAccount = (account: object) => Buffer.from(JSON.stringify(account)).toString('base64')
 
-const account = { project_id: 'agrozone-test', client_email: 'push@agrozone-test.iam.gserviceaccount.com', private_key: privateKey }
+const account = {
+  project_id: 'agrozone-test',
+  client_email: 'push@agrozone-test.iam.gserviceaccount.com',
+  private_key: privateKey
+}
 
 describe('FcmPushSender', () => {
   let config: Record<string, string | undefined>

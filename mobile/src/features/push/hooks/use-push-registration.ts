@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { AppState } from 'react-native'
 
+import { clearPushNotifications } from '../lib/firebase-push'
 import { registerPushDevice } from '../lib/push-registration'
 
 // Не чаще раза в несколько часов при возвращении в приложение: токен меняется
@@ -19,9 +20,15 @@ export function usePushRegistration(): void {
     }
 
     register()
+    clearPushNotifications()
 
     const subscription = AppState.addEventListener('change', state => {
-      if (state === 'active' && Date.now() - lastRegisteredAt > REREGISTER_INTERVAL_MS) register()
+      if (state !== 'active') return
+
+      // Человек вернулся в приложение — уведомления о сообщениях в шторке уже не нужны.
+      clearPushNotifications()
+
+      if (Date.now() - lastRegisteredAt > REREGISTER_INTERVAL_MS) register()
     })
 
     return () => subscription.remove()

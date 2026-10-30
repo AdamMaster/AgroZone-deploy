@@ -6,7 +6,11 @@ import { PrismaService } from '@/prisma/prisma.service'
 import { RegisterPushDeviceDto } from './dto/register-push-device.dto'
 import { FcmPushSender } from './providers/fcm-push.sender'
 import { RuStorePushSender } from './providers/rustore-push.sender'
-import type { PushNotificationPayload, PushSendResult } from './push.types'
+import type { PushNotificationPayload, PushSendResult, SendToUserOptions } from './push.types'
+
+// Каналы, у которых уведомление рисует приложение и новое сообщение заменяет
+// прежнее. У RuStore уведомление показывает его SDK, заменить его нельзя.
+const PUSH_REPLACEABLE_PROVIDERS: ReadonlySet<PushProvider> = new Set([PushProvider.FCM])
 
 @Injectable()
 export class PushService {
@@ -43,12 +47,19 @@ export class PushService {
 
   // Отправка на все устройства пользователя. Никогда не бросает: пуш — удобство,
   // и сбой отправки не должен ронять то, ради чего он отправляется (сообщение).
-  async sendToUser(userId: string, payload: PushNotificationPayload): Promise<void> {
+  async sendToUser(
+    userId: string,
+    payload: PushNotificationPayload,
+    { followUp = false }: SendToUserOptions = {}
+  ): Promise<void> {
     try {
-      const devices = await this.prisma.pushDevice.findMany({
+      const allDevices = await this.prisma.pushDevice.findMany({
         where: { userId },
         select: { id: true, provider: true, token: true }
       })
+      const devices = followUp
+        ? allDevices.filter(({ provider }) => PUSH_REPLACEABLE_PROVIDERS.has(provider))
+        : allDevices
 
       const results = await Promise.all(
         devices.map(async device => ({
@@ -58,7 +69,7 @@ export class PushService {
       )
 
       this.logger.log(
-        `Push пользователю ${userId}: устройств ${devices.length}` +
+        `Push пользователю ${userId}${followUp ? ' (обновление серии)' : ''}: устройств ${devices.length}` +
           (devices.length > 0 ? ` (${results.map(({ result }) => result).join(', ')})` : '')
       )
 

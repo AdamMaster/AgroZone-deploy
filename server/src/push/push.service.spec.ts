@@ -89,6 +89,18 @@ describe('PushService', () => {
     expect(prisma.pushDevice.deleteMany).not.toHaveBeenCalled()
   })
 
+  it('продолжение серии получают только каналы, которые умеют обновлять уведомление (FCM)', async () => {
+    prisma.pushDevice.findMany.mockResolvedValue([
+      { id: 'd1', provider: PushProvider.RUSTORE, token: 'a' },
+      { id: 'd2', provider: PushProvider.FCM, token: 'b' }
+    ])
+
+    await service.sendToUser('u1', { title: 'T', body: 'B' }, { followUp: true })
+
+    expect(sender.send).not.toHaveBeenCalled()
+    expect(fcmSender.send).toHaveBeenCalledWith('b', { title: 'T', body: 'B' })
+  })
+
   it('недействующие токены забываются, живые остаются', async () => {
     prisma.pushDevice.findMany.mockResolvedValue([
       { id: 'dead', provider: PushProvider.RUSTORE, token: 'a' },

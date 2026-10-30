@@ -1,5 +1,6 @@
 package expo.modules.firebasepush
 
+import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.messaging.FirebaseMessaging
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
@@ -31,6 +32,12 @@ class FirebasePushModule : Module() {
       } catch (error: Exception) {
         promise.reject("ERR_FCM_PUSH", error.message ?: "FCM: не удалось получить токен", error)
       }
+    }
+
+    // Убирает уведомления приложения из шторки: человек открыл приложение и
+    // сам видит новые сообщения, висеть им там незачем.
+    Function("clearNotifications") {
+      appContext.reactContext?.let { NotificationManagerCompat.from(it).cancelAll() }
     }
   }
 }
