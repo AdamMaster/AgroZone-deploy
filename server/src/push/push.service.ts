@@ -4,6 +4,7 @@ import { PushProvider } from '@/generated/prisma/enums'
 import { PrismaService } from '@/prisma/prisma.service'
 
 import { RegisterPushDeviceDto } from './dto/register-push-device.dto'
+import { FcmPushSender } from './providers/fcm-push.sender'
 import { RuStorePushSender } from './providers/rustore-push.sender'
 import type { PushNotificationPayload, PushSendResult } from './push.types'
 
@@ -13,18 +14,25 @@ export class PushService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly ruStoreSender: RuStorePushSender
+    private readonly ruStoreSender: RuStorePushSender,
+    private readonly fcmSender: FcmPushSender
   ) {}
 
   // Токен принадлежит устройству: если на нём вошли под другим аккаунтом,
   // токен переходит к новому владельцу, а не дублируется — иначе пуши прежнего
   // аккаунта продолжали бы приходить на это устройство.
-  async registerDevice(userId: string, { provider, token, appVersion }: RegisterPushDeviceDto) {
+  async registerDevice(userId: string, { provider, token, appVersion, installationId }: RegisterPushDeviceDto) {
     await this.prisma.pushDevice.upsert({
       where: { provider_token: { provider, token } },
-      update: { userId, appVersion: appVersion ?? null },
-      create: { userId, provider, token, appVersion: appVersion ?? null }
+      update: { userId, appVersion: appVersion ?? null, installationId: installationId ?? null },
+      create: { userId, provider, token, appVersion: appVersion ?? null, installationId: installationId ?? null }
     })
+
+    // На одном телефоне работает один канал: пока он не сменился, токены другого
+    // провайдера той же установки удаляются (иначе пуш пришёл бы дважды).
+    if (installationId) {
+      await this.prisma.pushDevice.deleteMany({ where: { installationId, provider: { not: provider } } })
+    }
   }
 
   // Только свои токены: чужой удалить нельзя. Повтор и неизвестный токен —
@@ -72,6 +80,8 @@ export class PushService {
     switch (provider) {
       case PushProvider.RUSTORE:
         return this.ruStoreSender.send(token, payload)
+      case PushProvider.FCM:
+        return this.fcmSender.send(token, payload)
     }
   }
 }

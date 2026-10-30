@@ -112,6 +112,16 @@ cd agro-zone
      Токен хранится только в `server/.env`, в репозиторий не попадает. После
      изменения — `docker compose ... up -d server`. Подробности:
      `claude/push-notifications.md` в проекте.
+   - Push через Google FCM (быстрая доставка на Android с сервисами
+     Google), `server/.env`: `FCM_SERVICE_ACCOUNT_BASE64` — ключ сервисного
+     аккаунта Firebase (Firebase Console → Project settings → Service
+     accounts → Generate new private key), весь JSON в base64. В PowerShell:
+     `[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\путь\ключ.json"))`
+     — вывод одной строкой в переменную. Ключ в git и в чат не кладём. Пока
+     не задан, FCM пропускается (работает RuStore). Миграция
+     `20261030160000_add_fcm_push_provider` (значение FCM + колонка
+     `installation_id`) применяется ДО запуска нового сервера (см. порядок
+     деплоя выше).
    - Страны номеров. По умолчанию подтверждение звонком принимает номера
      любых стран (корректных по длине и коду). Звонок из-за границы у
      части операторов не засчитывается (так сказали в sms.ru) — пользователь
@@ -139,6 +149,21 @@ docker compose -f docker-compose.prod.yml --env-file .env up -d db dredis server
 ```bash
 docker compose -f docker-compose.prod.yml --env-file .env exec server npx prisma migrate deploy
 ```
+
+**Порядок при обновлении (релиз с новой миграцией):** сначала `build server`,
+потом миграция в одноразовом контейнере из нового образа, и только потом
+`up -d server`:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env build server
+docker compose -f docker-compose.prod.yml --env-file .env run --rm server npx prisma migrate deploy
+docker compose -f docker-compose.prod.yml --env-file .env up -d server
+```
+
+Если поднять новый сервер раньше миграции, он обращается к ещё не
+существующим колонкам и вход/запросы пользователей падают с 500. Миграции
+у нас только добавляют колонки/таблицы, поэтому старый сервер спокойно
+работает на уже мигрированной базе.
 
 Проверить логи — Redis/Postgres должны подключиться, ONNX-модель
 эмбеддингов должна прогреться без ошибок (первый старт качает модель с

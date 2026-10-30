@@ -1770,6 +1770,8 @@ enum RegistrationFailureReason {
 // когда появится, добавится вторым значением.
 enum PushProvider {
   RUSTORE
+  // Google Firebase Cloud Messaging: быстрая доставка на Android с сервисами Google.
+  FCM
 }
 
 // Устройство пользователя, на которое можно отправить push (по одной записи на
@@ -1787,11 +1789,17 @@ model PushDevice {
 
   appVersion String? @map("app_version")
 
+  // Идентификатор установки приложения (создаётся на телефоне). По нему на одном
+  // телефоне остаётся один канал: при регистрации FCM токен RuStore этой же
+  // установки удаляется, иначе пуш пришёл бы дважды.
+  installationId String? @map("installation_id")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([provider, token])
   @@index([userId])
+  @@index([installationId])
   @@map("push_devices")
 }
 

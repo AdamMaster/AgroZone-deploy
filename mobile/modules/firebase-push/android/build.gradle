@@ -1,0 +1,22 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.firebasepush'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.firebasepush"
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+}
+
+dependencies {
+  // Google Firebase Cloud Messaging. Плагин com.google.gms.google-services и
+  // google-services.json подключает Expo сам по android.googleServicesFile в app.json.
+  implementation 'com.google.firebase:firebase-messaging:24.1.0'
+  implementation 'androidx.core:core-ktx:1.13.1'
+}

@@ -40,3 +40,9 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Firebase (FCM): ключи проекта, в репозиторий не кладём
+google-services.json
+
+# Сборочные папки нативных модулей
+modules/*/android/build/

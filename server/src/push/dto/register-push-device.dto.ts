@@ -2,7 +2,13 @@ import { IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-valida
 
 import { PushProvider } from '@/generated/prisma/enums'
 
-import { PUSH_APP_VERSION_MAX_LENGTH, PUSH_TOKEN_MAX_LENGTH, PUSH_TOKEN_MIN_LENGTH } from '../constants/push.constants'
+import {
+  PUSH_APP_VERSION_MAX_LENGTH,
+  PUSH_INSTALLATION_ID_MAX_LENGTH,
+  PUSH_INSTALLATION_ID_MIN_LENGTH,
+  PUSH_TOKEN_MAX_LENGTH,
+  PUSH_TOKEN_MIN_LENGTH
+} from '../constants/push.constants'
 
 export class RegisterPushDeviceDto {
   @IsEnum(PushProvider)
@@ -17,6 +23,12 @@ export class RegisterPushDeviceDto {
   @IsString()
   @MaxLength(PUSH_APP_VERSION_MAX_LENGTH)
   appVersion?: string
+
+  @IsOptional()
+  @IsString()
+  @MinLength(PUSH_INSTALLATION_ID_MIN_LENGTH)
+  @MaxLength(PUSH_INSTALLATION_ID_MAX_LENGTH)
+  installationId?: string
 }
 
 export class UnregisterPushDeviceDto {
