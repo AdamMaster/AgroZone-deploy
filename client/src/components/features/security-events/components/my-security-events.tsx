@@ -13,7 +13,9 @@ import { SecurityEventsPanel } from './security-events-panel'
 const getChipClassName = (isActive: boolean) =>
   cn(
     'rounded-full border px-3 py-1 text-sm transition-colors',
-    isActive ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+    isActive
+      ? 'border-gray-900 bg-gray-900 text-white dark:text-neutral-900'
+      : 'border-gray-200 bg-white dark:border-gray-100 dark:bg-gray-50 text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-100'
   )
 
 // "Недавняя активность" в настройках безопасности: пользователь сам видит,

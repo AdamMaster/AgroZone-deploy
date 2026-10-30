@@ -7,7 +7,7 @@ export const AboutContact = () => {
   return (
     <section className='py-14 sm:py-20'>
       <Container>
-        <div className='mx-auto max-w-xl text-center'>
+        <div className='mx-auto max-w-[500px] text-center'>
           <Heading level={2}>Остались вопросы?</Heading>
           <p className='mt-3 text-gray-500'>
             Загляните в раздел «Помощь» — там собраны ответы на частые вопросы о работе с площадкой.

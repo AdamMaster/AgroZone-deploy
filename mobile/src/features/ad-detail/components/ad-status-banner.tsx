@@ -11,7 +11,7 @@ interface BannerContent {
 }
 
 const TONE_CLASSES: Record<Tone, { container: string; text: string }> = {
-  neutral: { container: 'bg-gray-100 dark:bg-neutral-700', text: 'text-gray-700 dark:text-gray-200' },
+  neutral: { container: 'bg-gray-100 dark:bg-neutral-800', text: 'text-gray-700 dark:text-neutral-200' },
   warning: { container: 'bg-orange-100 dark:bg-orange-200', text: 'text-orange-900 dark:text-neutral-900' },
   danger: { container: 'bg-red-100', text: 'text-red-600' }
 }

@@ -54,7 +54,7 @@ export const AboutHero = () => {
               Купи. Продай. Вырасти.
             </Heading>
 
-            <p className='mt-4 max-w-xl text-base leading-snug text-gray-200 sm:mt-6 sm:text-lg'>
+            <p className='mt-4 max-w-xl text-base leading-snug text-gray-200 sm:mt-6 sm:text-lg dark:text-white'>
               Агропромышленная площадка объявлений: техника, сырьё, продукция и услуги для сельского хозяйства.
             </p>
 

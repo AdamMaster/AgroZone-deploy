@@ -131,7 +131,7 @@ export const SECURITY_EVENTS_VARIANT_STYLES: Record<SecurityEventsVariant, Secur
     }
   },
   light: {
-    row: 'border bg-white',
+    row: 'border bg-white dark:bg-gray-50',
     title: 'text-gray-900',
     muted: 'text-gray-600',
     faint: 'text-gray-400',

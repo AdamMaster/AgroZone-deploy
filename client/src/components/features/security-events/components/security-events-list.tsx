@@ -48,7 +48,7 @@ export const SecurityEventsList = ({ events, variant }: SecurityEventsListProps)
         const origin = [event.ip, event.device].filter(Boolean).join(' · ')
 
         return (
-          <li key={event.id} className={cn('flex items-start gap-3 rounded-md p-3', styles.row)}>
+          <li key={event.id} className={cn('flex items-start gap-3 rounded-lg p-3', styles.row)}>
             <span
               className={cn(
                 'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full',
