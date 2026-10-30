@@ -1,16 +1,16 @@
 'use client'
 
 import { useAppModal } from '@/store'
-import { Heart, Layers, Lock, Plus } from 'lucide-react'
+import { Heart, Layers, Lock, MessageCircle, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import React, { PropsWithChildren, useEffect } from 'react'
 
+import { useConversations } from '@/components/features/messages/hooks'
 import { NotificationBell } from '@/components/features/notifications/components'
 import { UserButton } from '@/components/features/user/components'
 
 import { useMounted, useProfile } from '@/shared/hooks'
-
 import { isSafeReturnPath } from '@/shared/utils'
 
 import { cn } from '@/lib/utils'
@@ -101,11 +101,37 @@ export const HeaderActions: React.FC<Props> = ({ className }) => {
           <Link href='/profile/settings/favorites' aria-label='Избранное' className='px-2 py-1'>
             <Heart className='size-6 fill-gray-300 text-gray-300 hover:fill-gray-400 hover:text-gray-400' />
           </Link>
+          <HeaderMessagesLink />
           <NotificationBell />
           <UserButton className='ml-2' user={user} />
         </div>
       )}
     </>
+  )
+}
+
+// Ссылка на сообщения со счётчиком — тот же, что на вкладке «Сообщения» в
+// мобильной нижней панели и в меню настроек: число ДИАЛОГОВ с новыми
+// сообщениями, а не самих сообщений. Список обновляется по сокету
+// (ConversationsRealtime в корневом layout). Точки ответа поддержки здесь
+// нет: на десктопе её показывает плавающая кнопка чата поддержки.
+const HeaderMessagesLink = () => {
+  const { conversations } = useConversations()
+  const unreadCount = conversations.filter(item => item.isUnread).length
+
+  return (
+    <Link
+      href='/profile/settings/messages'
+      aria-label={unreadCount > 0 ? `Сообщения, диалогов с новыми сообщениями: ${unreadCount}` : 'Сообщения'}
+      className='relative px-2 py-1'
+    >
+      <MessageCircle className='size-5.5 fill-gray-300 text-gray-300 hover:fill-gray-400 hover:text-gray-400' />
+      {unreadCount > 0 && (
+        <span className='bg-primary absolute top-0.5 right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium text-white'>
+          {unreadCount > 9 ? '9+' : unreadCount}
+        </span>
+      )}
+    </Link>
   )
 }
 
