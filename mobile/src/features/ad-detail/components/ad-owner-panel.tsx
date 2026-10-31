@@ -45,6 +45,7 @@ export function AdOwnerPanel({
         <View className='mt-3 gap-1'>
           {(ad.status === 'DRAFT' || ad.status === 'ARCHIVED') && (
             <Button
+              variant='secondary'
               title='Опубликовать'
               isLoading={pendingAction === 'activate'}
               disabled={isBusy}

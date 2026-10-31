@@ -373,17 +373,24 @@ export const AdDetail = ({
             (страница /ads/[id]/my) — плашка статуса и действия, доступные в
             этом статусе. Опубликованное объявление управляется блоком ниже. */}
         {ad.status !== 'PUBLISHED' && (
-          <div className='mb-6'>
+          <div className='mb-3'>
             <AdStatusBanner status={ad.status} rejectionReason={ad.rejectionReason} />
             {isOwner && (
-              <div className='mt-3 flex flex-col gap-1 sm:flex-row sm:gap-2'>
+              <div className='mt-3 flex flex-col gap-1 sm:flex-row sm:gap-1'>
                 {(ad.status === 'DRAFT' || ad.status === 'ARCHIVED') && (
-                  <Button size='lg' className='w-full sm:w-auto' onClick={handleActivate} disabled={isLoadingActivate}>
+                  <Button
+                    variant='secondary'
+                    size='lg'
+                    className='w-full sm:w-auto'
+                    onClick={handleActivate}
+                    disabled={isLoadingActivate}
+                  >
                     Опубликовать
                   </Button>
                 )}
                 {ad.status === 'EXPIRED' && (
                   <Button
+                    variant='secondary'
                     size='lg'
                     className='w-full sm:w-auto'
                     onClick={handleRepublish}

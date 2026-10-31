@@ -17,8 +17,8 @@ import { AD_BADGE_LABELS } from '../constants/ad-services.constants'
 import { useActivateAd, useDraftAd, useRemoveAd, useRepublishAd } from '../hooks'
 import { useArchiveAd } from '../hooks/use-archive-ad'
 import { isAdRemovable } from '../utils/is-ad-removable'
-import { AdRemoveConfirmDialog } from './ad-remove-confirm-dialog'
 import { AdPhoto } from './ad-photo'
+import { AdRemoveConfirmDialog } from './ad-remove-confirm-dialog'
 
 // Один и тот же вид кнопки «Ещё» для всех статусов объявления.
 const MENU_TRIGGER_CLASS_NAME =
@@ -196,7 +196,7 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
         <div className='flex w-full gap-2.5 sm:gap-4'>
           <Link
             href={detailHref}
-            className='relative flex h-20 w-22 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 sm:h-24 sm:w-32 md:h-30 md:w-40'
+            className='relative flex h-20 w-22 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg sm:h-24 sm:w-32 md:h-30 md:w-40'
           >
             {ad.images.length ? (
               <AdPhoto
@@ -276,7 +276,7 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
           )}
         </div>
 
-        <div className='hidden w-full flex-col gap-2 sm:flex md:w-48'>
+        <div className='hidden w-full flex-col gap-1 sm:flex md:w-48'>
           {ad.status === 'PUBLISHED' && (
             <div>
               <Button
