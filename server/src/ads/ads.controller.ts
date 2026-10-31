@@ -337,12 +337,6 @@ export class AdsController {
     return this.adsService.draft(id, userId)
   }
 
-  @Patch(':id/publish-draft')
-  @UseGuards(AuthGuard)
-  publishDraft(@Param('id') id: string, @CurrentUser('id') userId: string) {
-    return this.adsService.publishDraft(id, userId)
-  }
-
   @Delete(':id')
   @UseGuards(AuthGuard)
   remove(@Param('id') id: string, @CurrentUser('id') userId: string) {

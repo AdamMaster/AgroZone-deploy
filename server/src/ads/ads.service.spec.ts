@@ -71,7 +71,7 @@ describe('AdsService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: FileService, useValue: fileService },
         { provide: ConfigService, useValue: { get: jest.fn(), getOrThrow: jest.fn() } },
-        { provide: AdStateMachineService, useValue: { canTransition: jest.fn(), transition: jest.fn() } },
+        { provide: AdStateMachineService, useValue: new AdStateMachineService() },
         { provide: CategoriesService, useValue: categoriesService },
         { provide: UserService, useValue: userService },
         { provide: NotificationsService, useValue: {} },
@@ -410,6 +410,74 @@ describe('AdsService', () => {
         )
 
         expect(fileService.deleteFileByUrl).toHaveBeenCalledWith(NEW_URL)
+      })
+
+      it.each([['PUBLISHED'], ['SUSPENDED_OR_UNKNOWN']])(
+        'объявление в статусе %s в черновик через сохранение не уходит: 400, ничего не пишется и не загружается',
+        async status => {
+          prisma.ad.findFirst.mockResolvedValue({ ...existingAd, status })
+
+          await expect(
+            service.saveDraft('user-1', { categoryId: 'cat-1', title: 'Т' } as any, [file], 'ad-1')
+          ).rejects.toThrow()
+
+          expect(prisma.ad.update).not.toHaveBeenCalled()
+          expect(fileService.uploadAdPhoto).not.toHaveBeenCalled()
+        }
+      )
+
+      it.each([['REJECTED'], ['ARCHIVED'], ['EXPIRED'], ['PENDING'], ['DRAFT']])(
+        'из статуса %s черновик сохраняется, архивная дата сбрасывается',
+        async status => {
+          prisma.ad.findFirst.mockResolvedValue({ ...existingAd, status })
+
+          await service.saveDraft('user-1', { categoryId: 'cat-1', title: 'Т' } as any, [], 'ad-1')
+
+          expect(prisma.ad.update).toHaveBeenCalledWith(
+            expect.objectContaining({
+              data: expect.objectContaining({ status: 'DRAFT', archivedAt: null, rejectionReason: null })
+            })
+          )
+        }
+      )
+
+      it('единица цены не из списка категории: новый черновик не создаётся и фото не грузятся', async () => {
+        prisma.category.findUnique.mockResolvedValue({ priceUnits: ['KG'] })
+
+        await expect(
+          service.saveDraft('user-1', { categoryId: 'cat-1', title: 'Т', unit: 'HOUR' } as any, [file])
+        ).rejects.toThrow(BadRequestException)
+
+        expect(prisma.ad.create).not.toHaveBeenCalled()
+        expect(fileService.uploadAdPhoto).not.toHaveBeenCalled()
+      })
+
+      it('то же при обновлении черновика: запись не меняется', async () => {
+        prisma.category.findUnique.mockResolvedValue({ priceUnits: ['KG'] })
+
+        await expect(
+          service.saveDraft('user-1', { categoryId: 'cat-1', title: 'Т', unit: 'HOUR' } as any, [file], 'ad-1')
+        ).rejects.toThrow(BadRequestException)
+
+        expect(prisma.ad.update).not.toHaveBeenCalled()
+        expect(fileService.uploadAdPhoto).not.toHaveBeenCalled()
+      })
+
+      it('без явной единицы проверяется единица, уже записанная в черновике', async () => {
+        prisma.category.findUnique.mockResolvedValue({ priceUnits: ['KG'] })
+        prisma.ad.findFirst.mockResolvedValue({ ...existingAd, unit: 'HOUR', categoryId: 'cat-1' })
+
+        await expect(
+          service.saveDraft('user-1', { categoryId: 'cat-1', title: 'Т' } as any, [], 'ad-1')
+        ).rejects.toThrow(BadRequestException)
+      })
+
+      it('подходящая единица принимается', async () => {
+        prisma.category.findUnique.mockResolvedValue({ priceUnits: ['KG', 'TON'] })
+
+        await service.saveDraft('user-1', { categoryId: 'cat-1', title: 'Т', unit: 'TON' } as any, [])
+
+        expect(prisma.ad.create).toHaveBeenCalledTimes(1)
       })
     })
 
@@ -762,7 +830,6 @@ describe('AdsService', () => {
       ['снятие с публикации', () => service.archive('ad1', 'owner')],
       ['активация', () => service.activate('ad1', 'owner')],
       ['перевод в черновик', () => service.draft('ad1', 'owner')],
-      ['публикация черновика', () => service.publishDraft('ad1', 'owner')],
       ['удаление', () => service.remove('ad1', 'owner')]
     ])('%s запрещена — 403, ничего не пишется', async (_name, action) => {
       await expect(action()).rejects.toBeInstanceOf(ForbiddenException)

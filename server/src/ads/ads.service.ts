@@ -170,22 +170,9 @@ export class AdsService {
 
     const categoryPath = await this.categoriesService.getCategoryPath(createAdDto.categoryId)
 
-    // Единица цены должна быть одной из разрешённых для выбранной
-    // категории (Category.priceUnits) — иначе, например, объявление о
-    // продаже зерна можно было бы случайно/специально опубликовать с ценой
-    // "за час". Категории без явно заданных единиц (priceUnits пуст)
-    // трактуем как разрешающие любое значение enum, чтобы не блокировать
-    // публикацию из-за неполных сид-данных.
-    const category = await this.prisma.category.findUnique({
-      where: { id: createAdDto.categoryId },
-      select: { priceUnits: true }
-    })
-
     const unit = createAdDto.unit ?? PriceUnit.ITEM
 
-    if (category?.priceUnits?.length && !category.priceUnits.includes(unit)) {
-      throw new BadRequestException('Выбранная единица измерения цены недоступна для этой категории')
-    }
+    await this.assertUnitAllowedForCategory(createAdDto.categoryId, unit)
 
     const baseSlug =
       slugify(createAdDto.title, {
@@ -1251,6 +1238,25 @@ export class AdsService {
     return ad
   }
 
+  // Единица цены должна быть одной из разрешённых для выбранной категории
+  // (Category.priceUnits) — иначе, например, объявление о продаже зерна можно
+  // было бы случайно/специально опубликовать с ценой "за час". Категории без
+  // явно заданных единиц (priceUnits пуст) трактуем как разрешающие любое
+  // значение enum, чтобы не блокировать публикацию из-за неполных сид-данных.
+  // Проверяется и при создании, и при сохранении черновика: из черновика
+  // объявление уходит на модерацию (activate) без повторной проверки, так что
+  // непроверенная единица в черновике обошла бы это правило.
+  private async assertUnitAllowedForCategory(categoryId: string, unit: PriceUnit) {
+    const category = await this.prisma.category.findUnique({
+      where: { id: categoryId },
+      select: { priceUnits: true }
+    })
+
+    if (category?.priceUnits?.length && !category.priceUnits.includes(unit)) {
+      throw new BadRequestException('Выбранная единица измерения цены недоступна для этой категории')
+    }
+  }
+
   private async validateFileLimits(userId: string, files: Express.Multer.File[]) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -1663,6 +1669,16 @@ export class AdsService {
     if (id) {
       const ad = await this.getMutableUserAdOrThrow(id, userId)
 
+      // Уже черновик — остаётся им; из остальных статусов — только по тем же
+      // переходам, что и «В черновик» (draft()): опубликованное объявление
+      // этой ручкой в черновик не уйдёт (оно и в машине состояний не уходит),
+      // а выход из архива сбрасывает archivedAt.
+      const status = ad.status === AdStatus.DRAFT ? AdStatus.DRAFT : this.adStateMachine.transition(ad.status, 'DRAFT')
+
+      const categoryId = rest.categoryId ?? ad.categoryId
+
+      await this.assertUnitAllowedForCategory(categoryId, rest.unit ?? ad.unit)
+
       const categoryPath = rest.categoryId
         ? await this.categoriesService.getCategoryPath(rest.categoryId)
         : ad.categoryPath
@@ -1679,8 +1695,9 @@ export class AdsService {
             lng: parsedLng,
             price: price !== undefined ? parsedPrice : undefined,
             images,
-            status: AdStatus.DRAFT,
+            status,
             rejectionReason: null,
+            archivedAt: null,
             features: features ? (features as Prisma.InputJsonValue) : {},
             categoryPath,
             seoPath
@@ -1688,6 +1705,8 @@ export class AdsService {
         })
       )
     }
+
+    await this.assertUnitAllowedForCategory(rest.categoryId, rest.unit ?? PriceUnit.ITEM)
 
     const categoryPath = await this.categoriesService.getCategoryPath(rest.categoryId)
 
@@ -1720,26 +1739,6 @@ export class AdsService {
         }
       })
     )
-  }
-
-  async publishDraft(id: string, userId: string) {
-    const ad = await this.getMutableUserAdOrThrow(id, userId)
-
-    const status = this.adStateMachine.transition(ad.status, 'PUBLISH')
-
-    const now = new Date()
-
-    return this.prisma.ad.update({
-      where: { id },
-      data: {
-        status,
-        publishedAt: now,
-        expiresAt: this.getExpirationDateFrom(now, 30),
-        rejectionReason: null,
-        // PUBLISH из ARCHIVED — тоже выход из архива, см. комментарий в activate().
-        archivedAt: null
-      }
-    })
   }
 
   async addFavorite(userId: string, adId: string) {

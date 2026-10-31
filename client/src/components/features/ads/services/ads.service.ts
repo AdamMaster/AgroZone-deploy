@@ -126,10 +126,6 @@ class AdsService {
     return response
   }
 
-  async publishDraft(id: string) {
-    return api.patch(`${this.URL}/${id}/publish-draft`)
-  }
-
   async addFavorite(id: string): Promise<void> {
     await api.post(`${this.URL}/${id}/favorite`)
   }
