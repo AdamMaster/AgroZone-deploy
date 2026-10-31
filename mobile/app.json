@@ -67,6 +67,7 @@
       ],
       "expo-secure-store",
       ["./plugins/with-rustore-push", { "projectId": "L05EIKLlK8clztztbepoCfXE5yK-G97w" }],
+      "./plugins/with-okhttp-factory",
       "expo-web-browser",
       [
         "expo-location",

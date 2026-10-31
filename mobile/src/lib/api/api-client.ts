@@ -1,5 +1,3 @@
-import { Platform } from 'react-native'
-
 import { API_URL } from '@/config/env'
 
 import { sessionTokenStorage } from '@/lib/auth/session-token-storage'
@@ -11,6 +9,7 @@ import {
   extractServerMessage,
   getStatusErrorMessage
 } from './api-error'
+import { resetConnections } from './connection-reset'
 import { createRequestSignal } from './request-signal'
 
 type QueryParamValue = string | number | boolean | null | undefined
@@ -51,38 +50,48 @@ export function setSessionRejectedHandler(handler: (() => void) | null) {
   onSessionRejected = handler
 }
 
-// Пока телефон лежал, мобильная сеть и Wi-Fi забывают о соединении с
-// сервером, а приложение этого не знает: первый запрос после паузы уходит в
-// «мёртвое» соединение и теряется (сообщение «не отправляется», пока
-// приложение не перезапустят). Поэтому перед запросом, который что-то меняет
-// (отправка сообщения, сохранение), после паузы в обмене с сервером отправляем
-// лёгкий запрос с коротким пределом: он «пробивает» мёртвое соединение, и сам
-// запрос уже идёт по живому. Повторять сам запрос нельзя — он мог дойти до
-// сервера, и получился бы дубль.
-const STALE_CONNECTION_MS = 20_000
-const PROBE_TIMEOUT_MS = 3_000
+// Отмена по сигналу должна завершать запрос всегда. Обычно fetch сам
+// отвечает на abort ошибкой, но если соединение мёртвое, он может не отозваться
+// вовсе, и экран будет вечно показывать загрузку. Поэтому ждём не только
+// запрос, но и сам сигнал.
+function rejectOnAbort<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(new Error('Request aborted'))
 
-let lastServerContactAt = Date.now()
-let probeInFlight: Promise<void> | null = null
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(new Error('Request aborted'))
 
-async function ensureLiveConnection(): Promise<void> {
-  if (Platform.OS === 'web' || Date.now() - lastServerContactAt < STALE_CONNECTION_MS) return
+    signal.addEventListener('abort', onAbort, { once: true })
+    work.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort))
+  })
+}
 
-  probeInFlight ??= (async () => {
-    const probeSignal = createRequestSignal(undefined, PROBE_TIMEOUT_MS)
+// Отправляет запрос и читает тело ответа. Таймаут (через signal) покрывает и
+// ожидание заголовков, и чтение тела: на плохой сети тело большой выдачи
+// может грузиться дольше, чем пришли заголовки.
+async function exchange(
+  url: string,
+  init: RequestInit,
+  responseType: 'json' | 'text'
+): Promise<{ response: Response; body: unknown }> {
+  const response = await fetch(url, init)
+  const isJson = response.headers.get('Content-Type')?.includes('application/json') ?? false
+  let body: unknown
 
-    try {
-      await fetch(`${API_URL}/site-settings/public`, { signal: probeSignal.signal })
-    } catch {
-      // Результат не важен: проба нужна, чтобы сбросить мёртвое соединение.
-    } finally {
-      probeSignal.cleanup()
-      lastServerContactAt = Date.now()
-      probeInFlight = null
-    }
-  })()
+  // Тело может оказаться HTML-страницей ошибки nginx или битым JSON —
+  // падать на разборе нельзя, иначе потеряется настоящий статус ответа.
+  // Ошибки сервер отдаёт JSON-ом всегда, поэтому текст читаем только из
+  // успешного ответа.
+  if (isJson) {
+    body = await response.json().catch(() => undefined)
+  } else if (responseType === 'text' && response.ok) {
+    body = await response.text().catch(() => undefined)
+  }
 
-  await probeInFlight
+  // Отмена во время чтения тела гасится .catch выше — не выдаём её за
+  // «неожиданный формат ответа», а уходим в общую обработку отмены.
+  if (init.signal?.aborted) throw new Error('Request aborted')
+
+  return { response, body }
 }
 
 // null/undefined/пустые строки не отправляем вовсе — сервер трактует
@@ -110,7 +119,6 @@ async function request<T>(method: HttpMethod, path: string, options: RequestOpti
   // границей частей fetch ставит сам, задавать его вручную нельзя.
   const isMultipart = requestBody instanceof FormData
   const url = `${API_URL}${path}${params ? buildQueryString(params) : ''}`
-  if (method !== 'GET') await ensureLiveConnection()
 
   const requestSignal = createRequestSignal(signal, timeoutMs)
   const sessionToken = sessionTokenStorage.get()
@@ -118,43 +126,35 @@ async function request<T>(method: HttpMethod, path: string, options: RequestOpti
   let response: Response
   let body: unknown
 
-  // Таймаут покрывает и ожидание заголовков, и чтение тела: на плохой сети
-  // тело большой выдачи может грузиться дольше, чем пришли заголовки.
   try {
-    response = await fetch(url, {
-      method,
-      headers: {
-        Accept: 'application/json',
-        ...AUTH_TRANSPORT_HEADERS,
-        ...(sessionToken && { Authorization: `Bearer ${sessionToken}` }),
-        ...(requestBody !== undefined && !isMultipart && { 'Content-Type': 'application/json' }),
-        ...headers
-      },
-      body: isMultipart ? requestBody : requestBody !== undefined ? JSON.stringify(requestBody) : undefined,
-      signal: requestSignal.signal
-    })
-
-    lastServerContactAt = Date.now()
-
-    const isJson = response.headers.get('Content-Type')?.includes('application/json') ?? false
-
-    // Тело может оказаться HTML-страницей ошибки nginx или битым JSON —
-    // падать на разборе нельзя, иначе потеряется настоящий статус ответа.
-    // Ошибки сервер отдаёт JSON-ом всегда, поэтому текст читаем только из
-    // успешного ответа.
-    if (isJson) {
-      body = await response.json().catch(() => undefined)
-    } else if (responseType === 'text' && response.ok) {
-      body = await response.text().catch(() => undefined)
-    }
-
-    // Отмена во время чтения тела гасится .catch выше — не выдаём её за
-    // «неожиданный формат ответа», а уходим в общую обработку отмены ниже.
-    if (requestSignal.signal.aborted) throw new Error('Request aborted')
+    ;({ response, body } = await rejectOnAbort(
+      exchange(
+        url,
+        {
+          method,
+          headers: {
+            Accept: 'application/json',
+            ...AUTH_TRANSPORT_HEADERS,
+            ...(sessionToken && { Authorization: `Bearer ${sessionToken}` }),
+            ...(requestBody !== undefined && !isMultipart && { 'Content-Type': 'application/json' }),
+            ...headers
+          },
+          body: isMultipart ? requestBody : requestBody !== undefined ? JSON.stringify(requestBody) : undefined,
+          signal: requestSignal.signal
+        },
+        responseType
+      ),
+      requestSignal.signal
+    ))
   } catch (error) {
     // Отмену самим вызывающим кодом (ушли с экрана) пробрасываем как есть —
     // react-query распознаёт её и не считает ошибкой запроса.
     if (signal?.aborted) throw error
+
+    // Сеть не ответила: соединение из пула могло оказаться «мёртвым». Закрываем
+    // его, чтобы повтор запроса (react-query или кнопка «Повторить») не ушёл
+    // туда же.
+    resetConnections()
 
     // ВРЕМЕННО (диагностика загрузки фото, 29.10.2026): у запросов с файлами к
     // тексту ошибки добавляется причина от телефона, чтобы понять, почему
