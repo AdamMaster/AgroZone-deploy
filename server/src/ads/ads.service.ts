@@ -9,7 +9,7 @@ import {
 import { PrismaService } from '@/prisma/prisma.service'
 import { FileService } from '../file/file.service'
 import 'multer'
-import { AD_LIMITS, AD_STATUSES_BLOCKING_OWNER_REMOVAL } from './constants/ads.constants'
+import { AD_DRAFT_LIMIT, AD_LIMITS, AD_STATUSES_BLOCKING_OWNER_REMOVAL } from './constants/ads.constants'
 import { isPremiumActive } from '@/premium/utils/is-premium-active.util'
 import { CreateAdDto } from './dto/create-ad.dto'
 import { SaveDraftDto } from './dto/save-draft.dto'
@@ -1451,8 +1451,18 @@ export class AdsService {
     // узнать о нём так же, как об отклонении (см. reject), и не гадать.
     // Смотрим на итоговый статус: из других состояний PUBLISH ведёт не в
     // PUBLISHED, и сообщать «опубликовано» было бы неправдой.
+    //
+    // Статус к этому моменту уже записан, поэтому сбой уведомления не должен
+    // превращать успешную публикацию в 500 для модератора (он решил бы, что
+    // объявление не опубликовано, и нажал бы ещё раз). В отличие от reject(),
+    // где уведомление — единственный способ сообщить о решении, здесь владелец
+    // увидит опубликованное объявление и в «Моих объявлениях».
     if (status === AdStatus.PUBLISHED) {
-      await this.notificationsService.notifyAdPublished(ad.userId, ad.id, ad.title)
+      try {
+        await this.notificationsService.notifyAdPublished(ad.userId, ad.id, ad.title)
+      } catch (error) {
+        this.logger.error(`Не удалось уведомить владельца о публикации объявления ${ad.id}`, error)
+      }
     }
 
     return updated
@@ -1660,6 +1670,8 @@ export class AdsService {
 
     const status = this.adStateMachine.transition(ad.status, 'DRAFT')
 
+    await this.assertDraftLimit(userId)
+
     return this.prisma.ad.update({
       where: { id },
       data: {
@@ -1679,6 +1691,10 @@ export class AdsService {
 
     const existing = id ? await this.getMutableUserAdOrThrow(id, userId) : null
     const status = existing ? this.nextDraftStatus(existing.status) : AdStatus.DRAFT
+
+    // Правка уже существующего черновика лимит не увеличивает; считаем только
+    // новый черновик и объявление, уходящее в черновики из другого статуса.
+    if (existing?.status !== AdStatus.DRAFT) await this.assertDraftLimit(userId)
 
     const unit = dto.unit ?? PriceUnit.ITEM
 
@@ -1733,9 +1749,6 @@ export class AdsService {
     return current === AdStatus.DRAFT ? AdStatus.DRAFT : this.adStateMachine.transition(current, 'DRAFT')
   }
 
-  // Номер черновика: введённый, иначе основной (или первый) из профиля, иначе
-  // пусто — телефон проверит публикация. Колонка phone не допускает NULL,
-  // поэтому «нет номера» хранится пустой строкой.
   // Точка объявления: присланная форма принимается как есть, а без неё (форма
   // присылает 0, 0, когда у выбранной подсказки нет координат) определяется по
   // адресу. Не нашли — не публикуем «в океане», а просим выбрать адрес из списка.
@@ -1753,6 +1766,19 @@ export class AdsService {
     return point
   }
 
+  private async assertDraftLimit(userId: string): Promise<void> {
+    const drafts = await this.prisma.ad.count({ where: { userId, status: AdStatus.DRAFT } })
+
+    if (drafts >= AD_DRAFT_LIMIT) {
+      throw new BadRequestException(
+        `Можно хранить не более ${AD_DRAFT_LIMIT} черновиков. Опубликуйте или удалите ненужные`
+      )
+    }
+  }
+
+  // Номер черновика: введённый, иначе основной (или первый) из профиля, иначе
+  // пусто — телефон проверит публикация. Колонка phone не допускает NULL,
+  // поэтому «нет номера» хранится пустой строкой.
   private async resolveDraftPhone(userId: string, phone?: string): Promise<string> {
     if (phone) {
       const normalized = normalizePhone(phone)

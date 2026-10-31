@@ -41,7 +41,8 @@ describe('AdsService', () => {
         update: jest.fn(),
         delete: jest.fn(),
         findMany: jest.fn(),
-        groupBy: jest.fn()
+        groupBy: jest.fn(),
+        count: jest.fn().mockResolvedValue(0)
       },
       category: {
         findUnique: jest.fn()
@@ -102,6 +103,14 @@ describe('AdsService', () => {
         expect.objectContaining({ where: { id: 'ad-1' }, data: expect.objectContaining({ status: 'PUBLISHED' }) })
       )
       expect(notificationsService.notifyAdPublished).toHaveBeenCalledWith('u-1', 'ad-1', 'Трактор МТЗ')
+    })
+
+    it('сбой уведомления не превращает успешную публикацию в ошибку', async () => {
+      prisma.ad.findUnique.mockResolvedValue({ id: 'ad-1', userId: 'u-1', title: 'Трактор МТЗ', status: 'PENDING' })
+      prisma.ad.update.mockResolvedValue({ id: 'ad-1', status: 'PUBLISHED' })
+      notificationsService.notifyAdPublished.mockRejectedValue(new Error('invalid input value for enum'))
+
+      await expect(service.publish('ad-1')).resolves.toEqual({ id: 'ad-1', status: 'PUBLISHED' })
     })
 
     it('не сообщает «опубликовано», если объявление ушло не в PUBLISHED', async () => {
@@ -476,6 +485,68 @@ describe('AdsService', () => {
       beforeEach(() => {
         userService.findById.mockResolvedValue({ phones: [{ phone: '79991234567', isPrimary: true }] })
         categoriesService.getCategoryPath.mockResolvedValue(['tehnika'])
+      })
+
+      describe('лимит и чужие черновики', () => {
+        const dto = { categoryId: 'cat-1', title: 'Т' } as any
+
+        it('новый черновик сверх лимита — 400, фото не загружаются, ничего не создаётся', async () => {
+          prisma.ad.count.mockResolvedValue(20)
+
+          await expect(service.saveDraft('user-1', dto, [file])).rejects.toThrow('не более 20 черновиков')
+
+          expect(prisma.ad.count).toHaveBeenCalledWith({ where: { userId: 'user-1', status: 'DRAFT' } })
+          expect(fileService.uploadAdPhoto).not.toHaveBeenCalled()
+          expect(prisma.ad.create).not.toHaveBeenCalled()
+        })
+
+        it('19 черновиков — двадцатый ещё сохраняется', async () => {
+          prisma.ad.count.mockResolvedValue(19)
+
+          await service.saveDraft('user-1', dto, [])
+
+          expect(prisma.ad.create).toHaveBeenCalledTimes(1)
+        })
+
+        it('правка уже существующего черновика лимит не проверяет: при полном лимите его всё равно можно сохранить', async () => {
+          prisma.ad.count.mockResolvedValue(20)
+          prisma.ad.findFirst.mockResolvedValue({ ...existingAd, status: 'DRAFT' })
+
+          await service.saveDraft('user-1', dto, [], 'ad-1')
+
+          expect(prisma.ad.count).not.toHaveBeenCalled()
+          expect(prisma.ad.update).toHaveBeenCalledTimes(1)
+        })
+
+        it('объявление, уходящее в черновики из другого статуса, лимит учитывает', async () => {
+          prisma.ad.count.mockResolvedValue(20)
+          prisma.ad.findFirst.mockResolvedValue({ ...existingAd, status: 'REJECTED' })
+
+          await expect(service.saveDraft('user-1', dto, [], 'ad-1')).rejects.toThrow('не более 20 черновиков')
+
+          expect(prisma.ad.update).not.toHaveBeenCalled()
+        })
+
+        it('«В черновик» (draft) тоже упирается в лимит', async () => {
+          prisma.ad.count.mockResolvedValue(20)
+          prisma.ad.findFirst.mockResolvedValue({ ...existingAd, status: 'PENDING' })
+
+          await expect(service.draft('ad-1', 'user-1')).rejects.toThrow('не более 20 черновиков')
+
+          expect(prisma.ad.update).not.toHaveBeenCalled()
+        })
+
+        it('чужой черновик по id — 404: искать и менять можно только свои', async () => {
+          prisma.ad.findFirst.mockResolvedValue(null)
+
+          await expect(service.saveDraft('user-2', dto, [file], 'ad-1')).rejects.toThrow(NotFoundException)
+
+          expect(prisma.ad.findFirst).toHaveBeenCalledWith(
+            expect.objectContaining({ where: expect.objectContaining({ id: 'ad-1', userId: 'user-2' }) })
+          )
+          expect(fileService.uploadAdPhoto).not.toHaveBeenCalled()
+          expect(prisma.ad.update).not.toHaveBeenCalled()
+        })
       })
 
       it('при обновлении черновика удаляет убранные фото из S3 после записи в БД', async () => {

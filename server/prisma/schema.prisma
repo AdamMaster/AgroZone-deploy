@@ -1729,6 +1729,8 @@ enum NotificationType {
   SELLER_DEAL_CONFIRMED
   // Владельцу: модератор проверил объявление и опубликовал его.
   AD_PUBLISHED
+  // Владельцу: черновики не менялись почти месяц и скоро будут удалены.
+  AD_DRAFT_EXPIRING
 }
 
 enum RegistrationChannel {

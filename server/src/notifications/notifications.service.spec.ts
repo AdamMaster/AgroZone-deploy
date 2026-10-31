@@ -4,7 +4,7 @@ import { NotificationsService } from './notifications.service'
 
 describe('NotificationsService', () => {
   let prisma: any
-  let mailService: { sendAdRejectedEmail: jest.Mock }
+  let mailService: { sendAdRejectedEmail: jest.Mock; sendDraftsExpiringEmail: jest.Mock }
   let pushService: { sendToUser: jest.Mock }
   let service: NotificationsService
 
@@ -16,7 +16,10 @@ describe('NotificationsService', () => {
       },
       user: { findUnique: jest.fn().mockResolvedValue({ email: 'seller@example.com' }) }
     }
-    mailService = { sendAdRejectedEmail: jest.fn().mockResolvedValue(undefined) }
+    mailService = {
+      sendAdRejectedEmail: jest.fn().mockResolvedValue(undefined),
+      sendDraftsExpiringEmail: jest.fn().mockResolvedValue(undefined)
+    }
     pushService = { sendToUser: jest.fn().mockResolvedValue(undefined) }
     service = new NotificationsService(prisma, mailService as any, pushService as any)
   })
@@ -115,6 +118,57 @@ describe('NotificationsService', () => {
 
       await expect(service.notifyAdRejected('u-1', 'ad-1', 'Трактор', null)).resolves.toBeDefined()
       expect(pushService.sendToUser).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('черновики скоро удалятся', () => {
+    const one = [{ id: 'd1', title: 'Трактор' }]
+    const many = [
+      { id: 'd1', title: 'Трактор' },
+      { id: 'd2', title: 'Зерно' }
+    ]
+
+    it('один черновик: ссылка на него, push и письмо', async () => {
+      await service.notifyDraftsExpiring('u-1', one, 3)
+
+      expect(prisma.notification.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          type: NotificationType.AD_DRAFT_EXPIRING,
+          link: '/ads/d1/edit',
+          message: expect.stringContaining('«Трактор»')
+        })
+      })
+      expect(prisma.notification.create.mock.calls[0][0].data.message).toContain('через 3 дня')
+      expect(pushService.sendToUser).toHaveBeenCalledWith(
+        'u-1',
+        expect.objectContaining({ title: 'Черновики скоро удалятся', channel: 'events' })
+      )
+      expect(mailService.sendDraftsExpiringEmail).toHaveBeenCalledWith('seller@example.com', one, '3 дня')
+    })
+
+    it('несколько черновиков — одно уведомление со ссылкой на «Мои объявления»', async () => {
+      await service.notifyDraftsExpiring('u-1', many, 3)
+
+      expect(prisma.notification.create).toHaveBeenCalledTimes(1)
+      expect(prisma.notification.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ link: '/profile/settings/ads', message: expect.stringContaining(': 2') })
+      })
+      expect(mailService.sendDraftsExpiringEmail).toHaveBeenCalledTimes(1)
+    })
+
+    it('без почты — уведомление и push есть, письма нет', async () => {
+      prisma.user.findUnique.mockResolvedValue({ email: null })
+
+      await service.notifyDraftsExpiring('u-1', one, 3)
+
+      expect(pushService.sendToUser).toHaveBeenCalledTimes(1)
+      expect(mailService.sendDraftsExpiringEmail).not.toHaveBeenCalled()
+    })
+
+    it('сбой письма не отменяет уведомление', async () => {
+      mailService.sendDraftsExpiringEmail.mockRejectedValue(new Error('SMTP down'))
+
+      await expect(service.notifyDraftsExpiring('u-1', one, 3)).resolves.toEqual(expect.objectContaining({ id: 'n-1' }))
     })
   })
 })

@@ -27,7 +27,7 @@ import { Request } from 'express'
 import { UseInterceptors, UploadedFiles } from '@nestjs/common'
 import { FilesInterceptor } from '@nestjs/platform-express'
 import 'multer'
-import { AD_LIMITS, AD_MAX_FILE_SIZE } from './constants/ads.constants'
+import { AD_DRAFT_THROTTLE, AD_LIMITS, AD_MAX_FILE_SIZE } from './constants/ads.constants'
 import { ModerateAdDto } from './dto/moderation-ad.dto'
 import { Roles } from '../auth/decorators/roles.decorator'
 import { RolesGuard } from '../auth/guards/roles.guard'
@@ -35,6 +35,7 @@ import { UserRole } from '@/generated/prisma/enums'
 import { UpdateAdDto } from './dto/update-ad.dto'
 import { CurrentUser } from '@/auth/decorators/decorators/user.decorator'
 import { computeViewerKey } from './utils/viewer-key.util'
+import { AdDraftThrottlerGuard } from './guards/ad-draft-throttler.guard'
 import { AdPhoneThrottlerGuard } from './guards/ad-phone-throttler.guard'
 import { FindAdsQueryDto } from './dto/find-ads-query.dto'
 import { FindMyAdsQueryDto } from './dto/find-my-ads-query.dto'
@@ -314,7 +315,8 @@ export class AdsController {
   }
 
   @Post('draft')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, AdDraftThrottlerGuard)
+  @Throttle(AD_DRAFT_THROTTLE)
   @UseInterceptors(
     FilesInterceptor('files', AD_LIMITS.PREMIUM, {
       limits: { fileSize: AD_MAX_FILE_SIZE }

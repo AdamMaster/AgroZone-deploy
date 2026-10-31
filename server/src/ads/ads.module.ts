@@ -8,6 +8,7 @@ import { AdStateMachineService } from './ad-state-machine.service'
 import { BullModule } from '@nestjs/bullmq'
 import { AdsExpirationWorker } from './workers/ads-expiration.worker'
 import { AdsArchivePurgeWorker } from './workers/ads-archive-purge.worker'
+import { AdsDraftCleanupWorker } from './workers/ads-draft-cleanup.worker'
 import { AdViewsRollupWorker } from './workers/ad-views-rollup.worker'
 import { AdPhoneRevealsRetentionWorker } from './workers/ad-phone-reveals-retention.worker'
 import { CategoriesModule } from '@/categories/categories.module'
@@ -36,6 +37,7 @@ import { GeocodeService } from './geocode.service'
     AdStateMachineService,
     AdsExpirationWorker,
     AdsArchivePurgeWorker,
+    AdsDraftCleanupWorker,
     AdViewsRollupWorker,
     AdPhoneRevealsRetentionWorker
   ],

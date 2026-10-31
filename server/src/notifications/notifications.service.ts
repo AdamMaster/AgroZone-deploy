@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nest
 import { NotificationType } from '@/generated/prisma/client'
 
 import { MailService } from '@/libs/mail/mail.service'
+import { formatDaysCount } from '@/libs/common/utils/format-days-count.util'
 import { PrismaService } from '@/prisma/prisma.service'
 import { PushService } from '@/push/push.service'
 import { truncatePushBody } from '@/push/utils/truncate-push-body.util'
@@ -158,6 +159,37 @@ export class NotificationsService {
       message: `Объявление «${adTitle}» прошло проверку и опубликовано.`,
       link: `/ads/${adId}`
     })
+  }
+
+  // Вызывается ночной чисткой (AdsDraftCleanupWorker): черновики давно не
+  // менялись и через daysLeft дней будут удалены. Одно уведомление на владельца
+  // (а не по каждому черновику), плюс письмо, если почта есть: тот, кто
+  // регистрировался по телефону, узнает из уведомления и push. Падение письма
+  // уведомление не отменяет, как и в notifyAdRejected.
+  async notifyDraftsExpiring(userId: string, drafts: Array<{ id: string; title: string }>, daysLeft: number) {
+    const [first] = drafts
+    const timeLeft = formatDaysCount(daysLeft)
+
+    const notification = await this.create({
+      userId,
+      type: NotificationType.AD_DRAFT_EXPIRING,
+      title: 'Черновики скоро удалятся',
+      message:
+        drafts.length === 1
+          ? `Черновик «${first.title}» не менялся почти месяц и будет удалён через ${timeLeft}. Опубликуйте его, если объявление ещё нужно.`
+          : `Черновиков, которые не менялись почти месяц: ${drafts.length}. Они будут удалены через ${timeLeft}. Опубликуйте нужные.`,
+      link: drafts.length === 1 ? `/ads/${first.id}/edit` : '/profile/settings/ads'
+    })
+
+    try {
+      const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } })
+
+      if (user?.email) await this.mailService.sendDraftsExpiringEmail(user.email, drafts, timeLeft)
+    } catch (error) {
+      this.logger.error(`Не удалось отправить письмо о скором удалении черновиков (пользователь ${userId})`, error)
+    }
+
+    return notification
   }
 
   // Вызывается из ConversationsService при каждом новом сообщении в

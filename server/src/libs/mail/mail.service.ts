@@ -8,6 +8,7 @@ import { TwoFactorAuthTemplate } from './templates/two-factor-auth.tamplate'
 import { EmailChangeTemplate } from './templates/email-change.tamplate'
 import { AdRejectedTemplate } from './templates/ad-rejected.template'
 import { NewMessageTemplate } from './templates/new-message.template'
+import { DraftsExpiringTemplate } from './templates/drafts-expiring.template'
 import { SupportMessageTemplate } from './templates/support-message.template'
 import { PasswordChangedByAdminTemplate } from './templates/password-changed-by-admin.template'
 import { EmailChangedByAdminTemplate } from './templates/email-changed-by-admin.template'
@@ -70,6 +71,16 @@ export class MailService {
     const html = await render(AdRejectedTemplate({ domain, adId, adTitle, reason }))
 
     return this.sendMail(email, `Объявление «${adTitle}» отклонено`, html)
+  }
+
+  // Предупреждение о скором удалении неиспользуемых черновиков (см.
+  // NotificationsService.notifyDraftsExpiring). Одно письмо на всех черновиков
+  // владельца, а не по письму на каждый.
+  async sendDraftsExpiringEmail(email: string, drafts: Array<{ id: string; title: string }>, timeLeft: string) {
+    const domain = this.configService.getOrThrow<string>('ALLOWED_ORIGIN')
+    const html = await render(DraftsExpiringTemplate({ domain, drafts, timeLeft }))
+
+    return this.sendMail(email, 'Черновики объявлений скоро удалятся', html)
   }
 
   // Письмо о новом сообщении в диалоге по объявлению (см.

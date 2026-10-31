@@ -14,6 +14,17 @@ export const AD_TITLE_MIN_LENGTH = 3
 export const AD_DESCRIPTION_MIN_LENGTH = 10
 export const AD_ADDRESS_MIN_LENGTH = 5
 
+// Черновики. Лимит защищает от бесконечного накопления (у каждого до 15 фото в
+// S3). Черновик, который не меняли AD_DRAFT_RETENTION_DAYS дней, удаляет ночная
+// чистка (AdsDraftCleanupWorker), а за AD_DRAFT_EXPIRY_WARNING_DAYS дней до
+// этого владельцу уходит предупреждение.
+export const AD_DRAFT_LIMIT = 20
+export const AD_DRAFT_RETENTION_DAYS = 30
+export const AD_DRAFT_EXPIRY_WARNING_DAYS = 3
+
+// Сохранение черновика (запрос с фото): лимит на аккаунт в минуту.
+export const AD_DRAFT_THROTTLE = { default: { limit: 15, ttl: 60 * 1000 } }
+
 // Объявления в этих статусах «живые»: видны покупателям (PUBLISHED),
 // проходят модерацию (PENDING) или приостановлены до проверки жалоб
 // (SUSPENDED; их вообще нельзя менять, см.

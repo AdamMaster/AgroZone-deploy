@@ -8,6 +8,7 @@ import { NotificationType } from '@/generated/prisma/client'
 export const PUSH_NOTIFICATION_TYPES: ReadonlySet<NotificationType> = new Set([
   NotificationType.AD_REJECTED,
   NotificationType.AD_PUBLISHED,
+  NotificationType.AD_DRAFT_EXPIRING,
   NotificationType.SELLER_WARNING,
   NotificationType.SELLER_ADS_SUSPENDED,
   NotificationType.SELLER_ADS_RESTORED,

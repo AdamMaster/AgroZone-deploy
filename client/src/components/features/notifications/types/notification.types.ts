@@ -5,6 +5,7 @@
 export type NotificationType =
   | 'AD_REJECTED'
   | 'AD_PUBLISHED'
+  | 'AD_DRAFT_EXPIRING'
   | 'NEW_MESSAGE'
   | 'SELLER_REVIEW_HIDDEN'
   | 'SELLER_REVIEW_PUBLISHED'
