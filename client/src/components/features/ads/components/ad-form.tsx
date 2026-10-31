@@ -471,7 +471,7 @@ export const AdForm = ({
               {handleSubmitAndPublish && (
                 <Button
                   className='h-11 px-5 sm:h-12'
-                  variant={isDraft ? 'secondary' : 'outline'}
+                  variant='secondary'
                   size='lg'
                   type='button'
                   disabled={isSubmitting || isPhotosProcessing}
@@ -489,7 +489,7 @@ export const AdForm = ({
                   disabled={isSaveDrafting || isPhotosProcessing}
                   onClick={handleSaveDraft}
                 >
-                  Сохранить черновик
+                  {isEdit ? 'Сохранить' : 'Сохранить как черновик'}
                 </Button>
               )}
             </div>

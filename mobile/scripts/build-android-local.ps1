@@ -197,21 +197,44 @@ try {
   New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
   $version = (Get-Content (Join-Path $mobileDir 'app.json') -Raw | ConvertFrom-Json).expo.version
   $outApk = Join-Path $OutDir "agrozone-$version-$VersionCode.apk"
-  Copy-Item $builtApk $outApk -Force
+
+  # Подписываем во временной папке, а в выходную кладём готовый файл одним
+  # копированием: при подписи apksigner создаёт и переименовывает файлы, а
+  # антивирус или синхронизация (Яндекс Диск, OneDrive) могут на миг
+  # заблокировать файл на рабочем столе, и Windows отвечает «Отказано в доступе».
+  $signDir = Join-Path ([IO.Path]::GetTempPath()) 'agrozone-sign'
+  New-Item -ItemType Directory -Force -Path $signDir | Out-Null
+  $signedApk = Join-Path $signDir (Split-Path $outApk -Leaf)
+  Copy-Item $builtApk $signedApk -Force
 
   & $apksigner sign --ks $KeystorePath --ks-key-alias $KeyAlias `
-    --ks-pass env:AZ_KS_PASS --key-pass env:AZ_KEY_PASS $outApk
+    --ks-pass env:AZ_KS_PASS --key-pass env:AZ_KEY_PASS $signedApk
   if ($LASTEXITCODE -ne 0) { Fail 'apksigner не смог подписать APK (проверьте пароли и alias).' }
 
-  $certs = & $apksigner verify --print-certs $outApk
+  $certs = & $apksigner verify --print-certs $signedApk
   if ($LASTEXITCODE -ne 0) { Fail 'Проверка подписи не пройдена.' }
   $sha1Line = $certs | Where-Object { $_ -match 'certificate SHA-1 digest' } | Select-Object -First 1
   $actualSha1 = ($sha1Line -replace '.*digest:\s*', '').Trim().ToLower()
 
   if ($actualSha1 -ne $ExpectedSha1) {
-    Remove-Item $outApk -Force
+    Remove-Item $signedApk -Force
     Fail "Отпечаток подписи не совпал с ключом EAS ($actualSha1). APK удалён, в RuStore его заливать нельзя."
   }
+
+  # Файл в выходной папке может быть занят (антивирус проверяет новый файл,
+  # прошлая сборка открыта в проводнике) — несколько попыток с паузой.
+  for ($attempt = 1; $attempt -le 5; $attempt++) {
+    try {
+      Copy-Item $signedApk $outApk -Force -ErrorAction Stop
+      break
+    } catch {
+      if ($attempt -eq 5) {
+        Fail "Не удалось записать $outApk (файл занят другой программой). Подписанный APK лежит здесь: $signedApk"
+      }
+      Start-Sleep -Seconds 2
+    }
+  }
+  Remove-Item $signedApk -Force -ErrorAction SilentlyContinue
 
   Write-Host "`nГОТОВО. Подпись совпадает с ключом EAS." -ForegroundColor Green
   Write-Host "APK: $outApk" -ForegroundColor Green
