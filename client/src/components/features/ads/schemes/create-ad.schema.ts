@@ -12,8 +12,11 @@ export const CreateAdSchema = z.object({
   unit: z.string().default('ITEM'),
   images: z.array(z.any()).default([]),
   address: z.string().min(5, 'Укажите адрес'),
-  lat: z.number().min(-90, 'Выберите местоположение'),
-  lng: z.number().min(-180, 'Выберите местоположение'),
+  // 0, 0 — «координат нет»: у части адресов подсказка их не возвращает. Форму
+  // это не блокирует: точку по тексту адреса определяет сервер (AdsService
+  // .resolvePoint), а если не сможет — вернёт понятную ошибку.
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
   // Заполняются автоматически из AddressInput (тот же DaData-ответ, что и
   // адрес/координаты) — не отдельное поле формы, пользователь их не вводит.
   region: z.string().optional(),

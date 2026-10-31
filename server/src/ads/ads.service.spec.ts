@@ -10,6 +10,7 @@ import { CategoriesService } from '@/categories/categories.service'
 import { UserService } from '@/user/user.service'
 import { NotificationsService } from '@/notifications/notifications.service'
 import { SiteSettingsService } from '@/site-settings/site-settings.service'
+import { GeocodeService } from './geocode.service'
 
 // AdsService — большой сервис с семью зависимостями (см. конструктор), но
 // на момент написания этого файла у него не было ни одного теста вообще.
@@ -29,6 +30,7 @@ describe('AdsService', () => {
   let userService: any
   let siteSettingsService: any
   let notificationsService: any
+  let geocodeService: any
 
   beforeEach(async () => {
     prisma = {
@@ -60,6 +62,9 @@ describe('AdsService', () => {
     // Рейтинги по умолчанию выключены — как у владельца до включения в админке.
     siteSettingsService = { getFlags: jest.fn().mockResolvedValue({ sellerRatings: false }) }
 
+    // Геокодер по умолчанию находит точку; тесты «не нашёл» переопределяют.
+    geocodeService = { getCoordsFromAddress: jest.fn().mockResolvedValue({ lat: 45.04, lng: 41.97 }) }
+
     notificationsService = { notifyAdPublished: jest.fn().mockResolvedValue(undefined) }
 
     categoriesService = {
@@ -78,7 +83,8 @@ describe('AdsService', () => {
         { provide: CategoriesService, useValue: categoriesService },
         { provide: UserService, useValue: userService },
         { provide: NotificationsService, useValue: notificationsService },
-        { provide: SiteSettingsService, useValue: siteSettingsService }
+        { provide: SiteSettingsService, useValue: siteSettingsService },
+        { provide: GeocodeService, useValue: geocodeService }
       ]
     }).compile()
 
@@ -359,6 +365,52 @@ describe('AdsService', () => {
         expect(order).toEqual(['db', 's3-delete'])
       })
 
+      describe('точка на карте', () => {
+        beforeEach(() => {
+          prisma.ad.findFirst.mockResolvedValue({
+            ...existingAd,
+            address: 'г Москва',
+            lat: 55.75,
+            lng: 37.61
+          })
+        })
+
+        it('правка без адреса и координат геокодер не трогает и точку не меняет', async () => {
+          await service.update('ad-1', { title: 'Новое название' } as any, 'user-1')
+
+          expect(geocodeService.getCoordsFromAddress).not.toHaveBeenCalled()
+          expect(prisma.ad.update.mock.calls[0][0].data).not.toHaveProperty('lat')
+        })
+
+        it('новый адрес без координат не наследует старую точку — определяется заново', async () => {
+          await service.update('ad-1', { address: 'г Ставрополь' } as any, 'user-1')
+
+          expect(geocodeService.getCoordsFromAddress).toHaveBeenCalledWith('г Ставрополь')
+          expect(prisma.ad.update).toHaveBeenCalledWith(
+            expect.objectContaining({ data: expect.objectContaining({ lat: 45.04, lng: 41.97 }) })
+          )
+        })
+
+        it('сохранение формы с 0, 0 исправляет объявление, опубликованное без точки', async () => {
+          await service.update('ad-1', { address: 'г Москва', lat: 0, lng: 0 } as any, 'user-1')
+
+          expect(geocodeService.getCoordsFromAddress).toHaveBeenCalledWith('г Москва')
+          expect(prisma.ad.update).toHaveBeenCalledWith(
+            expect.objectContaining({ data: expect.objectContaining({ lat: 45.04, lng: 41.97 }) })
+          )
+        })
+
+        it('новый адрес не определился — 400, ничего не пишется', async () => {
+          geocodeService.getCoordsFromAddress.mockResolvedValue(null)
+
+          await expect(service.update('ad-1', { address: 'абвгд' } as any, 'user-1')).rejects.toThrow(
+            BadRequestException
+          )
+
+          expect(prisma.ad.update).not.toHaveBeenCalled()
+        })
+      })
+
       it('не трогает фото, если existingImages не передан', async () => {
         await service.update('ad-1', { title: 'Новое название' } as any, 'user-1')
 
@@ -591,6 +643,39 @@ describe('AdsService', () => {
         expect(prisma.ad.create).toHaveBeenCalledWith(
           expect.objectContaining({ data: expect.objectContaining({ images: [NEW_URL] }) })
         )
+      })
+
+      describe('точка на карте', () => {
+        const withAddress = { ...dto, address: 'г Ставрополь, ул Ленина, 1' }
+
+        it('координаты из формы принимаются как есть, геокодер не нужен', async () => {
+          await service.create({ ...withAddress, lat: 55.75, lng: 37.61 }, 'user-1', [])
+
+          expect(geocodeService.getCoordsFromAddress).not.toHaveBeenCalled()
+          expect(prisma.ad.create).toHaveBeenCalledWith(
+            expect.objectContaining({ data: expect.objectContaining({ lat: 55.75, lng: 37.61 }) })
+          )
+        })
+
+        it('форма прислала 0, 0 — координаты определяются по адресу', async () => {
+          await service.create({ ...withAddress, lat: 0, lng: 0 }, 'user-1', [])
+
+          expect(geocodeService.getCoordsFromAddress).toHaveBeenCalledWith('г Ставрополь, ул Ленина, 1')
+          expect(prisma.ad.create).toHaveBeenCalledWith(
+            expect.objectContaining({ data: expect.objectContaining({ lat: 45.04, lng: 41.97 }) })
+          )
+        })
+
+        it('адрес не определился — 400, фото не загружаются и объявление не создаётся', async () => {
+          geocodeService.getCoordsFromAddress.mockResolvedValue(null)
+
+          await expect(service.create({ ...withAddress, lat: 0, lng: 0 }, 'user-1', [file])).rejects.toThrow(
+            'Выберите адрес из списка подсказок'
+          )
+
+          expect(fileService.uploadAdPhoto).not.toHaveBeenCalled()
+          expect(prisma.ad.create).not.toHaveBeenCalled()
+        })
       })
 
       it('при сбое записи в БД удаляет загруженные файлы', async () => {
@@ -923,6 +1008,8 @@ describe('AdsService', () => {
       title: 'Морковь',
       description: 'Морковь урожай 2026 года',
       address: 'г Ставрополь, ул Ленина, 1',
+      lat: 45.04,
+      lng: 41.97,
       phone: '79991234567'
     }
 
@@ -939,6 +1026,35 @@ describe('AdsService', () => {
         where: { id: 'ad1' },
         data: { status: 'PENDING', archivedAt: null }
       })
+    })
+
+    it('у черновика нет точки — определяется по адресу до отправки на модерацию', async () => {
+      prisma.ad.findFirst.mockResolvedValue({ ...complete, lat: 0, lng: 0 })
+
+      await service.activate('ad1', 'owner')
+
+      expect(geocodeService.getCoordsFromAddress).toHaveBeenCalledWith('г Ставрополь, ул Ленина, 1')
+      expect(prisma.ad.update).toHaveBeenCalledWith({
+        where: { id: 'ad1' },
+        data: { status: 'PENDING', archivedAt: null, lat: 45.04, lng: 41.97 }
+      })
+    })
+
+    it('адрес черновика не определился — 400, статус не меняется', async () => {
+      geocodeService.getCoordsFromAddress.mockResolvedValue(null)
+      prisma.ad.findFirst.mockResolvedValue({ ...complete, lat: 0, lng: 0 })
+
+      await expect(service.activate('ad1', 'owner')).rejects.toThrow('Выберите адрес из списка подсказок')
+
+      expect(prisma.ad.update).not.toHaveBeenCalled()
+    })
+
+    it('у черновика есть точка — геокодер не нужен', async () => {
+      prisma.ad.findFirst.mockResolvedValue(complete)
+
+      await service.activate('ad1', 'owner')
+
+      expect(geocodeService.getCoordsFromAddress).not.toHaveBeenCalled()
     })
 
     it('неполный черновик — 400 со списком недостающего, статус не меняется', async () => {

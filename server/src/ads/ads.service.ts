@@ -21,6 +21,8 @@ import { FindMyAdsQueryDto } from './dto/find-my-ads-query.dto'
 import { FindUserAdsAdminQueryDto } from './dto/find-user-ads-admin-query.dto'
 import { AdminSetAdExpirationDto } from './dto/admin-set-ad-expiration.dto'
 import { AdminSetAdCategoryDto } from './dto/admin-set-ad-category.dto'
+import { GeocodeService, GeoPoint } from './geocode.service'
+import { hasCoordinates } from './utils/has-coordinates.util'
 import { getMissingPublishFields } from './utils/get-missing-publish-fields.util'
 import { reconcileCategoryFeatures } from './utils/reconcile-category-features.util'
 import { CategoriesService } from '@/categories/categories.service'
@@ -135,7 +137,8 @@ export class AdsService {
     private readonly categoriesService: CategoriesService,
     private readonly userService: UserService,
     private readonly notificationsService: NotificationsService,
-    private readonly siteSettingsService: SiteSettingsService
+    private readonly siteSettingsService: SiteSettingsService,
+    private readonly geocodeService: GeocodeService
   ) {}
 
   async create(
@@ -184,10 +187,13 @@ export class AdsService {
     // в объявление произвольный (в том числе чужой) файл.
     const { existingImages, price, features, ...restDto } = createAdDto
 
+    const point = await this.resolvePoint(createAdDto.address, createAdDto.lat, createAdDto.lng)
+
     return this.saveWithImages([], undefined, files, images =>
       this.prisma.ad.create({
         data: {
           ...restDto,
+          ...point,
           phone,
           price: price !== undefined && price !== null ? BigInt(Math.round(price)) : null,
           unit,
@@ -1380,11 +1386,27 @@ export class AdsService {
     const nextStatus =
       ad.status === AdStatus.PUBLISHED || ad.status === AdStatus.REJECTED ? AdStatus.PENDING : ad.status
 
+    // Точку пересчитываем только если форма прислала адрес или координаты: так
+    // правка заголовка не тратит запрос к геокодеру, а объявление, сохранённое
+    // раньше без координат, исправляется при первом же сохранении формы.
+    // Новый адрес без новых координат не наследует старую точку: она осталась бы
+    // от прежнего адреса.
+    const addressChanged = rest.address !== undefined && rest.address !== ad.address
+    const locationChanged = addressChanged || rest.lat !== undefined || rest.lng !== undefined
+    const point = locationChanged
+      ? await this.resolvePoint(
+          rest.address ?? ad.address,
+          rest.lat ?? (addressChanged ? 0 : ad.lat),
+          rest.lng ?? (addressChanged ? 0 : ad.lng)
+        )
+      : undefined
+
     return this.saveWithImages(ad.images, existingImages, files, images =>
       this.prisma.ad.update({
         where: { id },
         data: {
           ...rest,
+          ...point,
           status: nextStatus,
           rejectionReason: null,
           images,
@@ -1616,6 +1638,11 @@ export class AdsService {
       }
     }
 
+    // У черновика точки может не быть (адрес введён, а подсказка не выбрана):
+    // определяем её до публикации, а не отправляем объявление «в океан».
+    const needsPoint = ad.status === AdStatus.DRAFT && !hasCoordinates(ad.lat, ad.lng)
+    const point = needsPoint ? await this.resolvePoint(ad.address, ad.lat, ad.lng) : undefined
+
     const nextStatus = this.adStateMachine.transition(ad.status, 'ACTIVATE')
 
     return this.prisma.ad.update({
@@ -1623,7 +1650,7 @@ export class AdsService {
       // Объявление покинуло архив (если вообще было в нём) — сбрасываем
       // archivedAt, иначе на нём осталась бы старая дата и оно могло бы
       // попасть под очистку при повторной архивации раньше времени.
-      data: { status: nextStatus, archivedAt: null }
+      data: { status: nextStatus, archivedAt: null, ...point }
     })
   }
 
@@ -1709,6 +1736,23 @@ export class AdsService {
   // Номер черновика: введённый, иначе основной (или первый) из профиля, иначе
   // пусто — телефон проверит публикация. Колонка phone не допускает NULL,
   // поэтому «нет номера» хранится пустой строкой.
+  // Точка объявления: присланная форма принимается как есть, а без неё (форма
+  // присылает 0, 0, когда у выбранной подсказки нет координат) определяется по
+  // адресу. Не нашли — не публикуем «в океане», а просим выбрать адрес из списка.
+  private async resolvePoint(address: string, lat: number, lng: number): Promise<GeoPoint> {
+    if (hasCoordinates(lat, lng)) return { lat, lng }
+
+    const point = await this.geocodeService.getCoordsFromAddress(address)
+
+    if (!point) {
+      throw new BadRequestException(
+        'Не удалось определить местоположение по адресу. Выберите адрес из списка подсказок'
+      )
+    }
+
+    return point
+  }
+
   private async resolveDraftPhone(userId: string, phone?: string): Promise<string> {
     if (phone) {
       const normalized = normalizePhone(phone)

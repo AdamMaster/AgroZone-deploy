@@ -1,16 +1,30 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { createHash } from 'node:crypto'
+
 import { RedisService } from '@/redis/redis.service'
+
+import { hasCoordinates } from './utils/has-coordinates.util'
 
 const ADDRESS_NOT_FOUND = 'Адрес не найден'
 const REQUEST_TIMEOUT_MS = 5000
 const CACHE_TTL_SECONDS = 7 * 24 * 60 * 60
 
-// Обратный геокодинг через Яндекс (платный API с ключом). Результат
-// кэшируется в Redis: координаты округляются до 4 знаков (~11 м), так что
-// повторные запросы с той же точки (и с близких, и от разных пользователей)
-// не тратят квоту и деньги. Сбой кэша не мешает работе — тогда просто
-// идём в Яндекс.
+// Слишком грубые результаты («Россия», «Московская область»): центр страны или
+// региона вместо адреса объявления только вводил бы в заблуждение.
+const COARSE_KINDS: ReadonlySet<string> = new Set(['country', 'province'])
+
+export interface GeoPoint {
+  lat: number
+  lng: number
+}
+
+// Геокодинг через Яндекс (платный API с ключом): обратный (координаты →
+// адрес) и прямой (адрес → координаты). Результат кэшируется в Redis: у
+// обратного координаты округляются до 4 знаков (~11 м), у прямого ключ — адрес
+// без регистра и лишних пробелов, так что повторные запросы (в том числе от
+// разных пользователей) не тратят квоту и деньги. Сбой кэша не мешает работе —
+// тогда просто идём в Яндекс.
 @Injectable()
 export class GeocodeService {
   private readonly logger = new Logger(GeocodeService.name)
@@ -23,7 +37,7 @@ export class GeocodeService {
   async getAddressFromCoords(lat: number, lon: number): Promise<string> {
     const cacheKey = `geocode:${lat.toFixed(4)},${lon.toFixed(4)}`
 
-    const cached = await this.readCache(cacheKey)
+    const cached = await this.readCache<string>(cacheKey)
     if (cached) return cached
 
     const address = await this.fetchAddress(lat, lon)
@@ -36,7 +50,49 @@ export class GeocodeService {
     return address
   }
 
+  // Адрес → координаты. null — адрес не найден или найден слишком грубо; сбой
+  // самого сервиса — 503 (см. requestGeoObject), чтобы не путать «адреса нет» с
+  // «геокодер не отвечает».
+  async getCoordsFromAddress(address: string): Promise<GeoPoint | null> {
+    const normalized = address.trim().replace(/\s+/g, ' ')
+
+    if (!normalized) return null
+
+    const cacheKey = `geocode:address:${createHash('sha1').update(normalized.toLowerCase()).digest('hex')}`
+
+    const cached = await this.readCache<GeoPoint>(cacheKey)
+    if (cached) return cached
+
+    const geoObject = await this.requestGeoObject(normalized)
+    const point = this.parsePoint(geoObject)
+
+    // Как и «адрес не найден» выше, «не найдено» не кэшируем.
+    if (point) await this.writeCache(cacheKey, point)
+
+    return point
+  }
+
   private async fetchAddress(lat: number, lon: number): Promise<string> {
+    const geoObject = await this.requestGeoObject(`${lon},${lat}`)
+    const text = geoObject?.metaDataProperty?.GeocoderMetaData?.text
+
+    return typeof text === 'string' && text ? text : ADDRESS_NOT_FOUND
+  }
+
+  // «lon,lat» Яндекс в ответе отдаёт строкой «долгота широта».
+  private parsePoint(geoObject: any): GeoPoint | null {
+    const kind = geoObject?.metaDataProperty?.GeocoderMetaData?.kind
+    const pos = geoObject?.Point?.pos
+
+    if (typeof pos !== 'string' || COARSE_KINDS.has(kind)) return null
+
+    const [lng, lat] = pos.split(' ').map(Number)
+
+    return hasCoordinates(lat, lng) ? { lat, lng } : null
+  }
+
+  // Первый найденный объект геокодера или undefined, если ничего не найдено.
+  private async requestGeoObject(geocode: string): Promise<any> {
     const apiKey = this.configService.get<string>('YANDEX_MAPS_API_KEY')
 
     // Без ключа раньше getOrThrow кидал голую ошибку -> 500 без объяснений.
@@ -49,7 +105,7 @@ export class GeocodeService {
 
     const params = new URLSearchParams({
       apikey: apiKey,
-      geocode: `${lon},${lat}`,
+      geocode,
       format: 'json',
       results: '1'
     })
@@ -75,24 +131,21 @@ export class GeocodeService {
       throw new ServiceUnavailableException('Сервис определения адреса временно недоступен')
     }
 
-    const text =
-      data?.response?.GeoObjectCollection?.featureMember?.[0]?.GeoObject?.metaDataProperty?.GeocoderMetaData?.text
-
-    return typeof text === 'string' && text ? text : ADDRESS_NOT_FOUND
+    return data?.response?.GeoObjectCollection?.featureMember?.[0]?.GeoObject
   }
 
-  private async readCache(key: string): Promise<string | null> {
+  private async readCache<T>(key: string): Promise<T | null> {
     try {
       const raw = await this.redis.get(key)
-      return raw ? (JSON.parse(raw) as string) : null
+      return raw ? (JSON.parse(raw) as T) : null
     } catch {
       return null
     }
   }
 
-  private async writeCache(key: string, address: string): Promise<void> {
+  private async writeCache(key: string, value: string | GeoPoint): Promise<void> {
     try {
-      await this.redis.set(key, address, CACHE_TTL_SECONDS)
+      await this.redis.set(key, value, CACHE_TTL_SECONDS)
     } catch {
       // кэш — оптимизация, не критично
     }

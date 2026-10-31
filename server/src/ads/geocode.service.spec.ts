@@ -68,4 +68,75 @@ describe('GeocodeService', () => {
 
     await expect(service.getAddressFromCoords(55.79, 49.12)).resolves.toBe('Казань')
   })
+
+  describe('getCoordsFromAddress', () => {
+    const pointResponse = (pos?: string, kind = 'house') => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        response: {
+          GeoObjectCollection: {
+            featureMember: pos
+              ? [{ GeoObject: { Point: { pos }, metaDataProperty: { GeocoderMetaData: { kind } } } }]
+              : []
+          }
+        }
+      })
+    })
+
+    it('Яндекс отдаёт «долгота широта» — возвращаем {lat, lng} и кэшируем по адресу', async () => {
+      fetchMock.mockResolvedValue(pointResponse('41.97 45.04'))
+
+      await expect(service.getCoordsFromAddress('  г Ставрополь,   ул Ленина  ')).resolves.toEqual({
+        lat: 45.04,
+        lng: 41.97
+      })
+      expect(String(fetchMock.mock.calls[0][0])).toContain('geocode=%D0%B3+%D0%A1%D1%82')
+      expect(redis.set).toHaveBeenCalledWith(
+        expect.stringMatching(/^geocode:address:[0-9a-f]{40}$/),
+        { lat: 45.04, lng: 41.97 },
+        7 * 24 * 60 * 60
+      )
+    })
+
+    it('регистр и лишние пробелы не создают отдельных записей кэша', async () => {
+      fetchMock.mockResolvedValue(pointResponse('41.97 45.04'))
+
+      await service.getCoordsFromAddress('Г Ставрополь, ул Ленина')
+      await service.getCoordsFromAddress('г  ставрополь, ул ленина')
+
+      expect(redis.set.mock.calls[0][0]).toBe(redis.set.mock.calls[1][0])
+    })
+
+    it('точка из кэша — без запроса в Яндекс', async () => {
+      redis.get.mockResolvedValue(JSON.stringify({ lat: 1, lng: 2 }))
+
+      await expect(service.getCoordsFromAddress('г Ставрополь')).resolves.toEqual({ lat: 1, lng: 2 })
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    it('не нашёл — null, и это не кэшируется', async () => {
+      fetchMock.mockResolvedValue(pointResponse())
+
+      await expect(service.getCoordsFromAddress('абвгд')).resolves.toBeNull()
+      expect(redis.set).not.toHaveBeenCalled()
+    })
+
+    it.each(['country', 'province'])('слишком грубый результат (%s) — как «не нашёл»', async kind => {
+      fetchMock.mockResolvedValue(pointResponse('37.6 55.7', kind))
+
+      await expect(service.getCoordsFromAddress('Россия')).resolves.toBeNull()
+    })
+
+    it('пустой адрес — null без запроса', async () => {
+      await expect(service.getCoordsFromAddress('   ')).resolves.toBeNull()
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    it('сбой Яндекса — 503, а не «адрес не найден»', async () => {
+      fetchMock.mockResolvedValue({ ok: false, status: 500 })
+
+      await expect(service.getCoordsFromAddress('г Ставрополь')).rejects.toBeInstanceOf(ServiceUnavailableException)
+    })
+  })
 })

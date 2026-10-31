@@ -27,6 +27,7 @@
     "s3:find-orphans": "dotenv -e .env -- ts-node scripts/find-orphaned-s3-files.ts",
     "seller-ratings:load": "dotenv -e .env -- ts-node -r tsconfig-paths/register scripts/seller-ratings-load.ts",
     "images:generate-variants": "dotenv -e .env -- ts-node scripts/generate-photo-variants.ts",
+    "ads:backfill-coordinates": "dotenv -e .env -- ts-node -r tsconfig-paths/register scripts/backfill-ad-coordinates.ts",
     "prisma:reset": "dotenv -e .env -- prisma migrate reset --force",
     "prisma:generate": "dotenv -e .env -- prisma generate",
     "prisma:deploy": "dotenv -e .env -- prisma migrate deploy"
