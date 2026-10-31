@@ -1425,6 +1425,14 @@ export class AdsService {
       }
     })
 
+    // Решение модератора по объявлению, ждавшему проверки: владелец должен
+    // узнать о нём так же, как об отклонении (см. reject), и не гадать.
+    // Смотрим на итоговый статус: из других состояний PUBLISH ведёт не в
+    // PUBLISHED, и сообщать «опубликовано» было бы неправдой.
+    if (status === AdStatus.PUBLISHED) {
+      await this.notificationsService.notifyAdPublished(ad.userId, ad.id, ad.title)
+    }
+
     return updated
   }
 

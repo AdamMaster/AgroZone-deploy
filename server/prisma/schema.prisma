@@ -1727,6 +1727,8 @@ enum NotificationType {
   SELLER_REVIEW_REPLIED
   // Покупателю: продавец отметил сделку состоявшейся — можно оценить его.
   SELLER_DEAL_CONFIRMED
+  // Владельцу: модератор проверил объявление и опубликовал его.
+  AD_PUBLISHED
 }
 
 enum RegistrationChannel {

@@ -4,6 +4,7 @@
 // без изменений в компонентах.
 export type NotificationType =
   | 'AD_REJECTED'
+  | 'AD_PUBLISHED'
   | 'NEW_MESSAGE'
   | 'SELLER_REVIEW_HIDDEN'
   | 'SELLER_REVIEW_PUBLISHED'

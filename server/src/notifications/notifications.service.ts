@@ -3,8 +3,23 @@ import { NotificationType } from '@/generated/prisma/client'
 
 import { MailService } from '@/libs/mail/mail.service'
 import { PrismaService } from '@/prisma/prisma.service'
+import { PushService } from '@/push/push.service'
+import { truncatePushBody } from '@/push/utils/truncate-push-body.util'
 
+import {
+  NOTIFICATION_PUSH_BODY_MAX_LENGTH,
+  NOTIFICATIONS_PUSH_LINK,
+  PUSH_NOTIFICATION_TYPES
+} from './constants/notifications.constants'
 import { FindNotificationsQueryDto } from './dto/find-notifications-query.dto'
+
+interface NewNotification {
+  userId: string
+  type: NotificationType
+  title: string
+  message: string
+  link: string
+}
 
 @Injectable()
 export class NotificationsService {
@@ -12,8 +27,30 @@ export class NotificationsService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly mailService: MailService
+    private readonly mailService: MailService,
+    private readonly pushService: PushService
   ) {}
+
+  // Единственное место, где создаётся уведомление: запись в список («колокольчик»)
+  // и, для событий из PUSH_NOTIFICATION_TYPES, push на телефон. Запись в
+  // локальную базу намеренно без try/catch (см. notifyAdRejected), push —
+  // фоном: он внешний, не бросает (см. PushService.sendToUser) и не должен
+  // задерживать ответ модератору или автору действия.
+  private async create(data: NewNotification) {
+    const notification = await this.prisma.notification.create({ data })
+
+    if (PUSH_NOTIFICATION_TYPES.has(data.type)) {
+      void this.pushService.sendToUser(data.userId, {
+        title: data.title,
+        body: truncatePushBody(data.message, NOTIFICATION_PUSH_BODY_MAX_LENGTH),
+        link: NOTIFICATIONS_PUSH_LINK,
+        channel: 'events',
+        data: { notificationId: notification.id }
+      })
+    }
+
+    return notification
+  }
 
   async findMyNotifications(userId: string, query: FindNotificationsQueryDto) {
     const page = query.page ?? 1
@@ -76,16 +113,14 @@ export class NotificationsService {
   // уведомление доходит только если продавец сам зайдёт на сайт, письмо —
   // независимо от этого.
   async notifyAdRejected(userId: string, adId: string, adTitle: string, reason: string | null) {
-    const notification = await this.prisma.notification.create({
-      data: {
-        userId,
-        type: NotificationType.AD_REJECTED,
-        title: 'Объявление отклонено',
-        message: reason
-          ? `Объявление «${adTitle}» отклонено модератором. Причина: ${reason}`
-          : `Объявление «${adTitle}» отклонено модератором.`,
-        link: `/ads/${adId}/edit`
-      }
+    const notification = await this.create({
+      userId,
+      type: NotificationType.AD_REJECTED,
+      title: 'Объявление отклонено',
+      message: reason
+        ? `Объявление «${adTitle}» отклонено модератором. Причина: ${reason}`
+        : `Объявление «${adTitle}» отклонено модератором.`,
+      link: `/ads/${adId}/edit`
     })
 
     // В отличие от записи в БД выше (намеренно без try/catch — это
@@ -110,6 +145,19 @@ export class NotificationsService {
     }
 
     return notification
+  }
+
+  // Вызывается из AdsService.publish() — модератор проверил объявление и
+  // опубликовал его. Раньше продавец узнавал об этом, только открыв «Мои
+  // объявления»: после отправки на модерацию объявление «пропадало» без вестей.
+  async notifyAdPublished(userId: string, adId: string, adTitle: string) {
+    return this.create({
+      userId,
+      type: NotificationType.AD_PUBLISHED,
+      title: 'Объявление опубликовано',
+      message: `Объявление «${adTitle}» прошло проверку и опубликовано.`,
+      link: `/ads/${adId}`
+    })
   }
 
   // Вызывается из ConversationsService при каждом новом сообщении в
@@ -152,26 +200,22 @@ export class NotificationsService {
   // действие на сайте, а не событие, о котором нужно сообщать письмом. Не
   // идёт через try/catch — запись в локальную базу, см. notifyAdRejected.
   async notifySellerReviewHidden(authorId: string, sellerId: string) {
-    return this.prisma.notification.create({
-      data: {
-        userId: authorId,
-        type: NotificationType.SELLER_REVIEW_HIDDEN,
-        title: 'Отзыв скрыт модератором',
-        message: 'Ваш отзыв о продавце нарушает правила площадки и скрыт. В рейтинг он не входит.',
-        link: `/sellers/${sellerId}`
-      }
+    return this.create({
+      userId: authorId,
+      type: NotificationType.SELLER_REVIEW_HIDDEN,
+      title: 'Отзыв скрыт модератором',
+      message: 'Ваш отзыв о продавце нарушает правила площадки и скрыт. В рейтинг он не входит.',
+      link: `/sellers/${sellerId}`
     })
   }
 
   async notifySellerReviewPublished(authorId: string, sellerId: string) {
-    return this.prisma.notification.create({
-      data: {
-        userId: authorId,
-        type: NotificationType.SELLER_REVIEW_PUBLISHED,
-        title: 'Отзыв опубликован',
-        message: 'Модератор проверил ваш отзыв о продавце — он опубликован и учтён в рейтинге.',
-        link: `/sellers/${sellerId}`
-      }
+    return this.create({
+      userId: authorId,
+      type: NotificationType.SELLER_REVIEW_PUBLISHED,
+      title: 'Отзыв опубликован',
+      message: 'Модератор проверил ваш отзыв о продавце — он опубликован и учтён в рейтинге.',
+      link: `/sellers/${sellerId}`
     })
   }
 
@@ -179,40 +223,34 @@ export class NotificationsService {
   // отзывам: продавец увидит их в уведомлениях, а объявления — в «Моих
   // объявлениях».
   async notifySellerWarning(sellerId: string) {
-    return this.prisma.notification.create({
-      data: {
-        userId: sellerId,
-        type: NotificationType.SELLER_WARNING,
-        title: 'Предупреждение от модератора',
-        message:
-          'На вас поступили жалобы от покупателей, модератор их проверил. Повторные нарушения правил площадки приведут к более строгим мерам.',
-        link: '/safety'
-      }
+    return this.create({
+      userId: sellerId,
+      type: NotificationType.SELLER_WARNING,
+      title: 'Предупреждение от модератора',
+      message:
+        'На вас поступили жалобы от покупателей, модератор их проверил. Повторные нарушения правил площадки приведут к более строгим мерам.',
+      link: '/safety'
     })
   }
 
   async notifySellerAdsSuspended(sellerId: string) {
-    return this.prisma.notification.create({
-      data: {
-        userId: sellerId,
-        type: NotificationType.SELLER_ADS_SUSPENDED,
-        title: 'Объявления приостановлены',
-        message:
-          'На вас поступило несколько жалоб, поэтому объявления скрыты до проверки модератором. Пока она идёт, изменить или удалить их нельзя.',
-        link: '/profile/settings/ads'
-      }
+    return this.create({
+      userId: sellerId,
+      type: NotificationType.SELLER_ADS_SUSPENDED,
+      title: 'Объявления приостановлены',
+      message:
+        'На вас поступило несколько жалоб, поэтому объявления скрыты до проверки модератором. Пока она идёт, изменить или удалить их нельзя.',
+      link: '/profile/settings/ads'
     })
   }
 
   async notifySellerAdsRestored(sellerId: string) {
-    return this.prisma.notification.create({
-      data: {
-        userId: sellerId,
-        type: NotificationType.SELLER_ADS_RESTORED,
-        title: 'Объявления снова опубликованы',
-        message: 'Модератор завершил проверку жалоб, ваши объявления снова доступны покупателям.',
-        link: '/profile/settings/ads'
-      }
+    return this.create({
+      userId: sellerId,
+      type: NotificationType.SELLER_ADS_RESTORED,
+      title: 'Объявления снова опубликованы',
+      message: 'Модератор завершил проверку жалоб, ваши объявления снова доступны покупателям.',
+      link: '/profile/settings/ads'
     })
   }
 
@@ -222,26 +260,22 @@ export class NotificationsService {
   // Вызываются вне транзакций отзывов: сбой уведомления не должен ронять
   // сам отзыв, см. SellerReviewsService.
   async notifySellerReviewReceived(sellerId: string) {
-    return this.prisma.notification.create({
-      data: {
-        userId: sellerId,
-        type: NotificationType.SELLER_REVIEW_RECEIVED,
-        title: 'Новый отзыв о вас',
-        message: 'Покупатель оставил отзыв. Прочитать его и ответить можно на вашей странице продавца.',
-        link: `/sellers/${sellerId}?tab=reviews`
-      }
+    return this.create({
+      userId: sellerId,
+      type: NotificationType.SELLER_REVIEW_RECEIVED,
+      title: 'Новый отзыв о вас',
+      message: 'Покупатель оставил отзыв. Прочитать его и ответить можно на вашей странице продавца.',
+      link: `/sellers/${sellerId}?tab=reviews`
     })
   }
 
   async notifySellerReviewReplied(authorId: string, sellerId: string) {
-    return this.prisma.notification.create({
-      data: {
-        userId: authorId,
-        type: NotificationType.SELLER_REVIEW_REPLIED,
-        title: 'Продавец ответил на ваш отзыв',
-        message: 'Ответ продавца виден под вашим отзывом на его странице.',
-        link: `/sellers/${sellerId}?tab=reviews`
-      }
+    return this.create({
+      userId: authorId,
+      type: NotificationType.SELLER_REVIEW_REPLIED,
+      title: 'Продавец ответил на ваш отзыв',
+      message: 'Ответ продавца виден под вашим отзывом на его странице.',
+      link: `/sellers/${sellerId}?tab=reviews`
     })
   }
 
@@ -260,14 +294,12 @@ export class NotificationsService {
 
     if (alreadyInvited) return null
 
-    return this.prisma.notification.create({
-      data: {
-        userId: buyerId,
-        type: NotificationType.SELLER_DEAL_CONFIRMED,
-        title: 'Продавец отметил сделку состоявшейся',
-        message: 'Вы можете оценить продавца: откройте диалог и нажмите «Оставить отзыв».',
-        link
-      }
+    return this.create({
+      userId: buyerId,
+      type: NotificationType.SELLER_DEAL_CONFIRMED,
+      title: 'Продавец отметил сделку состоявшейся',
+      message: 'Вы можете оценить продавца: откройте диалог и нажмите «Оставить отзыв».',
+      link
     })
   }
 }

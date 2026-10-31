@@ -28,6 +28,7 @@ describe('AdsService', () => {
   let fileService: any
   let userService: any
   let siteSettingsService: any
+  let notificationsService: any
 
   beforeEach(async () => {
     prisma = {
@@ -59,6 +60,8 @@ describe('AdsService', () => {
     // Рейтинги по умолчанию выключены — как у владельца до включения в админке.
     siteSettingsService = { getFlags: jest.fn().mockResolvedValue({ sellerRatings: false }) }
 
+    notificationsService = { notifyAdPublished: jest.fn().mockResolvedValue(undefined) }
+
     categoriesService = {
       getFeatures: jest.fn().mockResolvedValue([]),
       getCategoryPath: jest.fn().mockResolvedValue(['tehnika', 'traktory']),
@@ -74,12 +77,42 @@ describe('AdsService', () => {
         { provide: AdStateMachineService, useValue: new AdStateMachineService() },
         { provide: CategoriesService, useValue: categoriesService },
         { provide: UserService, useValue: userService },
-        { provide: NotificationsService, useValue: {} },
+        { provide: NotificationsService, useValue: notificationsService },
         { provide: SiteSettingsService, useValue: siteSettingsService }
       ]
     }).compile()
 
     service = module.get(AdsService)
+  })
+
+  describe('публикация модератором (publish)', () => {
+    it('публикует объявление из очереди и сообщает владельцу', async () => {
+      prisma.ad.findUnique.mockResolvedValue({ id: 'ad-1', userId: 'u-1', title: 'Трактор МТЗ', status: 'PENDING' })
+      prisma.ad.update.mockResolvedValue({ id: 'ad-1', status: 'PUBLISHED' })
+
+      await service.publish('ad-1')
+
+      expect(prisma.ad.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'ad-1' }, data: expect.objectContaining({ status: 'PUBLISHED' }) })
+      )
+      expect(notificationsService.notifyAdPublished).toHaveBeenCalledWith('u-1', 'ad-1', 'Трактор МТЗ')
+    })
+
+    it('не сообщает «опубликовано», если объявление ушло не в PUBLISHED', async () => {
+      prisma.ad.findUnique.mockResolvedValue({ id: 'ad-1', userId: 'u-1', title: 'Трактор МТЗ', status: 'DRAFT' })
+      prisma.ad.update.mockResolvedValue({ id: 'ad-1', status: 'PENDING' })
+
+      await service.publish('ad-1')
+
+      expect(notificationsService.notifyAdPublished).not.toHaveBeenCalled()
+    })
+
+    it('выбрасывает NotFoundException, если объявления нет', async () => {
+      prisma.ad.findUnique.mockResolvedValue(null)
+
+      await expect(service.publish('missing')).rejects.toThrow(NotFoundException)
+      expect(notificationsService.notifyAdPublished).not.toHaveBeenCalled()
+    })
   })
 
   describe('setExpirationByAdmin', () => {

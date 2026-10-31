@@ -2,8 +2,9 @@ import { Injectable, Logger } from '@nestjs/common'
 import { OnEvent } from '@nestjs/event-emitter'
 
 import { PrismaService } from '@/prisma/prisma.service'
-import { PUSH_BODY_MAX_LENGTH, PUSH_CONVERSATION_COOLDOWN_MS } from '@/push/constants/push.constants'
+import { PUSH_CONVERSATION_COOLDOWN_MS } from '@/push/constants/push.constants'
 import { PushService } from '@/push/push.service'
+import { truncatePushBody } from '@/push/utils/truncate-push-body.util'
 
 import { CONVERSATION_MESSAGE_CREATED_EVENT, ConversationMessageCreatedPayload } from './conversations.events'
 import { ConversationsGateway } from './conversations.gateway'
@@ -55,7 +56,7 @@ export class ConversationsPushListener {
         recipientId,
         {
           title: sender?.displayName ?? 'Новое сообщение',
-          body: text ? this.truncate(text) : 'Фото',
+          body: text ? truncatePushBody(text) : 'Фото',
           // Нажатие открывает именно этот чат в приложении (экран chat/[id]).
           link: `agrozone://chat/${message.conversationId}`,
           data: { conversationId: message.conversationId }
@@ -82,9 +83,5 @@ export class ConversationsPushListener {
     })
 
     return earlier > 0
-  }
-
-  private truncate(text: string): string {
-    return text.length > PUSH_BODY_MAX_LENGTH ? `${text.slice(0, PUSH_BODY_MAX_LENGTH)}…` : text
   }
 }

@@ -87,11 +87,11 @@ export class FcmPushSender {
 
   // Только data (значения — строки): показывает приложение. Высокий приоритет
   // будит телефон сразу, а не при следующей синхронизации.
-  private buildBody(token: string, { title, body, link, data }: PushNotificationPayload) {
+  private buildBody(token: string, { title, body, link, channel, data }: PushNotificationPayload) {
     return {
       message: {
         token,
-        data: { ...data, title, body, ...(link && { link }) },
+        data: { ...data, title, body, ...(link && { link }), ...(channel && { channel }) },
         android: { priority: 'HIGH', ttl: `${FCM_MESSAGE_TTL_SECONDS}s` }
       }
     }

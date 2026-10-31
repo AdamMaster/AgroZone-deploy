@@ -69,6 +69,18 @@ describe('FcmPushSender', () => {
     })
   })
 
+  it('канал уведомления передаётся в data, а без канала поля нет', async () => {
+    await sender.send('device-token', { title: 'Объявление отклонено', body: 'Причина', channel: 'events' })
+
+    const [, init] = fcmCalls()[0] as [string, RequestInit]
+
+    expect(JSON.parse(init.body as string).message.data).toEqual({
+      title: 'Объявление отклонено',
+      body: 'Причина',
+      channel: 'events'
+    })
+  })
+
   it('подписывает JWT ключом сервисного аккаунта (RS256)', async () => {
     await sender.send('t', payload)
 

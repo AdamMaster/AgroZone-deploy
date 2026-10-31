@@ -1,9 +1,15 @@
+// Канал уведомлений Android: у каждого свои настройки звука и важности, и
+// человек отключает их независимо («Сообщения» отдельно от «События»).
+export type PushChannel = 'messages' | 'events'
+
 // Что отправляем на устройство. link — адрес, который откроется по нажатию
-// (в приложении — deep link вида agrozone://chat/{id}).
+// (в приложении — deep link вида agrozone://chat/{id}). channel не задан —
+// «Сообщения» (так же ведут себя сборки приложения, не знающие про каналы).
 export interface PushNotificationPayload {
   title: string
   body: string
   link?: string
+  channel?: PushChannel
   data?: Record<string, string>
 }
 
