@@ -468,6 +468,18 @@ export const AdForm = ({
                   {submitButtonText}
                 </Button>
               )}
+              {canSaveDraft && (
+                <Button
+                  className='h-11 px-5 sm:h-12'
+                  variant={isEdit ? 'secondary' : 'outline'}
+                  size='lg'
+                  type='button'
+                  disabled={isSaveDrafting || isPhotosProcessing}
+                  onClick={handleSaveDraft}
+                >
+                  {isEdit ? 'Сохранить' : 'Сохранить как черновик'}
+                </Button>
+              )}
               {handleSubmitAndPublish && (
                 <Button
                   className='h-11 px-5 sm:h-12'
@@ -478,18 +490,6 @@ export const AdForm = ({
                   onClick={handleSubmitAndPublish}
                 >
                   Сохранить и опубликовать
-                </Button>
-              )}
-              {canSaveDraft && (
-                <Button
-                  className='h-11 px-5 sm:h-12'
-                  variant='outline'
-                  size='lg'
-                  type='button'
-                  disabled={isSaveDrafting || isPhotosProcessing}
-                  onClick={handleSaveDraft}
-                >
-                  {isEdit ? 'Сохранить' : 'Сохранить как черновик'}
                 </Button>
               )}
             </div>

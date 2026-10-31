@@ -380,15 +380,6 @@ export function AdForm(props: AdFormProps) {
                     onPress={() => void submit()}
                   />
                 )}
-                {canPublishOnSave && (
-                  <Button
-                    title='Сохранить и опубликовать'
-                    variant='secondary'
-                    isLoading={isPublishing}
-                    disabled={isBusy}
-                    onPress={() => void submitAndPublish()}
-                  />
-                )}
                 {canSaveDraft && (
                   <Button
                     title={isEdit ? 'Сохранить' : 'Сохранить как черновик'}
@@ -396,6 +387,15 @@ export function AdForm(props: AdFormProps) {
                     isLoading={saveDraft.isPending}
                     disabled={isBusy}
                     onPress={() => void submitDraft()}
+                  />
+                )}
+                {canPublishOnSave && (
+                  <Button
+                    title='Сохранить и опубликовать'
+                    variant='secondary'
+                    isLoading={isPublishing}
+                    disabled={isBusy}
+                    onPress={() => void submitAndPublish()}
                   />
                 )}
               </>
