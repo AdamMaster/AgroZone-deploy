@@ -122,10 +122,16 @@ describe('GeocodeService', () => {
       expect(redis.set).not.toHaveBeenCalled()
     })
 
-    it.each(['country', 'province'])('слишком грубый результат (%s) — как «не нашёл»', async kind => {
-      fetchMock.mockResolvedValue(pointResponse('37.6 55.7', kind))
+    it('страна — слишком грубо, как «не нашёл»', async () => {
+      fetchMock.mockResolvedValue(pointResponse('37.6 55.7', 'country'))
 
       await expect(service.getCoordsFromAddress('Россия')).resolves.toBeNull()
+    })
+
+    it('область принимается: продавцы оптовой продукции указывают адрес до области', async () => {
+      fetchMock.mockResolvedValue(pointResponse('49.66 58.6', 'province'))
+
+      await expect(service.getCoordsFromAddress('Кировская обл')).resolves.toEqual({ lat: 58.6, lng: 49.66 })
     })
 
     it('пустой адрес — null без запроса', async () => {
