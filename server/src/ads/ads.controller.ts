@@ -21,6 +21,7 @@ import { GeocodeService } from './geocode.service'
 import { GeocodeQueryDto } from './dto/geocode-query.dto'
 import { PublicThrottlerGuard } from '@/libs/common/guards/public-throttler.guard'
 import { CreateAdDto } from './dto/create-ad.dto'
+import { SaveDraftDto } from './dto/save-draft.dto'
 import { AuthGuard } from '../auth/guards/auth.guard'
 import { Request } from 'express'
 import { UseInterceptors, UploadedFiles } from '@nestjs/common'
@@ -320,15 +321,12 @@ export class AdsController {
     })
   )
   async saveDraft(
-    @Body() createAdDto: CreateAdDto & { existingImages?: string[] | string },
+    @Body() saveDraftDto: SaveDraftDto,
     @CurrentUser('id') userId: string,
     @UploadedFiles() files: Express.Multer.File[],
     @Query('id') id?: string
   ) {
-    const existingImages =
-      typeof createAdDto.existingImages === 'string' ? [createAdDto.existingImages] : createAdDto.existingImages
-
-    return this.adsService.saveDraft(userId, { ...createAdDto, existingImages }, files, id)
+    return this.adsService.saveDraft(userId, saveDraftDto, files, id)
   }
 
   @Patch(':id/draft')

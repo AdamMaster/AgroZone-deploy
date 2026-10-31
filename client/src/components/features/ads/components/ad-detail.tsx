@@ -650,15 +650,17 @@ export const AdDetail = ({
         </div>
 
         <div className='flex flex-col gap-8'>
-          <div>
-            <Heading level={4} className='mb-2'>
-              Адрес
-            </Heading>
-            <address className='flex gap-2 not-italic'>
-              <MapPin className='size-5 flex-shrink-0 translate-y-0.5' />
-              {ad.address}
-            </address>
-          </div>
+          {ad.address && (
+            <div>
+              <Heading level={4} className='mb-2'>
+                Адрес
+              </Heading>
+              <address className='flex gap-2 not-italic'>
+                <MapPin className='size-5 flex-shrink-0 translate-y-0.5' />
+                {ad.address}
+              </address>
+            </div>
+          )}
 
           {ad.description && (
             <div>

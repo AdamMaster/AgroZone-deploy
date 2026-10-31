@@ -7,6 +7,13 @@ export const AD_LIMITS = {
 
 export const AD_MAX_FILE_SIZE = 10 * 1024 * 1024
 
+// Минимальная длина обязательных полей — те же числа, что в формах сайта и
+// приложения (CreateAdSchema, adFormSchema). Черновик сохраняется и без них,
+// а на публикации проверяются (см. getMissingPublishFields).
+export const AD_TITLE_MIN_LENGTH = 3
+export const AD_DESCRIPTION_MIN_LENGTH = 10
+export const AD_ADDRESS_MIN_LENGTH = 5
+
 // Объявления в этих статусах «живые»: видны покупателям (PUBLISHED),
 // проходят модерацию (PENDING) или приостановлены до проверки жалоб
 // (SUSPENDED; их вообще нельзя менять, см.

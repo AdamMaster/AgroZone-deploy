@@ -33,7 +33,7 @@ import { PRICE_UNITS } from '@/shared/constants/units'
 import { useProfile } from '@/shared/hooks'
 import { findCategoryById, formatPhoneNumber, getPathToCategory } from '@/shared/utils'
 
-import { CreateAdSchema, TypeCreateAdSchema } from '../schemes'
+import { CreateAdSchema, DRAFT_REQUIRED_FIELDS, DraftAdFieldsSchema, TypeCreateAdSchema } from '../schemes'
 import { ICategory, ICategoryFeature } from '../types/ad.types'
 import { normalizeFeatureUnits } from '../utils/normalize-feature-units'
 import { reconcileCategoryFeatures } from '../utils/reconcile-category-features'
@@ -122,7 +122,20 @@ export const AdForm = ({
   })
 
   const canSaveDraft = (!isEdit || isDraft) && !!onSaveDraft
-  const handleSaveDraft = onSaveDraft && form.handleSubmit(values => onSaveDraft(withNormalizedUnits(values)))
+  // Черновик не проходит полную проверку формы — только название и категорию;
+  // trigger показывает ошибку у этих полей, остальные не трогает.
+  const handleSaveDraft =
+    onSaveDraft &&
+    (async () => {
+      const values = form.getValues()
+
+      if (!DraftAdFieldsSchema.safeParse(values).success) {
+        await form.trigger(DRAFT_REQUIRED_FIELDS)
+        return
+      }
+
+      onSaveDraft(withNormalizedUnits(values))
+    })
   const handleSubmitForm = form.handleSubmit(values => onSubmit(withNormalizedUnits(values)))
 
   const handleTopBarBack = () => {

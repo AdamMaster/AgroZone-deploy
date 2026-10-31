@@ -27,7 +27,7 @@ import { formatPhoneInput } from '@/shared/utils/phone'
 import { useCreateAd, useSaveDraft, useUpdateAd } from '../hooks/use-ad-form-mutations'
 import { type NewPhotosField, buildAdFormData } from '../lib/build-ad-form-data'
 import { normalizeFeatureUnits, reconcileCategoryFeatures, restoreSellerUnits } from '../lib/feature-values'
-import { type AdFormFields, type AdFormValues, adFormSchema } from '../schemas/ad-form.schema'
+import { type AdFormFields, type AdFormValues, DRAFT_REQUIRED_FIELDS, adFormSchema } from '../schemas/ad-form.schema'
 import type { EditableAd } from '../types/ad-form.types'
 import { CategoryStep } from './category-step'
 import { FeatureField } from './feature-field'
@@ -53,6 +53,12 @@ const EMPTY_VALUES: AdFormFields = {
   categoryFeatures: {}
 }
 
+// У неполного черновика точки нет — сервер хранит её как 0,0. Её нужно показать
+// пустой («Выберите адрес из подсказок»), а не как настоящее место.
+function hasLocation({ status, lat, lng }: EditableAd): boolean {
+  return status !== 'DRAFT' || lat !== 0 || lng !== 0
+}
+
 function valuesFromAd(ad: EditableAd): AdFormFields {
   return {
     title: ad.title,
@@ -61,14 +67,16 @@ function valuesFromAd(ad: EditableAd): AdFormFields {
     unit: ad.unit,
     photos: ad.images.map(url => ({ kind: 'remote', id: url, url })),
     address: ad.address,
-    location: {
-      lat: ad.lat,
-      lng: ad.lng,
-      region: ad.region ?? undefined,
-      regionIsoCode: ad.regionIsoCode ?? undefined,
-      locality: ad.locality ?? undefined,
-      localityFiasId: ad.localityFiasId ?? undefined
-    },
+    location: hasLocation(ad)
+      ? {
+          lat: ad.lat,
+          lng: ad.lng,
+          region: ad.region ?? undefined,
+          regionIsoCode: ad.regionIsoCode ?? undefined,
+          locality: ad.locality ?? undefined,
+          localityFiasId: ad.localityFiasId ?? undefined
+        }
+      : null,
     phone: ad.phone ? formatPhoneInput(ad.phone) : '',
     categoryId: ad.categoryId,
     categoryFeatures: restoreSellerUnits(ad.features ?? {})
@@ -161,7 +169,7 @@ export function AdForm(props: AdFormProps) {
     return () => subscription.remove()
   }, [goBack])
 
-  const toBody = (values: AdFormValues, photosField: NewPhotosField, withExistingImages: boolean) =>
+  const toBody = (values: AdFormFields, photosField: NewPhotosField, withExistingImages: boolean) =>
     buildAdFormData(values, normalizeFeatureUnits(values.categoryFeatures, features), photosField, withExistingImages)
 
   const showInvalid = () => toast.error('Проверьте поля объявления — некоторые заполнены неверно')
@@ -174,10 +182,16 @@ export function AdForm(props: AdFormProps) {
     }
   }, showInvalid)
 
-  const submitDraft = form.handleSubmit(
-    values => saveDraft.mutate(toBody(values, 'files', true), { onSuccess: leaveToMyAds }),
-    showInvalid
-  )
+  // Черновик не проходит полную проверку формы — только название и категорию;
+  // trigger показывает ошибку у этих полей, остальные не трогает.
+  const submitDraft = async () => {
+    if (!(await form.trigger(DRAFT_REQUIRED_FIELDS))) {
+      showInvalid()
+      return
+    }
+
+    saveDraft.mutate(toBody(form.getValues(), 'files', true), { onSuccess: leaveToMyAds })
+  }
 
   const isPremium = isFutureDate(profile?.premiumUntil)
 

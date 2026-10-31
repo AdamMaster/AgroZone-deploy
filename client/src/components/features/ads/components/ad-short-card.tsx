@@ -261,7 +261,7 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
               )}
             </div>
             <p className='mb-0 text-base font-bold sm:mb-3 sm:text-lg'>{formatPriceWithUnit(ad.price, ad.unit)}</p>
-            <p className='text-[13px] text-gray-500'>{ad.address}</p>
+            {ad.address && <p className='text-[13px] text-gray-500'>{ad.address}</p>}
           </div>
 
           {!isSuspended && (

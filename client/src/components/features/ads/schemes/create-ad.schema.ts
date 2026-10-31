@@ -30,4 +30,12 @@ export const CreateAdSchema = z.object({
   categoryFeatures: z.record(z.string(), z.any()).optional().default({})
 })
 
+// Черновик сохраняется неполным: обязательны только название и категория, всё
+// остальное можно дозаполнить позже. Полную проверку (CreateAdSchema)
+// проходит публикация, а на сервере её дублирует отправка черновика на
+// модерацию (AdsService.activate).
+export const DraftAdFieldsSchema = CreateAdSchema.pick({ title: true, categoryId: true })
+
+export const DRAFT_REQUIRED_FIELDS = ['title', 'categoryId'] as const
+
 export type TypeCreateAdSchema = z.input<typeof CreateAdSchema>

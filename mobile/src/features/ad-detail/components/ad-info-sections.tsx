@@ -35,19 +35,21 @@ export function AdInfoSections({ address, description, categoryId, features }: A
 
   return (
     <View className='gap-8'>
-      <View>
-        <Heading level={4} className='mb-2'>
-          Адрес
-        </Heading>
-        <View className='flex-row gap-2'>
-          <View className='pt-0.5'>
-            <MapPin size={20} color={iconColor} />
+      {address !== '' && (
+        <View>
+          <Heading level={4} className='mb-2'>
+            Адрес
+          </Heading>
+          <View className='flex-row gap-2'>
+            <View className='pt-0.5'>
+              <MapPin size={20} color={iconColor} />
+            </View>
+            <Text selectable className='flex-1 text-base text-gray-950'>
+              {address}
+            </Text>
           </View>
-          <Text selectable className='flex-1 text-base text-gray-950'>
-            {address}
-          </Text>
         </View>
-      </View>
+      )}
 
       {paragraphs.length > 0 && (
         <View>

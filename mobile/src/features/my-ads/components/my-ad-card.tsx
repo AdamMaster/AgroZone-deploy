@@ -96,7 +96,7 @@ export const MyAdCard = memo(function MyAdCard({ ad, isOwnerPremium, onOpen, onE
             </Text>
           )}
           <Text className='text-base font-bold text-gray-950'>{formatPriceWithUnit(ad.price, ad.unit)}</Text>
-          <Text className='text-[13px] text-gray-500'>{ad.address}</Text>
+          {ad.address !== '' && <Text className='text-[13px] text-gray-500'>{ad.address}</Text>}
         </View>
 
         {ad.status !== 'SUSPENDED' && (

@@ -463,13 +463,76 @@ describe('AdsService', () => {
         expect(fileService.uploadAdPhoto).not.toHaveBeenCalled()
       })
 
-      it('без явной единицы проверяется единица, уже записанная в черновике', async () => {
+      it('без явной единицы проверяется единица по умолчанию — «штука»', async () => {
         prisma.category.findUnique.mockResolvedValue({ priceUnits: ['KG'] })
-        prisma.ad.findFirst.mockResolvedValue({ ...existingAd, unit: 'HOUR', categoryId: 'cat-1' })
 
         await expect(
           service.saveDraft('user-1', { categoryId: 'cat-1', title: 'Т' } as any, [], 'ad-1')
         ).rejects.toThrow(BadRequestException)
+
+        expect(prisma.ad.update).not.toHaveBeenCalled()
+      })
+
+      describe('неполный черновик', () => {
+        const minimal = { categoryId: 'cat-1', title: 'Морковь' } as any
+
+        it('создаётся только с названием и категорией: пустые поля, номер из профиля', async () => {
+          await service.saveDraft('user-1', minimal, [])
+
+          expect(prisma.ad.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+              title: 'Морковь',
+              description: '',
+              address: '',
+              phone: '79991234567',
+              lat: 0,
+              lng: 0,
+              price: null,
+              unit: 'ITEM',
+              region: null,
+              features: {},
+              status: 'DRAFT',
+              userId: 'user-1'
+            })
+          })
+        })
+
+        it('без номера в запросе и в профиле черновик всё равно сохраняется — номер проверит публикация', async () => {
+          userService.findById.mockResolvedValue({ phones: [] })
+
+          await service.saveDraft('user-1', minimal, [])
+
+          expect(prisma.ad.create).toHaveBeenCalledWith({ data: expect.objectContaining({ phone: '' }) })
+        })
+
+        it('введённый номер профиль не запрашивает; кривой номер — 400', async () => {
+          await service.saveDraft('user-1', { ...minimal, phone: '+7 (999) 123-45-67' }, [])
+
+          expect(userService.findById).not.toHaveBeenCalled()
+          expect(prisma.ad.create).toHaveBeenCalledWith({ data: expect.objectContaining({ phone: '79991234567' }) })
+
+          await expect(service.saveDraft('user-1', { ...minimal, phone: '+7' }, [])).rejects.toThrow(
+            BadRequestException
+          )
+        })
+
+        it('сохранение пишет черновик целиком: стёртые клиентом поля очищаются, а не остаются прежними', async () => {
+          await service.saveDraft('user-1', { ...minimal, price: 20, region: 'Ставрополь' }, [], 'ad-1')
+          await service.saveDraft('user-1', minimal, [], 'ad-1')
+
+          expect(prisma.ad.update).toHaveBeenLastCalledWith({
+            where: { id: 'ad-1' },
+            data: expect.objectContaining({ price: null, region: null, description: '', address: '' })
+          })
+        })
+
+        it('цена и точка, если присланы, сохраняются', async () => {
+          await service.saveDraft('user-1', { ...minimal, price: 20.4, lat: 45.04, lng: 41.97 }, [])
+
+          expect(prisma.ad.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({ price: 20n, lat: 45.04, lng: 41.97 })
+          })
+        })
       })
 
       it('подходящая единица принимается', async () => {
@@ -819,6 +882,53 @@ describe('AdsService', () => {
 
   // Приостановленное по жалобам объявление остаётся как есть до решения
   // модератора: владелец не может ни переписать, ни снять, ни удалить его.
+  describe('отправка черновика на модерацию (activate)', () => {
+    const complete = {
+      id: 'ad1',
+      userId: 'owner',
+      status: 'DRAFT',
+      title: 'Морковь',
+      description: 'Морковь урожай 2026 года',
+      address: 'г Ставрополь, ул Ленина, 1',
+      phone: '79991234567'
+    }
+
+    beforeEach(() => {
+      prisma.ad.update.mockResolvedValue({ id: 'ad1' })
+    })
+
+    it('заполненный черновик уходит на модерацию', async () => {
+      prisma.ad.findFirst.mockResolvedValue(complete)
+
+      await service.activate('ad1', 'owner')
+
+      expect(prisma.ad.update).toHaveBeenCalledWith({
+        where: { id: 'ad1' },
+        data: { status: 'PENDING', archivedAt: null }
+      })
+    })
+
+    it('неполный черновик — 400 со списком недостающего, статус не меняется', async () => {
+      prisma.ad.findFirst.mockResolvedValue({ ...complete, description: 'коротко', address: '', phone: '' })
+
+      await expect(service.activate('ad1', 'owner')).rejects.toThrow(
+        'Чтобы опубликовать, заполните: описание, адрес, номер телефона'
+      )
+
+      expect(prisma.ad.update).not.toHaveBeenCalled()
+    })
+
+    it('архивное объявление проверке полноты не подвергается — оно уже проходило форму целиком', async () => {
+      prisma.ad.findFirst.mockResolvedValue({ ...complete, status: 'ARCHIVED', description: '' })
+
+      await service.activate('ad1', 'owner')
+
+      expect(prisma.ad.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ status: 'PENDING' }) })
+      )
+    })
+  })
+
   describe('приостановленное объявление (SUSPENDED)', () => {
     beforeEach(() => {
       prisma.ad.findFirst.mockResolvedValue({ id: 'ad1', userId: 'owner', status: 'SUSPENDED', images: [] })

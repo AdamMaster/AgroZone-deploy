@@ -36,6 +36,11 @@ export const adFormSchema = z.object({
   categoryFeatures: z.record(z.string(), z.unknown())
 })
 
+// Черновик сохраняется неполным: обязательны только название и категория,
+// остальное можно дозаполнить позже (как на сайте). Полную проверку проходит
+// публикация, а на сервере её дублирует отправка черновика на модерацию.
+export const DRAFT_REQUIRED_FIELDS = ['title', 'categoryId'] as const
+
 // Поля формы (точки может ещё не быть) и проверенные значения для отправки
 // (точка уже есть).
 export type AdFormFields = z.input<typeof adFormSchema>

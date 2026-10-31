@@ -12,6 +12,7 @@ import 'multer'
 import { AD_LIMITS, AD_STATUSES_BLOCKING_OWNER_REMOVAL } from './constants/ads.constants'
 import { isPremiumActive } from '@/premium/utils/is-premium-active.util'
 import { CreateAdDto } from './dto/create-ad.dto'
+import { SaveDraftDto } from './dto/save-draft.dto'
 import { AdStatus, FeatureType, PriceUnit, Prisma } from '@/generated/prisma/client'
 import { UpdateAdDto } from './dto/update-ad.dto'
 import { AdStateMachineService } from './ad-state-machine.service'
@@ -20,6 +21,7 @@ import { FindMyAdsQueryDto } from './dto/find-my-ads-query.dto'
 import { FindUserAdsAdminQueryDto } from './dto/find-user-ads-admin-query.dto'
 import { AdminSetAdExpirationDto } from './dto/admin-set-ad-expiration.dto'
 import { AdminSetAdCategoryDto } from './dto/admin-set-ad-category.dto'
+import { getMissingPublishFields } from './utils/get-missing-publish-fields.util'
 import { reconcileCategoryFeatures } from './utils/reconcile-category-features.util'
 import { CategoriesService } from '@/categories/categories.service'
 import { randomBytes } from 'crypto'
@@ -174,15 +176,7 @@ export class AdsService {
 
     await this.assertUnitAllowedForCategory(createAdDto.categoryId, unit)
 
-    const baseSlug =
-      slugify(createAdDto.title, {
-        lower: true,
-        strict: true,
-        locale: 'ru'
-      }) || 'ad'
-
-    const uniqueHash = randomBytes(3).toString('hex')
-    const slug = `${baseSlug}-${uniqueHash}`
+    const slug = `${this.buildSlugBase(createAdDto.title)}-${randomBytes(3).toString('hex')}`
     const seoPath = this.categoriesService.buildSeoPath(categoryPath, slug)
 
     // existingImages у нового объявления игнорируем: «оставленных» фото у него
@@ -1604,6 +1598,16 @@ export class AdsService {
     const ad = await this.getMutableUserAdOrThrow(id, userId)
     if (!ad) throw new NotFoundException('Объявление не найдено')
 
+    // Черновик может быть неполным (см. saveDraft) — на модерацию уходит только
+    // заполненное. Остальные статусы уже проходили форму целиком.
+    if (ad.status === AdStatus.DRAFT) {
+      const missing = getMissingPublishFields(ad)
+
+      if (missing.length > 0) {
+        throw new BadRequestException(`Чтобы опубликовать, заполните: ${missing.join(', ')}`)
+      }
+    }
+
     const nextStatus = this.adStateMachine.transition(ad.status, 'ACTIVATE')
 
     return this.prisma.ad.update({
@@ -1631,114 +1635,90 @@ export class AdsService {
     })
   }
 
-  async saveDraft(
-    userId: string,
-    createAdDto: CreateAdDto & { existingImages?: string[] },
-    files: Express.Multer.File[],
-    id?: string
-  ) {
+  // Черновик пишется целиком, как форма: поля, которых нет в запросе, очищаются
+  // (клиент не присылает пустые), а не остаются прежними. Обязательны только
+  // название и категория (SaveDraftDto); описание, адрес, телефон и точка
+  // могут быть пустыми — их проверяет публикация (см. activate).
+  async saveDraft(userId: string, dto: SaveDraftDto, files: Express.Multer.File[], id?: string) {
     await this.validateFileLimits(userId, files)
 
-    const user = await this.userService.findById(userId)
+    const existing = id ? await this.getMutableUserAdOrThrow(id, userId) : null
+    const status = existing ? this.nextDraftStatus(existing.status) : AdStatus.DRAFT
 
-    if (!user) {
-      throw new NotFoundException('Пользователь не найден')
+    const unit = dto.unit ?? PriceUnit.ITEM
+
+    await this.assertUnitAllowedForCategory(dto.categoryId, unit)
+
+    const phone = await this.resolveDraftPhone(userId, dto.phone)
+    const categoryPath = await this.categoriesService.getCategoryPath(dto.categoryId)
+
+    const fields = {
+      title: dto.title,
+      description: dto.description ?? '',
+      address: dto.address ?? '',
+      phone,
+      lat: dto.lat ?? 0,
+      lng: dto.lng ?? 0,
+      price: dto.price === undefined ? null : BigInt(Math.round(dto.price)),
+      unit,
+      region: dto.region ?? null,
+      regionIsoCode: dto.regionIsoCode ?? null,
+      locality: dto.locality ?? null,
+      localityFiasId: dto.localityFiasId ?? null,
+      features: (dto.features ?? {}) as Prisma.InputJsonValue,
+      categoryId: dto.categoryId,
+      categoryPath
     }
 
-    const { existingImages, features, lat, lng, price, phone, ...rest } = createAdDto
+    if (existing) {
+      const seoPath = this.categoriesService.buildSeoPath(categoryPath, existing.slug)
 
-    let normalizedPhone = phone ? normalizePhone(phone) : null
-
-    if (phone && !normalizedPhone) {
-      throw new BadRequestException('Некорректный номер телефона')
-    }
-
-    if (!normalizedPhone) {
-      normalizedPhone = user.phones.find(phone => phone.isPrimary)?.phone ?? user.phones[0]?.phone ?? null
-
-      if (!normalizedPhone) {
-        throw new BadRequestException('Укажите номер телефона для связи')
-      }
-    }
-
-    const parsedLat = lat !== undefined ? Number(lat) : 0
-    const parsedLng = lng !== undefined ? Number(lng) : 0
-
-    const parsedPrice = price !== undefined && price !== null ? BigInt(Math.round(Number(price))) : undefined
-
-    if (id) {
-      const ad = await this.getMutableUserAdOrThrow(id, userId)
-
-      // Уже черновик — остаётся им; из остальных статусов — только по тем же
-      // переходам, что и «В черновик» (draft()): опубликованное объявление
-      // этой ручкой в черновик не уйдёт (оно и в машине состояний не уходит),
-      // а выход из архива сбрасывает archivedAt.
-      const status = ad.status === AdStatus.DRAFT ? AdStatus.DRAFT : this.adStateMachine.transition(ad.status, 'DRAFT')
-
-      const categoryId = rest.categoryId ?? ad.categoryId
-
-      await this.assertUnitAllowedForCategory(categoryId, rest.unit ?? ad.unit)
-
-      const categoryPath = rest.categoryId
-        ? await this.categoriesService.getCategoryPath(rest.categoryId)
-        : ad.categoryPath
-
-      const seoPath = this.categoriesService.buildSeoPath(categoryPath, ad.slug)
-
-      return this.saveWithImages(ad.images, existingImages, files, images =>
+      return this.saveWithImages(existing.images, dto.existingImages, files, images =>
         this.prisma.ad.update({
-          where: { id },
-          data: {
-            ...rest,
-            phone: normalizedPhone,
-            lat: parsedLat,
-            lng: parsedLng,
-            price: price !== undefined ? parsedPrice : undefined,
-            images,
-            status,
-            rejectionReason: null,
-            archivedAt: null,
-            features: features ? (features as Prisma.InputJsonValue) : {},
-            categoryPath,
-            seoPath
-          }
+          where: { id: existing.id },
+          data: { ...fields, images, seoPath, status, rejectionReason: null, archivedAt: null }
         })
       )
     }
 
-    await this.assertUnitAllowedForCategory(rest.categoryId, rest.unit ?? PriceUnit.ITEM)
-
-    const categoryPath = await this.categoriesService.getCategoryPath(rest.categoryId)
-
-    const baseSlug =
-      slugify(createAdDto.title ?? '', {
-        lower: true,
-        strict: true,
-        locale: 'ru'
-      }) || 'ad'
-
-    const slug = `${baseSlug}-${randomBytes(3).toString('hex')}`
-
+    const slug = `${this.buildSlugBase(dto.title)}-${randomBytes(3).toString('hex')}`
     const seoPath = this.categoriesService.buildSeoPath(categoryPath, slug)
 
+    // existingImages у нового черновика игнорируем по той же причине, что и в
+    // create(): «оставленных» фото у него быть не может.
     return this.saveWithImages([], undefined, files, images =>
-      this.prisma.ad.create({
-        data: {
-          ...rest,
-          phone: normalizedPhone,
-          lat: parsedLat,
-          lng: parsedLng,
-          price: parsedPrice,
-          images,
-          userId,
-          status: AdStatus.DRAFT,
-          features: features ? (features as Prisma.InputJsonValue) : {},
-          slug,
-          categoryPath,
-          seoPath
-        }
-      })
+      this.prisma.ad.create({ data: { ...fields, images, seoPath, slug, userId, status } })
     )
+  }
+
+  // Уже черновик — им и остаётся; остальные статусы — только по переходам
+  // «В черновик» (см. draft()): опубликованное объявление этой ручкой в
+  // черновик не уйдёт (оно и в машине состояний не уходит).
+  private nextDraftStatus(current: AdStatus): AdStatus {
+    return current === AdStatus.DRAFT ? AdStatus.DRAFT : this.adStateMachine.transition(current, 'DRAFT')
+  }
+
+  // Номер черновика: введённый, иначе основной (или первый) из профиля, иначе
+  // пусто — телефон проверит публикация. Колонка phone не допускает NULL,
+  // поэтому «нет номера» хранится пустой строкой.
+  private async resolveDraftPhone(userId: string, phone?: string): Promise<string> {
+    if (phone) {
+      const normalized = normalizePhone(phone)
+
+      if (!normalized) throw new BadRequestException('Некорректный номер телефона')
+
+      return normalized
+    }
+
+    const user = await this.userService.findById(userId)
+
+    if (!user) throw new NotFoundException('Пользователь не найден')
+
+    return user.phones.find(item => item.isPrimary)?.phone ?? user.phones[0]?.phone ?? ''
+  }
+
+  private buildSlugBase(title: string): string {
+    return slugify(title, { lower: true, strict: true, locale: 'ru' }) || 'ad'
   }
 
   async addFavorite(userId: string, adId: string) {

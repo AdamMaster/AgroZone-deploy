@@ -1,6 +1,6 @@
 import { type UploadFile, appendFile } from '@/lib/api/upload-file'
 
-import type { AdFormValues } from '../schemas/ad-form.schema'
+import type { AdFormFields } from '../schemas/ad-form.schema'
 import type { AdFormPhoto } from '../types/ad-form.types'
 import { type FeatureValues } from './feature-values'
 import { normalizePrice } from './price'
@@ -10,8 +10,11 @@ import { normalizePrice } from './price'
 export type NewPhotosField = 'files' | 'images'
 
 // Тело запроса объявления — как buildAdFormData + appendImageFields сайта.
+// Пустые поля не отправляются вовсе: у черновика они могут быть не заполнены, и
+// сервер читает «нет поля» как «не указано» (у публикации эти поля уже
+// проверены формой).
 export function buildAdFormData(
-  values: AdFormValues,
+  values: AdFormFields,
   features: FeatureValues,
   photosField: NewPhotosField,
   // Создание: старых фото нет, поле existingImages не нужно. Черновик и
@@ -23,15 +26,15 @@ export function buildAdFormData(
   const { location } = values
 
   form.append('title', values.title.trim())
-  form.append('description', values.description.trim())
+  appendIfFilled(form, 'description', values.description.trim())
 
   const price = normalizePrice(values.price)
   if (price) form.append('price', price)
 
   form.append('unit', values.unit)
   form.append('categoryId', values.categoryId)
-  form.append('address', values.address.trim())
-  form.append('phone', values.phone)
+  appendIfFilled(form, 'address', values.address.trim())
+  appendIfFilled(form, 'phone', values.phone)
 
   if (location) {
     form.append('lat', String(location.lat))
@@ -47,6 +50,10 @@ export function buildAdFormData(
   appendPhotos(form, values.photos, photosField, withExistingImages)
 
   return form
+}
+
+function appendIfFilled(form: FormData, name: string, value: string) {
+  if (value) form.append(name, value)
 }
 
 function appendPhotos(form: FormData, photos: readonly AdFormPhoto[], field: NewPhotosField, withExisting: boolean) {
