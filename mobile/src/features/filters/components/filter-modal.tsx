@@ -75,7 +75,13 @@ export function FilterModal({ visible, onClose, filters, category, onApply, onOp
   }
 
   return (
-    <Modal visible={visible} animationType='slide' onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType='slide'
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onClose}
+    >
       <View className='flex-1 bg-background' style={{ paddingTop: top, paddingBottom: bottom }}>
         <View className='flex-row items-center pt-4 pr-2 pb-6 pl-4'>
           <View className='flex-1'>

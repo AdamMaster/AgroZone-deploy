@@ -29,7 +29,15 @@ export function BottomSheet({
   const { height } = useWindowDimensions()
 
   return (
-    <Modal visible={visible} transparent animationType='fade' onRequestClose={onClose} onDismiss={onDismiss}>
+    <Modal
+      visible={visible}
+      transparent
+      statusBarTranslucent
+      navigationBarTranslucent
+      animationType='fade'
+      onRequestClose={onClose}
+      onDismiss={onDismiss}
+    >
       <Pressable accessibilityLabel='Закрыть' className='flex-1 bg-black/20' onPress={onClose} />
       <ScrollView
         className='rounded-t-2xl bg-background'

@@ -1,21 +1,14 @@
-import { Platform } from 'react-native'
 import { type EdgeInsets, useSafeAreaInsets } from 'react-native-safe-area-context'
 
-const NO_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 }
-
-// С Android 15 (API 35) приложение всегда рисуется под системными панелями
-// (edge-to-edge), в том числе окно Modal без statusBarTranslucent.
-const EDGE_TO_EDGE_API_LEVEL = 35
-
-// Отступы от системных панелей для содержимого Modal (без
-// statusBarTranslucent). На Android до 15 окно модального окна само
-// отступает от строки состояния, панели навигации и клавиатуры — свои
-// отступы дали бы двойную полосу. На Android 15+ и на iOS окно занимает весь
-// экран, и содержимое без отступов уезжает под строку состояния.
+// Отступы от системных панелей для содержимого Modal. Окна Modal в приложении
+// объявлены на весь экран (statusBarTranslucent + navigationBarTranslucent) —
+// и на Android 15+, и на старых версиях, и на оболочках вроде MIUI/ColorOS.
+// Раньше здесь предполагалось, что до Android 15 окно модального окна само
+// отступает от панелей, и отступы не добавлялись: на телефонах с кнопками
+// навигации (Xiaomi, Realme и др.) панель нижних кнопок ложилась поверх
+// нижних пунктов шторки (например «Выйти» в меню профиля). На Pixel с
+// жестовой навигацией этого не видно, поэтому там ошибка не проявлялась.
+// Теперь окно везде одинаковое, а отступы везде берутся из системных.
 export function useModalInsets(): EdgeInsets {
-  const insets = useSafeAreaInsets()
-
-  const windowInsetsItself = Platform.OS === 'android' && Number(Platform.Version) < EDGE_TO_EDGE_API_LEVEL
-
-  return windowInsetsItself ? NO_INSETS : insets
+  return useSafeAreaInsets()
 }
