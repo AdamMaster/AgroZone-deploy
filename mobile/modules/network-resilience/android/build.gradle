@@ -13,3 +13,10 @@ android {
     versionName '1.0.0'
   }
 }
+
+dependencies {
+  // Фабрика клиента наследует клиент React Native (OkHttpClientProvider), а тот
+  // строится на OkHttp той же версии, что у React Native и expo-file-system.
+  implementation 'com.facebook.react:react-android'
+  implementation 'com.squareup.okhttp3:okhttp:4.9.2'
+}

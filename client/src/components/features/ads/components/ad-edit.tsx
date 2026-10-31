@@ -6,7 +6,7 @@ import { Loading } from '@/components/ui'
 
 import { formatPhoneNumber } from '@/shared/utils'
 
-import { useMyAd, useUpdateAd } from '../hooks'
+import { useMyAd, useUpdateAd, useUpdateAndPublishAd } from '../hooks'
 import { useSaveDraft } from '../hooks/use-save-draft-ad'
 import { TypeCreateAdSchema } from '../schemes'
 import { ICategory, ICategoryFeature } from '../types/ad.types'
@@ -22,6 +22,7 @@ interface AdEditProps {
 export const AdEdit = ({ id, categories }: AdEditProps) => {
   const { ad, isLoading: isLoadingAd } = useMyAd(id)
   const { updateAd, isLoadingUpdate } = useUpdateAd(id)
+  const { updateAndPublishAd, isLoadingUpdateAndPublish } = useUpdateAndPublishAd(id)
   const { saveDraft, isLoadingSaveDraft } = useSaveDraft(id)
   const router = useRouter()
 
@@ -48,12 +49,22 @@ export const AdEdit = ({ id, categories }: AdEditProps) => {
     categoryFeatures: (ad.features as ICategoryFeature) || {}
   }
 
-  const onSubmit = (values: TypeCreateAdSchema) => {
+  // Опубликованное и отклонённое объявление после сохранения само уходит на
+  // проверку; черновик, архивное и истёкшее остаются как были, и для них есть
+  // отдельное «Сохранить и опубликовать».
+  const sendsToReviewOnSave = ad.status === 'PUBLISHED' || ad.status === 'REJECTED'
+  const canPublishOnSave = ad.status === 'DRAFT' || ad.status === 'ARCHIVED' || ad.status === 'EXPIRED'
+
+  const buildUpdateFormData = (values: TypeCreateAdSchema) => {
     const formData = buildAdFormData(values)
 
     appendImageFields(formData, values.images ?? [], 'images')
-    updateAd(formData, ad.status === 'REJECTED')
+    return formData
   }
+
+  const onSubmit = (values: TypeCreateAdSchema) => updateAd(buildUpdateFormData(values), sendsToReviewOnSave)
+
+  const onSubmitAndPublish = (values: TypeCreateAdSchema) => updateAndPublishAd(buildUpdateFormData(values))
 
   // Тот же формат FormData, что и в AdCreate.onSaveDraft — это тот же
   // POST /ads/draft (см. AdsService.saveDraft), а не PATCH /ads/:id, что
@@ -84,12 +95,13 @@ export const AdEdit = ({ id, categories }: AdEditProps) => {
     <AdForm
       categories={categories}
       initialData={initialData}
-      isSubmitting={isLoadingUpdate}
+      isSubmitting={isLoadingUpdate || isLoadingUpdateAndPublish}
       isSaveDrafting={isLoadingSaveDraft}
       rejectionReason={ad.rejectionReason}
-      isRejected={ad.status === 'REJECTED'}
+      sendsToReviewOnSave={sendsToReviewOnSave}
       isDraft={ad.status === 'DRAFT'}
       onSubmit={onSubmit}
+      onSubmitAndPublish={canPublishOnSave ? onSubmitAndPublish : undefined}
       onSaveDraft={onSaveDraftSubmit}
     />
   )

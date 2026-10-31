@@ -49,7 +49,9 @@ interface AdFormProps {
   isSubmitting?: boolean
   isSaveDrafting?: boolean
   rejectionReason?: string
-  isRejected?: boolean
+  // Сохранение правок отправляет объявление на повторную проверку (оно
+  // было опубликовано или отклонено) — подпись кнопки должна об этом сказать.
+  sendsToReviewOnSave?: boolean
   // Редактируемое объявление всё ещё черновик (см. AdEdit) — тогда, как и
   // при создании, есть смысл в "сохранить и выйти" вместо обычного
   // "Сохранить": черновик и так не опубликован, продолжать его дозаполнять
@@ -57,6 +59,9 @@ interface AdFormProps {
   // объявления не используется — там только обычный сабмит.
   isDraft?: boolean
   onSubmit: (values: TypeCreateAdSchema) => void
+  // «Сохранить и опубликовать» — только когда сохранение само объявление не
+  // публикует (черновик, архив, истёкшее).
+  onSubmitAndPublish?: (values: TypeCreateAdSchema) => void
   onSaveDraft?: (values: Partial<TypeCreateAdSchema>) => void
 }
 
@@ -66,9 +71,10 @@ export const AdForm = ({
   isSubmitting,
   isSaveDrafting,
   rejectionReason,
-  isRejected,
+  sendsToReviewOnSave,
   isDraft,
   onSubmit,
+  onSubmitAndPublish,
   onSaveDraft
 }: AdFormProps) => {
   const isEdit = !!initialData
@@ -83,7 +89,11 @@ export const AdForm = ({
   const setCategoryPath = useAdStore(state => state.setCategoryPath)
   const router = useRouter()
   const title = isEdit ? 'Редактирование' : 'Новое объявление'
-  const submitButtonText = isRejected ? 'Сохранить и отправить на проверку' : isEdit ? 'Сохранить' : 'Опубликовать'
+  const submitButtonText = sendsToReviewOnSave
+    ? 'Сохранить и отправить на проверку'
+    : isEdit
+      ? 'Сохранить'
+      : 'Опубликовать'
   const isPremium = user?.role === 'PREMIUM'
   const { onOpen } = useAppModal()
 
@@ -137,6 +147,8 @@ export const AdForm = ({
       onSaveDraft(withNormalizedUnits(values))
     })
   const handleSubmitForm = form.handleSubmit(values => onSubmit(withNormalizedUnits(values)))
+  const handleSubmitAndPublish =
+    onSubmitAndPublish && form.handleSubmit(values => onSubmitAndPublish(withNormalizedUnits(values)))
 
   const handleTopBarBack = () => {
     if (isEdit) return router.push('/profile/settings/ads')
@@ -442,16 +454,32 @@ export const AdForm = ({
                   </Link>
                 </Button>
               )}
-              <Button
-                className='h-11 px-5 sm:h-12'
-                variant='secondary'
-                size='lg'
-                type='button'
-                disabled={isSubmitting || isPhotosProcessing}
-                onClick={handleSubmitForm}
-              >
-                {submitButtonText}
-              </Button>
+              {/* У черновика обычное «Сохранить» ничего бы не меняло (он остался бы
+                  черновиком) — вместо него «Сохранить и опубликовать». */}
+              {!(isDraft && handleSubmitAndPublish) && (
+                <Button
+                  className='h-11 px-5 sm:h-12'
+                  variant='secondary'
+                  size='lg'
+                  type='button'
+                  disabled={isSubmitting || isPhotosProcessing}
+                  onClick={handleSubmitForm}
+                >
+                  {submitButtonText}
+                </Button>
+              )}
+              {handleSubmitAndPublish && (
+                <Button
+                  className='h-11 px-5 sm:h-12'
+                  variant={isDraft ? 'secondary' : 'outline'}
+                  size='lg'
+                  type='button'
+                  disabled={isSubmitting || isPhotosProcessing}
+                  onClick={handleSubmitAndPublish}
+                >
+                  Сохранить и опубликовать
+                </Button>
+              )}
               {canSaveDraft && (
                 <Button
                   className='h-11 px-5 sm:h-12'

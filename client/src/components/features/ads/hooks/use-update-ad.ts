@@ -10,12 +10,11 @@ import { adsService } from '../services'
 
 interface UpdateAdVariables {
   data: FormData
-  // Было ли объявление REJECTED до этого сохранения — сервер в этом
-  // случае сам переводит его обратно в PENDING (см. AdsService.update), и
-  // тост должен честно сказать, что оно ушло на повторную проверку, а не
-  // просто "обновлено", как будто ничего особенного не произошло (см.
-  // обсуждение с пользователем).
-  wasRejected?: boolean
+  // Уходит ли объявление после сохранения на проверку: сервер переводит
+  // PUBLISHED и REJECTED обратно в PENDING (см. AdsService.update), и тост
+  // должен честно сказать, что оно ушло на повторную проверку, а не просто
+  // «обновлено», как будто ничего особенного не произошло.
+  sentToReview?: boolean
 }
 
 export function useUpdateAd(id: string) {
@@ -26,7 +25,7 @@ export function useUpdateAd(id: string) {
     mutationKey: ['update ad', id],
     mutationFn: ({ data }: UpdateAdVariables) => adsService.update(id, data),
     onSuccess(_updatedAd, variables) {
-      if (variables.wasRejected) {
+      if (variables.sentToReview) {
         toast.success('Объявление отправлено на повторную проверку', {
           description: 'Модератор рассмотрит его ещё раз, обычно это занимает около 15 минут'
         })
@@ -43,7 +42,7 @@ export function useUpdateAd(id: string) {
     }
   })
 
-  const updateAd = (data: FormData, wasRejected?: boolean) => mutate({ data, wasRejected })
+  const updateAd = (data: FormData, sentToReview?: boolean) => mutate({ data, sentToReview })
 
   return { updateAd, isLoadingUpdate }
 }

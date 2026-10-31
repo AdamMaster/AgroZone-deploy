@@ -93,7 +93,11 @@ export function AdForm(props: AdFormProps) {
   const ad = props.mode === 'edit' ? props.ad : null
   const isEdit = !!ad
   const isDraft = ad?.status === 'DRAFT'
-  const isRejected = ad?.status === 'REJECTED'
+  // Сохранение опубликованного и отклонённого объявления само отправляет его
+  // на повторную проверку; у черновика, архивного и истёкшего — отдельное
+  // «Сохранить и опубликовать».
+  const sendsToReviewOnSave = ad?.status === 'PUBLISHED' || ad?.status === 'REJECTED'
+  const canPublishOnSave = isDraft || ad?.status === 'ARCHIVED' || ad?.status === 'EXPIRED'
   const { data: profile } = useProfile()
   const { roots } = useCategories()
   const [step, setStep] = useState<1 | 2>(isEdit ? 2 : 1)
@@ -110,8 +114,9 @@ export function AdForm(props: AdFormProps) {
   const createAd = useCreateAd()
   const updateAd = useUpdateAd(ad?.id ?? '')
   const saveDraft = useSaveDraft(isDraft ? ad.id : undefined)
-  const isSubmitting = createAd.isPending || updateAd.isPending
-  const isBusy = isSubmitting || saveDraft.isPending || isPhotosProcessing
+  const isPublishing = updateAd.isPending && updateAd.variables.mode === 'publish'
+  const isSubmitting = createAd.isPending || (updateAd.isPending && !isPublishing)
+  const isBusy = isSubmitting || isPublishing || saveDraft.isPending || isPhotosProcessing
 
   const categoryId = useWatch({ control: form.control, name: 'categoryId' })
   const categoryPath = useMemo(() => findCategoryPathById(roots, categoryId), [roots, categoryId])
@@ -126,7 +131,7 @@ export function AdForm(props: AdFormProps) {
   }, [profile?.primaryPhone, form])
 
   const title = isEdit ? 'Редактирование' : 'Новое объявление'
-  const submitTitle = isRejected ? 'Сохранить и отправить на проверку' : isEdit ? 'Сохранить' : 'Опубликовать'
+  const submitTitle = sendsToReviewOnSave ? 'Сохранить и отправить на проверку' : isEdit ? 'Сохранить' : 'Опубликовать'
   // «Сохранить и выйти» — для нового объявления и черновика: их нормально
   // дозаполнить потом. Опубликованное сохраняется только целиком.
   const canSaveDraft = !isEdit || isDraft
@@ -176,10 +181,17 @@ export function AdForm(props: AdFormProps) {
 
   const submit = form.handleSubmit(values => {
     if (ad) {
-      updateAd.mutate({ body: toBody(values, 'images', true), wasRejected: isRejected }, { onSuccess: leaveToMyAds })
+      updateAd.mutate(
+        { body: toBody(values, 'images', true), mode: sendsToReviewOnSave ? 'resubmit' : 'save' },
+        { onSuccess: leaveToMyAds }
+      )
     } else {
       createAd.mutate(toBody(values, 'files', false), { onSuccess: leaveToMyAds })
     }
+  }, showInvalid)
+
+  const submitAndPublish = form.handleSubmit(values => {
+    updateAd.mutate({ body: toBody(values, 'images', true), mode: 'publish' }, { onSuccess: leaveToMyAds })
   }, showInvalid)
 
   // Черновик не проходит полную проверку формы — только название и категорию;
@@ -357,13 +369,26 @@ export function AdForm(props: AdFormProps) {
             {step === 2 && (
               <>
                 {isEdit && <Button title='Отмена' variant='outline' onPress={() => router.back()} />}
-                <Button
-                  title={submitTitle}
-                  variant='secondary'
-                  isLoading={isSubmitting}
-                  disabled={isBusy}
-                  onPress={() => void submit()}
-                />
+                {/* У черновика обычное «Сохранить» ничего бы не меняло (он остался бы
+                    черновиком) — вместо него «Сохранить и опубликовать». */}
+                {!isDraft && (
+                  <Button
+                    title={submitTitle}
+                    variant='secondary'
+                    isLoading={isSubmitting}
+                    disabled={isBusy}
+                    onPress={() => void submit()}
+                  />
+                )}
+                {canPublishOnSave && (
+                  <Button
+                    title='Сохранить и опубликовать'
+                    variant={isDraft ? 'secondary' : 'outline'}
+                    isLoading={isPublishing}
+                    disabled={isBusy}
+                    onPress={() => void submitAndPublish()}
+                  />
+                )}
                 {canSaveDraft && (
                   <Button
                     title='Сохранить черновик'

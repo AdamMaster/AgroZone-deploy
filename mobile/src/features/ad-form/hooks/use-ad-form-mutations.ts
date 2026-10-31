@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { toast } from 'sonner-native'
 
+import { adDetailApi } from '@/features/ads/api/ad-detail.api'
+
 import { showError } from '@/lib/ui/show-error'
 
 import { adFormApi } from '../api/ad-form.api'
@@ -34,29 +36,50 @@ export function useCreateAd() {
   })
 }
 
+// Чем заканчивается сохранение правок:
+//  - save — объявление остаётся как было (на проверку не уходит);
+//  - resubmit — опубликованное или отклонённое объявление сервер сам
+//    отправляет на повторную проверку;
+//  - publish — «Сохранить и опубликовать» для черновика, архивного и
+//    истёкшего: правки, затем отправка на модерацию.
+export type UpdateAdMode = 'save' | 'resubmit' | 'publish'
+
 interface UpdateAdVariables {
   body: FormData
-  // Отклонённое объявление после правки сервер сам отправляет на повторную
-  // проверку — тост говорит об этом прямо, как на сайте.
-  wasRejected: boolean
+  mode: UpdateAdMode
+}
+
+// Тосты — как у хуков сайта (useUpdateAd, useActivateAd).
+const UPDATE_TOASTS: Record<UpdateAdMode, { title: string; description?: string }> = {
+  save: { title: 'Объявление успешно обновлено!' },
+  resubmit: {
+    title: 'Объявление отправлено на повторную проверку',
+    description: 'Модератор рассмотрит его ещё раз, обычно это занимает около 15 минут'
+  },
+  publish: {
+    title: 'Объявление отправлено на модерацию',
+    description: 'Модератор проверит его, обычно это занимает около 15 минут'
+  }
 }
 
 export function useUpdateAd(id: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ body }: UpdateAdVariables) => adFormApi.update(id, body),
-    onSuccess: (_ad, { wasRejected }) => {
-      if (wasRejected) {
-        toast.success('Объявление отправлено на повторную проверку', {
-          description: 'Модератор рассмотрит его ещё раз, обычно это занимает около 15 минут'
-        })
-      } else {
-        toast.success('Объявление успешно обновлено!')
-      }
+    mutationFn: async ({ body, mode }: UpdateAdVariables) => {
+      await adFormApi.update(id, body)
+      if (mode === 'publish') await adDetailApi.activate(id)
+    },
+    onSuccess: (_result, { mode }) => {
+      const { title, description } = UPDATE_TOASTS[mode]
+      toast.success(title, { description })
       void queryClient.invalidateQueries({ queryKey: ADS_QUERY_KEY })
     },
-    onError: showError
+    onError: error => {
+      showError(error)
+      // Правки могли сохраниться, даже если отправка на модерацию не прошла.
+      void queryClient.invalidateQueries({ queryKey: ADS_QUERY_KEY })
+    }
   })
 }
 
