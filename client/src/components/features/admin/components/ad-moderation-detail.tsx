@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Zoom from 'yet-another-react-lightbox/plugins/zoom'
 
+import { AdPhoto } from '@/components/features/ads/components/ad-photo'
 import { CategoryBreadcrumbs } from '@/components/features/ads/components/category-breadcrumbs'
 import { useModerationAd, usePublishAd } from '@/components/features/ads/hooks'
 import { ICategoryFeature } from '@/components/features/ads/types/ad.types'
@@ -16,14 +17,13 @@ import { Avatar, AvatarFallback, Button, ButtonBack, Heading, Loading, Multiline
 import { AD_STATUS_LABELS } from '@/shared/constants/ad-statuses'
 import { PRICE_UNITS } from '@/shared/constants/units'
 import { findCategoryById, formatFeatureValue, formatPhoneNumber, getPathToCategory } from '@/shared/utils'
+import { photoVariantUrl } from '@/shared/utils/photo-variants'
 
 import { cn } from '@/lib/utils'
 
 import { RejectAdDialog } from './reject-ad-dialog'
 
 import 'yet-another-react-lightbox/styles.css'
-import { AdPhoto } from '@/components/features/ads/components/ad-photo'
-import { photoVariantUrl } from '@/shared/utils/photo-variants'
 
 // Лайтбокс открывается только по клику на фото — незачем тянуть
 // yet-another-react-lightbox (+ его CSS) в бандл админки заранее.
@@ -190,7 +190,7 @@ export const AdModerationDetail = ({ id }: AdModerationDetailProps) => {
         </div>
 
         <div className='text-white'>
-          <p className='mb-4 text-2xl font-bold'>
+          <p className='mb-4 text-xl font-bold sm:text-2xl'>
             {ad.price ? `${ad.price.toLocaleString('ru-RU')} ₽` : 'Цена договорная'}
             {ad.price && ad.unit && ad.unit !== 'ITEM' && PRICE_UNITS[ad.unit] && (
               <span className='block text-sm font-normal text-gray-500'>за {PRICE_UNITS[ad.unit].toLowerCase()}</span>

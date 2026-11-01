@@ -71,7 +71,7 @@ export function ProfilePremiumScreen() {
             </View>
           ) : (
             <View className='rounded-xl bg-gray-50 p-6'>
-              <Text className='mb-4 text-2xl font-bold text-gray-900'>{PREMIUM_PRICE_LABEL}</Text>
+              <Text className='mb-4 text-xl font-bold text-gray-900 sm:text-2xl'>{PREMIUM_PRICE_LABEL}</Text>
               <View className='mb-6 gap-2'>
                 {BENEFITS.map(benefit => (
                   <View key={benefit.title} className='flex-row items-start gap-2'>
