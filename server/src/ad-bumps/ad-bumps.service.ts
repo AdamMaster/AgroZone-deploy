@@ -179,12 +179,26 @@ export class AdBumpsService {
 
     if (payment.status === 'succeeded') {
       return this.prisma.$transaction(async tx => {
+        // Платёж «забираем» первым действием: вебхук и проверка статуса со
+        // страницы возврата приходят почти одновременно, и без этого обе ветки
+        // увидели бы PENDING и обе выдали бы услугу. Условие status = PENDING
+        // в UPDATE пропустит только одну: вторая дождётся коммита первой, не
+        // найдёт PENDING и просто вернёт уже обработанную запись.
+        const now = new Date()
+        const claimed = await tx.adBump.updateMany({
+          where: { id: bump.id, status: AdBumpStatus.PENDING },
+          data: { status: AdBumpStatus.SUCCEEDED, paidAt: now }
+        })
+
+        if (claimed.count === 0) {
+          return tx.adBump.findUniqueOrThrow({ where: { id: bump.id } })
+        }
+
         const ad = await tx.ad.findUniqueOrThrow({
           where: { id: bump.adId },
           select: { bumpServiceUntil: true }
         })
 
-        const now = new Date()
         // Продление "сверху" — та же логика, что и в
         // PremiumService.reconcilePayment: если услуга ещё активна,
         // считаем от текущего bumpServiceUntil, а не от now, иначе уже
@@ -201,10 +215,7 @@ export class AdBumpsService {
           data: { bumpServiceUntil, bumpedAt: now }
         })
 
-        return tx.adBump.update({
-          where: { id: bump.id },
-          data: { status: AdBumpStatus.SUCCEEDED, paidAt: now }
-        })
+        return tx.adBump.findUniqueOrThrow({ where: { id: bump.id } })
       })
     }
 

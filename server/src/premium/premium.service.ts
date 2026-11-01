@@ -160,12 +160,26 @@ export class PremiumService {
 
     if (payment.status === 'succeeded') {
       return this.prisma.$transaction(async tx => {
+        // Платёж «забираем» первым действием: вебхук и проверка статуса со
+        // страницы возврата приходят почти одновременно, и без этого обе ветки
+        // увидели бы PENDING и обе выдали бы услугу. Условие status = PENDING
+        // в UPDATE пропустит только одну: вторая дождётся коммита первой, не
+        // найдёт PENDING и просто вернёт уже обработанную запись.
+        const now = new Date()
+        const claimed = await tx.premiumPurchase.updateMany({
+          where: { id: purchase.id, status: PremiumPurchaseStatus.PENDING },
+          data: { status: PremiumPurchaseStatus.SUCCEEDED, paidAt: now }
+        })
+
+        if (claimed.count === 0) {
+          return tx.premiumPurchase.findUniqueOrThrow({ where: { id: purchase.id } })
+        }
+
         const user = await tx.user.findUniqueOrThrow({
           where: { id: purchase.userId },
           select: { premiumUntil: true }
         })
 
-        const now = new Date()
         // Продление "сверху": если премиум ещё не истёк, считаем от
         // текущего premiumUntil, а не от now — иначе купленные, но ещё не
         // использованные дни просто сгорали бы.
@@ -183,10 +197,7 @@ export class PremiumService {
           data: { bumpedAt: now }
         })
 
-        return tx.premiumPurchase.update({
-          where: { id: purchase.id },
-          data: { status: PremiumPurchaseStatus.SUCCEEDED, paidAt: now }
-        })
+        return tx.premiumPurchase.findUniqueOrThrow({ where: { id: purchase.id } })
       })
     }
 

@@ -1149,6 +1149,43 @@ describe('AdsService', () => {
     })
   })
 
+  describe('повторная публикация (republish)', () => {
+    beforeEach(() => {
+      prisma.ad.update.mockResolvedValue({ id: 'ad1' })
+    })
+
+    it('истёкшее объявление без правок публикуется сразу', async () => {
+      prisma.ad.findFirst.mockResolvedValue({ id: 'ad1', userId: 'owner', status: 'EXPIRED', title: 'Морковь' })
+
+      await service.republish('ad1', 'owner')
+
+      expect(prisma.ad.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ status: 'PUBLISHED' }) })
+      )
+    })
+
+    it('истёкшее объявление с изменённым названием уходит на модерацию', async () => {
+      prisma.ad.findFirst.mockResolvedValue({ id: 'ad1', userId: 'owner', status: 'EXPIRED', title: 'Морковь' })
+
+      await service.republish('ad1', 'owner', { title: 'Морковь крупная' } as never)
+
+      expect(prisma.ad.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ status: 'PENDING' }) })
+      )
+    })
+
+    it.each(['DRAFT', 'PENDING', 'REJECTED', 'PUBLISHED', 'ARCHIVED'])(
+      'объявление в статусе %s публиковать в обход модерации нельзя — 400, ничего не пишется',
+      async status => {
+        prisma.ad.findFirst.mockResolvedValue({ id: 'ad1', userId: 'owner', status, title: 'Морковь' })
+
+        await expect(service.republish('ad1', 'owner')).rejects.toBeInstanceOf(BadRequestException)
+
+        expect(prisma.ad.update).not.toHaveBeenCalled()
+      }
+    )
+  })
+
   describe('приостановленное объявление (SUSPENDED)', () => {
     beforeEach(() => {
       prisma.ad.findFirst.mockResolvedValue({ id: 'ad1', userId: 'owner', status: 'SUSPENDED', images: [] })

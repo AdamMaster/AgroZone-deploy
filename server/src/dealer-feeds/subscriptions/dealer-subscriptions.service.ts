@@ -141,12 +141,26 @@ export class DealerSubscriptionsService {
 
     if (payment.status === 'succeeded') {
       return this.prisma.$transaction(async tx => {
+        // Платёж «забираем» первым действием: вебхук и проверка статуса со
+        // страницы возврата приходят почти одновременно, и без этого обе ветки
+        // увидели бы PENDING и обе выдали бы услугу. Условие status = PENDING
+        // в UPDATE пропустит только одну: вторая дождётся коммита первой, не
+        // найдёт PENDING и просто вернёт уже обработанную запись.
+        const now = new Date()
+        const claimed = await tx.dealerSubscription.updateMany({
+          where: { id: subscription.id, status: DealerSubscriptionStatus.PENDING },
+          data: { status: DealerSubscriptionStatus.SUCCEEDED, paidAt: now }
+        })
+
+        if (claimed.count === 0) {
+          return tx.dealerSubscription.findUniqueOrThrow({ where: { id: subscription.id } })
+        }
+
         const feed = await tx.dealerFeed.findUniqueOrThrow({
           where: { id: subscription.dealerFeedId },
           select: { subscriptionUntil: true }
         })
 
-        const now = new Date()
         const base = feed.subscriptionUntil && feed.subscriptionUntil > now ? feed.subscriptionUntil : now
         const subscriptionUntil = new Date(base.getTime() + DEALER_SUBSCRIPTION_DURATION_DAYS * 24 * 60 * 60 * 1000)
 
@@ -155,10 +169,7 @@ export class DealerSubscriptionsService {
           data: { subscriptionTier: subscription.tier, subscriptionUntil }
         })
 
-        return tx.dealerSubscription.update({
-          where: { id: subscription.id },
-          data: { status: DealerSubscriptionStatus.SUCCEEDED, paidAt: now }
-        })
+        return tx.dealerSubscription.findUniqueOrThrow({ where: { id: subscription.id } })
       })
     }
 

@@ -1,11 +1,22 @@
-import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common'
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException
+} from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { AdStatus } from '@/generated/prisma/client'
 import { AdBadge, AdServicePurchaseStatus, AdServiceType } from '@/generated/prisma/enums'
 
 import { PrismaService } from '@/prisma/prisma.service'
 
-import { AD_SERVICE_DURATION_DAYS, AD_SERVICE_LABELS, AD_SERVICE_PRICES_KOPECKS } from './constants/ad-services.constants'
+import {
+  AD_SERVICE_DURATION_DAYS,
+  AD_SERVICE_LABELS,
+  AD_SERVICE_PRICES_KOPECKS
+} from './constants/ad-services.constants'
 
 const YOOKASSA_API_URL = 'https://api.yookassa.ru/v3'
 
@@ -157,12 +168,26 @@ export class AdServicesService {
 
     if (payment.status === 'succeeded') {
       return this.prisma.$transaction(async tx => {
+        // Платёж «забираем» первым действием: вебхук и проверка статуса со
+        // страницы возврата приходят почти одновременно, и без этого обе ветки
+        // увидели бы PENDING и обе выдали бы услугу. Условие status = PENDING
+        // в UPDATE пропустит только одну: вторая дождётся коммита первой, не
+        // найдёт PENDING и просто вернёт уже обработанную запись.
+        const now = new Date()
+        const claimed = await tx.adServicePurchase.updateMany({
+          where: { id: purchase.id, status: AdServicePurchaseStatus.PENDING },
+          data: { status: AdServicePurchaseStatus.SUCCEEDED, paidAt: now }
+        })
+
+        if (claimed.count === 0) {
+          return tx.adServicePurchase.findUniqueOrThrow({ where: { id: purchase.id } })
+        }
+
         const ad = await tx.ad.findUniqueOrThrow({
           where: { id: purchase.adId },
           select: { bumpServiceUntil: true, priceHighlightUntil: true }
         })
 
-        const now = new Date()
         const durationMs = AD_SERVICE_DURATION_DAYS * 24 * 60 * 60 * 1000
 
         // Каждая услуга из массива применяется к своему полю независимо —
@@ -198,10 +223,7 @@ export class AdServicesService {
 
         await tx.ad.update({ where: { id: purchase.adId }, data })
 
-        return tx.adServicePurchase.update({
-          where: { id: purchase.id },
-          data: { status: AdServicePurchaseStatus.SUCCEEDED, paidAt: now }
-        })
+        return tx.adServicePurchase.findUniqueOrThrow({ where: { id: purchase.id } })
       })
     }
 

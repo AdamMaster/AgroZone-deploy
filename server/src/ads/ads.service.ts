@@ -1473,6 +1473,14 @@ export class AdsService {
 
     if (!ad) throw new NotFoundException('Объявление не найдено')
 
+    // Опубликовать без модерации можно только то, что уже её проходило и
+    // истекло по сроку. Отклонённое, ожидающее проверки и черновик должны идти
+    // через модератора (update/activate): иначе пустой запрос превращал любое
+    // из них в PUBLISHED в обход очереди.
+    if (ad.status !== AdStatus.EXPIRED) {
+      throw new BadRequestException('Опубликовать снова можно только истёкшее объявление')
+    }
+
     const normalizedPhone = updateDto?.phone !== undefined ? normalizePhone(updateDto.phone) : undefined
 
     if (normalizedPhone !== undefined && !normalizedPhone) {
