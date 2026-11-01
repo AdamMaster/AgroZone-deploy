@@ -39,6 +39,10 @@ export const AD_STATUSES_BLOCKING_OWNER_REMOVAL: readonly AdStatus[] = [
   AdStatus.SUSPENDED
 ]
 
+// Сколько держать в памяти список локаций для фильтра каталога (см.
+// AdsService.getAvailableLocations).
+export const AD_LOCATIONS_CACHE_TTL_MS = 5 * 60 * 1000
+
 // Сколько после создания неоплаченный платёж за услугу объявления считается
 // ещё «живым». ЮKassa отменяет платёж, который так и не оплатили, через
 // ограниченное время; берём с запасом. Пока платёж может быть оплачен, объявление

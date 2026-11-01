@@ -12,6 +12,7 @@ import 'multer'
 import {
   AD_DRAFT_LIMIT,
   AD_LIMITS,
+  AD_LOCATIONS_CACHE_TTL_MS,
   AD_PENDING_PAYMENT_WINDOW_MS,
   AD_STATUSES_BLOCKING_OWNER_REMOVAL
 } from './constants/ads.constants'
@@ -36,6 +37,7 @@ import { randomBytes } from 'crypto'
 import slugify from 'slugify'
 import { UserService } from '@/user/user.service'
 import { normalizePhone } from '@/libs/common/utils/phone.util'
+import { TtlCache } from '@/libs/common/utils/ttl-cache.util'
 import { NotificationsService } from '@/notifications/notifications.service'
 import { StoredSellerRating, publicRatingFields } from '@/seller-reviews/utils/public-rating.util'
 import { SiteSettingsService } from '@/site-settings/site-settings.service'
@@ -135,6 +137,11 @@ function normalizeSearchWords(raw: string): { normalizedQuery: string; words: st
 @Injectable()
 export class AdsService {
   private readonly logger = new Logger(AdsService.name)
+
+  private readonly locationsCache = new TtlCache({
+    ttlMs: AD_LOCATIONS_CACHE_TTL_MS,
+    load: () => this.loadAvailableLocations()
+  })
 
   constructor(
     private readonly prisma: PrismaService,
@@ -531,7 +538,15 @@ export class AdsService {
   // единым полем и по региону целиком ("Кабардино-Балкарская Респ." →
   // все объявления по всему региону), и по конкретному городу/селу
   // ("Нальчик" → только по нему, через ФИАС-id, а не сравнение строк).
-  async getAvailableLocations() {
+  // Список локаций для фильтра запрашивается при каждом заходе в каталог, а
+  // меняется медленно: справочник городов постоянный, а сёла из новых
+  // объявлений не обязаны появляться в фильтре в ту же секунду. Держим его в
+  // памяти 5 минут.
+  getAvailableLocations() {
+    return this.locationsCache.get()
+  }
+
+  private async loadAvailableLocations() {
     const now = new Date()
 
     const baseWhere = {

@@ -3,7 +3,10 @@ import { ConfigService } from '@nestjs/config'
 import { PrismaService } from '@/prisma/prisma.service'
 import { CategoryFeature } from '@/generated/prisma/client'
 import { EmbeddingsService } from '@/libs/embeddings/embeddings.service'
+import { TtlCache } from '@/libs/common/utils/ttl-cache.util'
 import { computeTermScore } from './utils/semantic-search.util'
+
+const CATEGORY_TREE_CACHE_TTL_MS = 10 * 60 * 1000
 
 export interface CategorySearchResult {
   id: string
@@ -73,6 +76,18 @@ export class CategoriesService implements OnModuleInit {
   // dev-сервер, чтобы onModuleInit перечитал таблицу заново. Это тот же
   // компромисс, что и с прогревом модели в EmbeddingsService.onModuleInit.
   private termCache: CachedCategoryTerm[] = []
+
+  // Дерево категорий запрашивается на каждой странице сайта (общий layout,
+  // без кэша на стороне Next.js) и дополнительно на каталоге, правке и
+  // создании объявления, а меняется только скриптами импорта категорий.
+  // Держим его в памяти 10 минут: после импорта новые категории появятся
+  // в течение 10 минут или сразу после перезапуска сервера. Пустое дерево
+  // (база пересоздаётся) не кэшируется.
+  private readonly treeCache = new TtlCache<CategoryWithChildren[]>({
+    ttlMs: CATEGORY_TREE_CACHE_TTL_MS,
+    load: () => this.loadTree(),
+    shouldCache: tree => tree.length > 0
+  })
 
   // Вес лексического бонуса и минимальный итоговый score, ниже которого
   // подсказку не показываем (см. searchBySemantic/computeTermScore ниже) —
@@ -151,7 +166,11 @@ export class CategoriesService implements OnModuleInit {
   // делать под это отдельный запрос не имеет смысла: пришлось бы либо
   // грузить priceUnits для каждой категории отдельно, либо всё равно
   // тянуть их все разом, только вторым запросом вместо одного.
-  async findAll(): Promise<CategoryWithChildren[]> {
+  findAll(): Promise<CategoryWithChildren[]> {
+    return this.treeCache.get()
+  }
+
+  private async loadTree(): Promise<CategoryWithChildren[]> {
     const categories = await this.prisma.category.findMany({
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       // Явный select без description — см. комментарий у
