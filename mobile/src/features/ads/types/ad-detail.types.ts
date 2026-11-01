@@ -45,6 +45,8 @@ export interface AdDetail {
   badge: AdBadge | null
   badgeUntil: string | null
   priceHighlightUntil: string | null
+  // До какого дня действует услуга «Поднять объявление» (есть и у владельца).
+  bumpServiceUntil: string | null
   // Есть только в публичном ответе и только для вошедшего.
   isFavorite?: boolean
   user: AdSeller | null

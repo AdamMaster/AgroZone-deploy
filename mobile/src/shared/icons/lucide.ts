@@ -3,6 +3,7 @@
 // неиспользуемое, и импорт из 'lucide-react-native' тянул бы в бандл все
 // ~1900 иконок (около +2 МБ к бандлу).
 export { default as ArrowLeft } from 'lucide-react-native/icons/arrow-left'
+export { default as ArrowUp } from 'lucide-react-native/icons/arrow-up'
 export { default as Bell } from 'lucide-react-native/icons/bell'
 export { default as Camera } from 'lucide-react-native/icons/camera'
 export { default as Check } from 'lucide-react-native/icons/check'

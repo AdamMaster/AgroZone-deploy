@@ -8,6 +8,9 @@ export const AD_BADGE_LABELS: Readonly<Record<AdBadge, string>> = {
   NEW: 'Новинка'
 }
 
+// Порядок — как в выборе значка на сайте (AD_BADGE_LIST).
+export const AD_BADGE_LIST: readonly AdBadge[] = ['URGENT', 'NEGOTIABLE', 'NEW']
+
 // Фон и цвет текста раздельно: в React Native цвет текста задаётся на <Text>,
 // а не наследуется от контейнера, как в вебе.
 export const AD_BADGE_STYLES: Readonly<Record<AdBadge, { container: string; text: string }>> = {

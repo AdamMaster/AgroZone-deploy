@@ -11,6 +11,7 @@ import { AdStatus } from '@/generated/prisma/client'
 import { AdBadge, AdServicePurchaseStatus, AdServiceType } from '@/generated/prisma/enums'
 
 import { PrismaService } from '@/prisma/prisma.service'
+import { assertAppReturnUri, buildReturnUrl } from '@/libs/yookassa/payment-return.util'
 import { yookassaFetch } from '@/libs/yookassa/yookassa-fetch.util'
 
 import {
@@ -47,7 +48,15 @@ export class AdServicesService {
     return 'Basic ' + Buffer.from(`${shopId}:${secretKey}`).toString('base64')
   }
 
-  async createCheckout(adId: string, userId: string, services: AdServiceType[], badge?: AdBadge) {
+  async createCheckout(
+    adId: string,
+    userId: string,
+    services: AdServiceType[],
+    badge?: AdBadge,
+    appReturnUri?: string
+  ) {
+    assertAppReturnUri(appReturnUri)
+
     const ad = await this.prisma.ad.findFirst({ where: { id: adId, userId } })
 
     if (!ad) {
@@ -70,7 +79,12 @@ export class AdServicesService {
 
     // Та же схема, что и в AdBumpsService: ALLOWED_ORIGIN (фронтенд), а не
     // APPLICATION_URL (бэкенд) — см. комментарий там же.
-    const returnUrl = `${this.configService.getOrThrow<string>('ALLOWED_ORIGIN')}/ads/${adId}?servicePurchase=${purchase.id}`
+    const returnUrl = buildReturnUrl({
+      webReturnUrl: `${this.configService.getOrThrow<string>('ALLOWED_ORIGIN')}/ads/${adId}?servicePurchase=${purchase.id}`,
+      appReturnUri,
+      backendOrigin: this.configService.getOrThrow<string>('APPLICATION_URL'),
+      purchaseId: purchase.id
+    })
 
     const description = services
       .map(service => AD_SERVICE_LABELS[service])

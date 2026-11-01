@@ -4,6 +4,7 @@ import { AdStatus } from '@/generated/prisma/client'
 import { PremiumPurchaseStatus } from '@/generated/prisma/enums'
 
 import { PrismaService } from '@/prisma/prisma.service'
+import { assertAppReturnUri, buildReturnUrl } from '@/libs/yookassa/payment-return.util'
 import { yookassaFetch } from '@/libs/yookassa/yookassa-fetch.util'
 
 import { PREMIUM_DURATION_DAYS, PREMIUM_PRICE_KOPECKS } from './constants/premium.constants'
@@ -39,14 +40,21 @@ export class PremiumService {
   // false/null — это задел под будущее автосписание на проде (ЮKassa не
   // даёт тестировать рекуррент в тестовом магазине), в этом чекауте
   // намеренно не используется.
-  async createCheckout(userId: string) {
+  async createCheckout(userId: string, appReturnUri?: string) {
+    assertAppReturnUri(appReturnUri)
+
     const purchase = await this.prisma.premiumPurchase.create({
       data: { userId, amount: PREMIUM_PRICE_KOPECKS }
     })
 
     // ?purchase=<id> — чтобы страница профиля при возврате с оплаты знала,
     // какой платёж перепроверить (см. checkStatus/premium.controller.ts).
-    const returnUrl = `${this.configService.getOrThrow<string>('ALLOWED_ORIGIN')}/profile/settings/premium?purchase=${purchase.id}`
+    const returnUrl = buildReturnUrl({
+      webReturnUrl: `${this.configService.getOrThrow<string>('ALLOWED_ORIGIN')}/profile/settings/premium?purchase=${purchase.id}`,
+      appReturnUri,
+      backendOrigin: this.configService.getOrThrow<string>('APPLICATION_URL'),
+      purchaseId: purchase.id
+    })
 
     let payment: YookassaPayment
 

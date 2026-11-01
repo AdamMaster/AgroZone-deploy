@@ -17,9 +17,9 @@ export class AdServicesController {
   createCheckout(
     @Param('adId', ParseUUIDPipe) adId: string,
     @CurrentUser('id') userId: string,
-    @Body() { services, badge }: CreateAdServiceCheckoutDto
+    @Body() { services, badge, returnUri }: CreateAdServiceCheckoutDto
   ) {
-    return this.adServicesService.createCheckout(adId, userId, services, badge)
+    return this.adServicesService.createCheckout(adId, userId, services, badge, returnUri)
   }
 
   // Ручная перепроверка без вебхука — см. AdBumpsController, тот же приём.

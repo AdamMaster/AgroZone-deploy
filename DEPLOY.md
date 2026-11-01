@@ -220,6 +220,11 @@ docker compose -f docker-compose.prod.yml --env-file .env restart nginx
 - Оплата продвижения объявления (ЮKassa) — вебхук должен достучаться до
   `https://api.agro-zone.ru/...`, а не до `localhost` (см. комментарии в
   `ad-bumps.controller.ts` — вы уже знали про это ограничение).
+  В личном кабинете ЮKassa (Интеграция → HTTP-уведомления) адрес уведомлений
+  ровно такой: `https://api.agro-zone.ru/payments/yookassa/webhook`, события
+  `payment.succeeded` и `payment.canceled`. Адрес на `agro-zone.ru` (без
+  `api.`) НЕ подойдёт: там отвечает сайт, ЮKassa получит 404, и услуга будет
+  применяться только после возврата пользователя на сайт.
 
 ## 6.5. Обновление после первого деплоя
 

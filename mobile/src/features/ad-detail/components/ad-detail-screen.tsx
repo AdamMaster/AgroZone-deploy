@@ -18,7 +18,6 @@ import { AppRefreshControl } from '@/shared/components/app-refresh-control'
 import { ScreenMessage } from '@/shared/components/screen-message'
 import { Skeleton } from '@/shared/components/skeleton'
 import { PRICE_UNITS, WHOLE_PRICE_UNIT } from '@/shared/constants/price-units'
-import { usePaidSitePage } from '@/shared/hooks/use-paid-site-page'
 import { useRefetchOnFocus } from '@/shared/hooks/use-refetch-on-focus'
 import { formatPrice } from '@/shared/utils/format-price'
 
@@ -71,18 +70,11 @@ export function AdDetailScreen({ id, view, onSwitchToOwnerView }: AdDetailScreen
   const counters = useAdCounters(id, { enabled: isOwner })
   const ownerActions = useAdOwnerActions(id)
   const { toggleFavorite, isPending: isFavoritePending } = useToggleFavorite()
-  const { openAd, openAdStats, openAdEditor } = useAdNavigation()
+  const { openAd, openAdStats, openAdPromote, openAdEditor } = useAdNavigation()
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false)
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
 
   useRefetchOnFocus(query.refetch)
-
-  // Платные услуги оплачиваются на сайте: после возвращения подтягиваем
-  // объявление (подняли, выделили) и его счётчики.
-  const openSitePage = usePaidSitePage(() => {
-    void query.refetch()
-    if (isOwner) void counters.refetch()
-  })
 
   if (!ad) {
     const isNotFound = query.error instanceof ApiError && query.error.statusCode === 404
@@ -172,7 +164,7 @@ export function AdDetailScreen({ id, view, onSwitchToOwnerView }: AdDetailScreen
             pendingAction={ownerActions.pendingAction}
             onStatusAction={changeStatus}
             onRemove={() => setIsRemoveDialogOpen(true)}
-            onPromote={() => void openSitePage(`/ads/${ad.id}/promote`)}
+            onPromote={() => openAdPromote(ad.id)}
             onOpenStats={() => openAdStats(ad.id)}
           />
         )}

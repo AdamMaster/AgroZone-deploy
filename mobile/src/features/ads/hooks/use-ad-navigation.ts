@@ -25,6 +25,13 @@ export function useAdNavigation() {
     [router, stack]
   )
 
+  // Платные услуги объявления («Поднять просмотры») — как /ads/:id/promote
+  // сайта, в текущей вкладке.
+  const openAdPromote = useCallback(
+    (id: string) => router.push({ pathname: `/(tabs)/${stack}/ads/[id]/promote`, params: { id } }),
+    [router, stack]
+  )
+
   // Страница продавца — в текущей вкладке, как /sellers/:id сайта.
   // tab: 'reviews' — сразу вкладка «Отзывы» (из уведомления, из своего
   // рейтинга).
@@ -38,5 +45,5 @@ export function useAdNavigation() {
   // сайта, без нижней панели).
   const openAdEditor = useCallback((id: string) => router.push({ pathname: '/edit-ad/[id]', params: { id } }), [router])
 
-  return { openAd, openAdStats, openSeller, openAdEditor }
+  return { openAd, openAdStats, openAdPromote, openSeller, openAdEditor }
 }

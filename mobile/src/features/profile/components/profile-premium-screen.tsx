@@ -4,12 +4,12 @@ import { useProfile } from '@/features/auth/hooks/use-profile'
 
 import { Button } from '@/shared/components/button'
 import { QueryState } from '@/shared/components/query-state'
-import { usePaidSitePage } from '@/shared/hooks/use-paid-site-page'
 import { useRefetchOnFocus } from '@/shared/hooks/use-refetch-on-focus'
 import { useThemeColor } from '@/shared/hooks/use-theme-color'
 import { Check, Crown } from '@/shared/icons/lucide'
 import { formatFullDate, isFutureDate } from '@/shared/utils/date'
 
+import { usePremiumCheckout } from '../hooks/use-premium-checkout'
 import { ProfileSectionScreen } from './profile-section-screen'
 
 const PREMIUM_PRICE_LABEL = '1499 ₽ за 30 дней'
@@ -36,10 +36,10 @@ const BENEFITS = [
   }
 ] as const
 
-// «Премиум Аккаунт» — как /profile/settings/premium сайта. Оплата — на сайте
-// (как и «Поднять объявление»): страница премиума открывается во встроенном
-// браузере, после оплаты статус обновится при возвращении в приложение
-// (usePaidSitePage).
+// «Премиум Аккаунт» — как /profile/settings/premium сайта. Оплата идёт прямо
+// из приложения: «Оформить» сразу открывает страницу оплаты ЮKassa, после
+// оплаты пользователь возвращается сюда, а статус перепроверяется у сервера
+// (usePremiumCheckout).
 export function ProfilePremiumScreen() {
   const profileQuery = useProfile()
   const { data: profile, refetch } = profileQuery
@@ -48,8 +48,8 @@ export function ProfilePremiumScreen() {
 
   useRefetchOnFocus(refetch)
 
-  const openSitePage = usePaidSitePage(refetch)
-  const openPremiumCheckout = () => void openSitePage('/profile/settings/premium')
+  const checkout = usePremiumCheckout()
+  const openPremiumCheckout = () => checkout.mutate()
 
   return (
     <ProfileSectionScreen title='Премиум Аккаунт' onRefresh={refetch}>
@@ -65,6 +65,7 @@ export function ProfilePremiumScreen() {
               <Button
                 title={`Продлить ещё на 30 дней — ${PREMIUM_PRICE_LABEL}`}
                 size='sm'
+                isLoading={checkout.isPending}
                 onPress={openPremiumCheckout}
               />
             </View>
@@ -85,7 +86,12 @@ export function ProfilePremiumScreen() {
                 ))}
               </View>
               <View className='self-start'>
-                <Button title='Оформить премиум' variant='premium' onPress={openPremiumCheckout} />
+                <Button
+                  title='Оформить премиум'
+                  variant='premium'
+                  isLoading={checkout.isPending}
+                  onPress={openPremiumCheckout}
+                />
               </View>
             </View>
           )

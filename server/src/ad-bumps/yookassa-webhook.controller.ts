@@ -1,6 +1,8 @@
-import { Body, Controller, HttpCode, Post } from '@nestjs/common'
+import { BadRequestException, Body, Controller, Get, HttpCode, Post, Query, Redirect } from '@nestjs/common'
 import { SkipThrottle } from '@nestjs/throttler'
 
+import { appendQuery, isAllowedMobileRedirectUri } from '@/auth/mobile-oauth/mobile-oauth.service'
+import { PaymentReturnQueryDto } from '@/libs/yookassa/dto/payment-return-query.dto'
 import { PremiumService } from '@/premium/premium.service'
 import { DealerSubscriptionsService } from '@/dealer-feeds/subscriptions/dealer-subscriptions.service'
 
@@ -42,5 +44,20 @@ export class YookassaWebhookController {
     await this.premiumService.handleWebhook(body)
     await this.adServicesService.handleWebhook(body)
     await this.dealerSubscriptionsService.handleWebhook(body)
+  }
+
+  // Возврат пользователя из ЮKassa в мобильное приложение. ЮKassa вернёт его
+  // сюда обычной https-ссылкой (см. buildReturnUrl), а отсюда сервер
+  // перенаправляет в приложение (agrozone://…), как при входе через Яндекс.
+  // Адрес приложения обязательно проверяется: иначе это был бы открытый
+  // редирект на любой сайт.
+  @Get('return')
+  @Redirect()
+  returnToApp(@Query() { to, purchase }: PaymentReturnQueryDto) {
+    if (!isAllowedMobileRedirectUri(to)) {
+      throw new BadRequestException('Недопустимый адрес возврата в приложение.')
+    }
+
+    return { url: appendQuery(to, { purchase }) }
   }
 }

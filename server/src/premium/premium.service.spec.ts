@@ -66,3 +66,63 @@ describe('PremiumService: обработка платежа ЮKassa', () => {
     expect(tx.ad.updateMany).not.toHaveBeenCalled()
   })
 })
+
+describe('PremiumService.createCheckout: адрес возврата', () => {
+  const config = {
+    getOrThrow: (key: string) =>
+      ({
+        YOOKASSA_SHOP_ID: 'shop',
+        YOOKASSA_SECRET_KEY: 'secret',
+        ALLOWED_ORIGIN: 'https://agro-zone.ru',
+        APPLICATION_URL: 'https://api.agro-zone.ru'
+      })[key]
+  }
+  let prisma: { premiumPurchase: { create: jest.Mock; update: jest.Mock } }
+  let service: PremiumService
+  let fetchSpy: jest.SpyInstance
+
+  const sentReturnUrl = () => JSON.parse(fetchSpy.mock.calls[0][1].body).confirmation.return_url as string
+
+  beforeEach(() => {
+    prisma = {
+      premiumPurchase: {
+        create: jest.fn().mockResolvedValue({ id: 'purchase-1', amount: 1000 }),
+        update: jest.fn()
+      }
+    }
+    fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ id: 'pay-1', confirmation: { confirmation_url: 'https://yookassa.test/pay' } })
+    } as Response)
+    service = new PremiumService(prisma as never, config as never)
+  })
+
+  afterEach(() => jest.restoreAllMocks())
+
+  it('с сайта возвращает на страницу премиума сайта', async () => {
+    await expect(service.createCheckout('user-1')).resolves.toEqual({
+      confirmationUrl: 'https://yookassa.test/pay',
+      purchaseId: 'purchase-1'
+    })
+
+    expect(sentReturnUrl()).toBe('https://agro-zone.ru/profile/settings/premium?purchase=purchase-1')
+  })
+
+  it('из приложения возвращает через сервер, который перенаправит в приложение', async () => {
+    await service.createCheckout('user-1', 'agrozone://payment-return')
+
+    const url = new URL(sentReturnUrl())
+    expect(`${url.origin}${url.pathname}`).toBe('https://api.agro-zone.ru/payments/yookassa/return')
+    expect(url.searchParams.get('to')).toBe('agrozone://payment-return')
+    expect(url.searchParams.get('purchase')).toBe('purchase-1')
+  })
+
+  it('посторонний адрес возврата отклоняется до создания платежа', async () => {
+    await expect(service.createCheckout('user-1', 'https://evil.example/steal')).rejects.toThrow(
+      'Недопустимый адрес возврата'
+    )
+
+    expect(prisma.premiumPurchase.create).not.toHaveBeenCalled()
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+})

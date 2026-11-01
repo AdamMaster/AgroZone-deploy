@@ -1,7 +1,8 @@
 import { ArrayMinSize, ArrayUnique, IsArray, IsEnum, IsOptional, ValidateIf } from 'class-validator'
 import { AdBadge, AdServiceType } from '@/generated/prisma/enums'
+import { AppReturnDto } from '@/libs/yookassa/dto/app-return.dto'
 
-export class CreateAdServiceCheckoutDto {
+export class CreateAdServiceCheckoutDto extends AppReturnDto {
   @IsArray()
   @ArrayMinSize(1)
   @ArrayUnique()

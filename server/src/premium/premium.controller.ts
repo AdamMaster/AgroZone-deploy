@@ -1,8 +1,9 @@
-import { Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common'
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common'
 
 import { CurrentUser } from '@/auth/decorators/decorators/user.decorator'
 import { AuthGuard } from '@/auth/guards/auth.guard'
 
+import { CreatePremiumCheckoutDto } from './dto/create-premium-checkout.dto'
 import { PremiumService } from './premium.service'
 
 // userId берётся из сессии (@CurrentUser), а не из урла — в отличие от
@@ -14,8 +15,8 @@ export class PremiumController {
 
   @Post('checkout')
   @UseGuards(AuthGuard)
-  createCheckout(@CurrentUser('id') userId: string) {
-    return this.premiumService.createCheckout(userId)
+  createCheckout(@CurrentUser('id') userId: string, @Body() { returnUri }: CreatePremiumCheckoutDto) {
+    return this.premiumService.createCheckout(userId, returnUri)
   }
 
   // Ручная перепроверка статуса оплаты — без вебхука/ngrok, см.
