@@ -147,7 +147,7 @@ export const PromoteAd = ({ id }: PromoteAdProps) => {
                     : ad.badgeUntil
 
               return (
-                <div key={service} className='custom-shadow rounded-xl p-4'>
+                <div key={service} className='custom-shadow rounded-xl p-4 dark:bg-neutral-700/80'>
                   <div className='flex flex-col flex-wrap justify-between gap-4 sm:flex-row sm:items-center'>
                     <div>
                       <p className='font-medium'>{AD_SERVICE_LABELS[service]}</p>
