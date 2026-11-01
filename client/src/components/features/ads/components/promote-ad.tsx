@@ -224,8 +224,8 @@ export const PromoteAd = ({ id }: PromoteAdProps) => {
                 )}
                 {previewBadge && <AdBadgeChip badge={previewBadge} className='absolute top-1 left-1' />}
               </div>
-              <Skeleton className='mb-1.5 h-3.5 w-full dark:bg-neutral-50' />
-              <Skeleton className='mb-3 h-3.5 w-2/3 dark:bg-neutral-50' />
+              <Skeleton className='mb-1.5 h-3.5 w-full dark:bg-neutral-300' />
+              <Skeleton className='mb-3 h-3.5 w-2/3 dark:bg-neutral-300' />
               <p className={cn('w-fit text-lg font-bold', previewPriceHighlighted && AD_PRICE_HIGHLIGHT_CLASS)}>
                 {ad.price ? `${ad.price.toLocaleString('ru-RU')} ₽` : 'Цена договорная'}
               </p>

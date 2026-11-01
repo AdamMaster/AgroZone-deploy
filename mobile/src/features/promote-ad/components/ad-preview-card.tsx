@@ -41,8 +41,8 @@ export function AdPreviewCard({ photoUrl, badge, price, isPriceHighlighted, isBu
         )}
       </View>
 
-      <Skeleton className='mb-1.5 h-3.5 w-full rounded dark:bg-neutral-50' />
-      <Skeleton className='mb-3 h-3.5 w-2/3 rounded dark:bg-neutral-50' />
+      <Skeleton className='mb-1.5 h-3.5 w-full rounded dark:bg-neutral-300' />
+      <Skeleton className='mb-3 h-3.5 w-2/3 rounded dark:bg-neutral-300' />
 
       <View className='items-start'>
         <Text
