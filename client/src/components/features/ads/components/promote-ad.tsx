@@ -1,7 +1,7 @@
 'use client'
 
 import { ArrowUp, Crown, ImageIcon } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { notFound, useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 import {
@@ -53,7 +53,10 @@ export const PromoteAd = ({ id }: PromoteAdProps) => {
   const [selectedServices, setSelectedServices] = useState<Set<AdServiceType>>(new Set())
   const [selectedBadge, setSelectedBadge] = useState<AdBadge | undefined>(undefined)
 
-  if (isLoadingAd || !ad) return <Loading />
+  if (isLoadingAd) return <Loading />
+
+  // Объявления нет (удалено, чужое) — страница «не найдено», а не вечная загрузка.
+  if (!ad) return notFound()
 
   const isOwnerPremiumActive = !!user?.premiumUntil && new Date(user.premiumUntil) > new Date()
   const PREMIUM_COVERED_SERVICES: AdServiceType[] = ['BUMP', 'PRICE_HIGHLIGHT']

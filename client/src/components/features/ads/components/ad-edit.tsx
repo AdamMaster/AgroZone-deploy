@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { notFound, useRouter } from 'next/navigation'
 
 import { Loading } from '@/components/ui'
 
@@ -26,7 +26,11 @@ export const AdEdit = ({ id, categories }: AdEditProps) => {
   const { saveDraft, isLoadingSaveDraft } = useSaveDraft(id)
   const router = useRouter()
 
-  if (isLoadingAd || !ad) return <Loading />
+  if (isLoadingAd) return <Loading />
+
+  // Объявления нет (удалено, чужое) — страница «не найдено», а не вечная
+  // загрузка: сюда, например, ведёт старое уведомление об отклонении.
+  if (!ad) return notFound()
 
   const initialData: TypeCreateAdSchema = {
     title: ad.title,
