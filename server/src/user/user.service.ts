@@ -1,6 +1,7 @@
 import { PrismaService } from '@/prisma/prisma.service'
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common'
 import { hash, verify } from 'argon2'
+import type { SessionData } from 'express-session'
 import {
   AdStatus,
   AuthMethod,
@@ -474,7 +475,10 @@ export class UserService {
 
     const updated = await this.prismaService.user.update({
       where: { id: userId },
-      data: { password: await hash(dto.newPassword) },
+      // Сменённый админом пароль завершает все входы пользователя: если
+      // доступ к аккаунту получил кто-то другой, он теряет его вместе со
+      // старым паролем.
+      data: { password: await hash(dto.newPassword), sessionVersion: { increment: 1 } },
       select: { id: true }
     })
 
@@ -733,7 +737,10 @@ export class UserService {
     })
   }
 
-  async updatePassword(userId: string, dto: PasswordChangeDto) {
+  // Смена пароля самим пользователем: все остальные входы завершаются
+  // (sessionVersion), а текущая сессия — та, из которой меняли пароль, —
+  // продолжает действовать: ей сразу выдаётся новый номер.
+  async updatePassword(userId: string, dto: PasswordChangeDto, currentSession?: Partial<SessionData>) {
     const user = await this.findById(userId)
 
     if (user.password) {
@@ -750,9 +757,14 @@ export class UserService {
     const updated = await this.prismaService.user.update({
       where: { id: userId },
       data: {
-        password: await hash(dto.newPassword)
+        password: await hash(dto.newPassword),
+        sessionVersion: { increment: 1 }
       }
     })
+
+    if (currentSession) {
+      currentSession.sessionVersion = updated.sessionVersion
+    }
 
     // firstPassword: true — у аккаунта (например, созданного через
     // Яндекс/Google) пароля раньше не было, это установка, а не смена.

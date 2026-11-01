@@ -114,7 +114,7 @@ describe('UserService', () => {
       expect(mockedVerify).not.toHaveBeenCalled()
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { password: 'hashed-new-password' }
+        data: { password: 'hashed-new-password', sessionVersion: { increment: 1 } }
       })
     })
 
@@ -146,8 +146,23 @@ describe('UserService', () => {
 
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { password: 'hashed-new-password' }
+        data: { password: 'hashed-new-password', sessionVersion: { increment: 1 } }
       })
+    })
+
+    it('завершает остальные входы, а текущая сессия получает новый номер и остаётся', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', password: 'old-hash' })
+      prisma.user.update.mockResolvedValue({ id: 'user-1', sessionVersion: 4 })
+      mockedVerify.mockResolvedValue(true)
+      const currentSession: { sessionVersion?: number } = { sessionVersion: 3 }
+
+      await service.updatePassword(
+        'user-1',
+        { currentPassword: 'correct', newPassword: 'newpass1' } as any,
+        currentSession as any
+      )
+
+      expect(currentSession.sessionVersion).toBe(4)
     })
   })
 
@@ -775,6 +790,18 @@ describe('UserService', () => {
         userId: 'user-1',
         type: SecurityEventType.TWO_FACTOR_DISABLED
       })
+    })
+
+    it('смена пароля админом завершает все входы пользователя', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', email: null })
+      prisma.user.update.mockResolvedValue({ id: 'user-1' })
+      mockedHash.mockResolvedValue('hashed' as any)
+
+      await service.setPasswordByAdmin('user-1', { newPassword: 'SuperSecret1' })
+
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { password: 'hashed', sessionVersion: { increment: 1 } } })
+      )
     })
 
     it('смена пароля админом пишет PASSWORD_SET_BY_ADMIN и не кладёт пароль в журнал', async () => {

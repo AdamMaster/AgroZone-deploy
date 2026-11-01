@@ -45,7 +45,8 @@ describe('AuthService', () => {
   const createReq = () =>
     ({
       session: {
-        save: jest.fn((cb: (err?: unknown) => void) => cb())
+        save: jest.fn((cb: (err?: unknown) => void) => cb()),
+        regenerate: jest.fn((cb: (err?: unknown) => void) => cb())
       },
       headers: { 'user-agent': 'jest-test-agent' },
       // getClientIp() читает req.ip, а при его отсутствии — req.socket.remoteAddress;
@@ -61,6 +62,7 @@ describe('AuthService', () => {
     role: UserRole.USER,
     isVerified: true,
     isTwoFactorEnabled: false,
+    sessionVersion: 0,
     ...overrides
   })
 
@@ -758,6 +760,34 @@ describe('AuthService', () => {
       expect(userService.getProfileForClient).toHaveBeenCalledWith(user.id)
       expect(result.user).toEqual({ id: user.id, hasPassword: true })
       expect(JSON.stringify(result)).not.toContain('hashed-password')
+    })
+
+    it('при входе выдаётся новый идентификатор сессии, затем записывается пользователь и номер поколения входов', async () => {
+      const user = baseUser({ sessionVersion: 3 })
+      const req = createReq()
+      const order: string[] = []
+      req.session.regenerate.mockImplementation((cb: (err?: unknown) => void) => {
+        order.push('regenerate')
+        cb()
+      })
+      req.session.save.mockImplementation((cb: (err?: unknown) => void) => {
+        order.push('save')
+        cb()
+      })
+
+      await service.saveSession(req, user as any)
+
+      expect(order).toEqual(['regenerate', 'save'])
+      expect(req.session).toMatchObject({ userId: user.id, userRole: user.role, sessionVersion: 3 })
+    })
+
+    it('если новую сессию выдать не удалось — вход не открывается', async () => {
+      const req = createReq()
+      req.session.regenerate.mockImplementation((cb: (err?: unknown) => void) => cb(new Error('redis down')))
+
+      await expect(service.saveSession(req, baseUser() as any)).rejects.toThrow('Не удалось открыть сессию')
+      expect(req.session.userId).toBeUndefined()
+      expect(securityEventsService.recordLoginIfNew).not.toHaveBeenCalled()
     })
 
     it('сайту ключ сессии не отдаётся', async () => {

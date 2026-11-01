@@ -33,13 +33,23 @@ describe('ConversationsGateway', () => {
 
   describe('handleConnection', () => {
     it('пускает вошедшего пользователя в его личную комнату', async () => {
-      userService.findById.mockResolvedValue({ id: 'u1', deletedAt: null })
+      userService.findById.mockResolvedValue({ id: 'u1', deletedAt: null, sessionVersion: 0 })
       const { socket, asSocket } = createSocket({ userId: 'u1' })
 
       await gateway.handleConnection(asSocket)
 
       expect(socket.join).toHaveBeenCalledWith('conversations:user:u1')
       expect(socket.disconnect).not.toHaveBeenCalled()
+    })
+
+    it('отказывает сессии, открытой до смены пароля', async () => {
+      userService.findById.mockResolvedValue({ id: 'u1', deletedAt: null, sessionVersion: 2 })
+      const { socket, asSocket } = createSocket({ userId: 'u1', sessionVersion: 1 })
+
+      await gateway.handleConnection(asSocket)
+
+      expect(socket.emit).toHaveBeenCalledWith('conversations:error', { code: 'UNAUTHORIZED' })
+      expect(socket.join).not.toHaveBeenCalled()
     })
 
     it('отказывает, если в сессии нет пользователя', async () => {
@@ -67,7 +77,7 @@ describe('ConversationsGateway', () => {
 
     it('отключает сокет, если разбор подключения упал', async () => {
       jest.spyOn(console, 'error').mockImplementation(() => undefined)
-      userService.findById.mockResolvedValue({ id: 'u1', deletedAt: null })
+      userService.findById.mockResolvedValue({ id: 'u1', deletedAt: null, sessionVersion: 0 })
       const { socket, asSocket } = createSocket({ userId: 'u1' })
       socket.join.mockRejectedValue(new Error('boom'))
 

@@ -38,7 +38,10 @@ describe('UserController: ответы ручек изменения профи�
     ['PATCH profile/avatar', () => controller.updateAvatar('user-1', file)],
     ['PATCH profile/presentation', () => controller.updatePresentation('user-1', file)],
     ['DELETE profile/presentation', () => controller.removePresentation('user-1')],
-    ['PATCH profile/password', () => controller.updatePassword('user-1', { newPassword: 'secret12' } as never)],
+    [
+      'PATCH profile/password',
+      () => controller.updatePassword('user-1', { newPassword: 'secret12' } as never, { session: {} } as never)
+    ],
     ['PATCH 2fa', () => controller.toggleTwoFactor('user-1')]
   ])('%s отвечает профилем без хэша пароля', async (_name, call) => {
     const result = await call()

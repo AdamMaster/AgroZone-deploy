@@ -150,7 +150,7 @@ describe('PasswordRecoveryService', () => {
 
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { password: 'hashed-new-password' }
+        data: { password: 'hashed-new-password', sessionVersion: { increment: 1 } }
       })
       expect(prisma.token.delete).toHaveBeenCalledWith({
         where: { id: 'token-1', type: TokenType.PASSWORD_RESET }
@@ -277,7 +277,7 @@ describe('PasswordRecoveryService', () => {
 
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { password: 'hashed-new-password' }
+        data: { password: 'hashed-new-password', sessionVersion: { increment: 1 } }
       })
       expect(prisma.token.delete).toHaveBeenCalledWith({
         where: { id: 'token-1', type: TokenType.PASSWORD_RESET }

@@ -269,8 +269,8 @@ export class UserController {
   @Authorization()
   @HttpCode(HttpStatus.OK)
   @Patch('profile/password')
-  async updatePassword(@Authorized('id') userId: string, @Body() dto: PasswordChangeDto) {
-    await this.userService.updatePassword(userId, dto)
+  async updatePassword(@Authorized('id') userId: string, @Body() dto: PasswordChangeDto, @Req() req: Request) {
+    await this.userService.updatePassword(userId, dto, req.session)
 
     return this.userService.getProfileForClient(userId)
   }

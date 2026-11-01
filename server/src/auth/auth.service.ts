@@ -660,9 +660,21 @@ export class AuthService {
       })
     }
 
+    // Новый идентификатор сессии при каждом входе: идентификатор, который был
+    // у посетителя до входа (его мог подсунуть злоумышленник — «фиксация
+    // сессии»), после входа ничего не открывает. Данные гостевой сессии нам
+    // не нужны: supportGuestId уже прочитан выше.
+    await new Promise<void>((resolve, reject) => {
+      req.session.regenerate(err => (err ? reject(err) : resolve()))
+    }).catch((error: unknown) => {
+      console.error('SESSION REGENERATE ERROR:', error)
+      throw new InternalServerErrorException('Не удалось открыть сессию. Попробуйте войти ещё раз.')
+    })
+
     await new Promise<void>((resolve, reject) => {
       req.session.userId = user.id
       req.session.userRole = user.role
+      req.session.sessionVersion = user.sessionVersion
 
       req.session.save(err => {
         if (err) {

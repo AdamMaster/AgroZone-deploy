@@ -4,6 +4,7 @@ import { IncomingMessage } from 'http'
 import { Namespace, Socket } from 'socket.io'
 import { SessionData } from 'express-session'
 
+import { isSessionCurrent } from '@/session/session-version'
 import { UserService } from '@/user/user.service'
 
 import {
@@ -47,7 +48,7 @@ export class ConversationsGateway implements OnGatewayConnection {
       const userId = session?.userId
       const user = userId ? await this.userService.findById(userId).catch(() => null) : null
 
-      if (!user || user.deletedAt) {
+      if (!user || user.deletedAt || !isSessionCurrent(session, user)) {
         socket.emit('conversations:error', { code: 'UNAUTHORIZED' })
         socket.disconnect(true)
         return

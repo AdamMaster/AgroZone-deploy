@@ -58,6 +58,12 @@ model User {
   isVerified         Boolean @default(false) @map("is_verified")
   isTwoFactorEnabled Boolean @default(false) @map("is_two_factor_enabled")
 
+  // «Поколение» входов. Сессия запоминает номер, с которым открыта
+  // (SessionData.sessionVersion), и действует, пока он совпадает с этим (см.
+  // isSessionCurrent). Увеличивается при смене и сбросе пароля: все остальные
+  // входы (украденная сессия, забытый чужой телефон) перестают работать.
+  sessionVersion Int @default(0) @map("session_version")
+
   // Письма о новых сообщениях в чате (см. ChatEmailRemindersService): включены
   // по умолчанию, пользователь отключает их в настройках. Служебные письма
   // (сброс пароля, подтверждение почты, решения модерации) этим флагом не

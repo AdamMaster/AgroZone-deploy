@@ -6,6 +6,8 @@ declare module 'express-session' {
   interface SessionData {
     userId: string
     userRole: UserRole
+    // Номер «поколения» входов на момент входа (см. isSessionCurrent).
+    sessionVersion: number
   }
 }
 

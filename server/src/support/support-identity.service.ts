@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable } from '@nestjs/common'
 import { Request } from 'express'
 import { SessionData } from 'express-session'
 
+import { isSessionCurrent } from '@/session/session-version'
 import { UserService } from '@/user/user.service'
 
 import { SupportGuestsService } from './support-guests.service'
@@ -29,10 +30,11 @@ export class SupportIdentityService {
     if (userId) {
       const user = await this.userService.findById(userId).catch(() => null)
 
+      // Сессия, отозванная сменой пароля (isSessionCurrent), — то же самое.
       // Протухшая ссылка на удалённый аккаунт — не отказ, а просто
       // проваливаемся в гостевую ветку ниже (см. тот же комментарий раньше
       // в guard'е: human всё ещё стоит перед виджетом и хочет написать).
-      if (user && !user.deletedAt) {
+      if (user && !user.deletedAt && isSessionCurrent(request.session, user)) {
         return { type: 'user', user }
       }
     }
@@ -61,7 +63,7 @@ export class SupportIdentityService {
     if (userId) {
       const user = await this.userService.findById(userId).catch(() => null)
 
-      if (user && !user.deletedAt) {
+      if (user && !user.deletedAt && isSessionCurrent(session, user)) {
         return { type: 'user', user }
       }
     }

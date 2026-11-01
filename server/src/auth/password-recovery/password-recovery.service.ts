@@ -176,8 +176,11 @@ export class PasswordRecoveryService {
       where: {
         id: userId
       },
+      // Сброс пароля завершает все входы: восстанавливают доступ обычно как
+      // раз тогда, когда к аккаунту мог получить доступ кто-то другой.
       data: {
-        password: await hash(password)
+        password: await hash(password),
+        sessionVersion: { increment: 1 }
       }
     })
 
