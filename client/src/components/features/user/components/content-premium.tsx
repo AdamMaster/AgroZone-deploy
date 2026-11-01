@@ -87,7 +87,7 @@ export const ContentPremium = () => {
           </Button>
         </div>
       ) : (
-        <div className='max-w-md rounded-xl bg-gray-50 p-6'>
+        <div className='max-w-md rounded-xl bg-gray-50 p-4 sm:p-6'>
           <p className='mb-4 text-xl font-bold sm:text-2xl'>{PREMIUM_PRICE_LABEL}</p>
           <ul className='mb-6 flex flex-col gap-2'>
             {BENEFITS.map(benefit => (
