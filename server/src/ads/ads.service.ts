@@ -465,6 +465,11 @@ export class AdsService {
 
     const ads = await this.prisma.ad.findMany({
       where: { id: { in: ids } },
+      // Телефон продавца в публичную выдачу не попадает (как и в findOne):
+      // номер отдаётся только через getPhone — после входа, с лимитом и
+      // записью в журнал показов. Без этого номера всех продавцов
+      // выкачивались бы простым листанием каталога без входа.
+      omit: { phone: true },
       include: {
         user: {
           select: {

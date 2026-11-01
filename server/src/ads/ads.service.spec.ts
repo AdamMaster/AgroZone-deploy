@@ -884,6 +884,24 @@ describe('AdsService', () => {
     })
   })
 
+  describe('findAll (публичный каталог)', () => {
+    beforeEach(() => {
+      prisma.$queryRaw = jest
+        .fn()
+        .mockResolvedValueOnce([{ count: BigInt(1) }])
+        .mockResolvedValueOnce([{ id: 'ad-1', distance_km: null }])
+      prisma.ad.findMany.mockResolvedValue([{ id: 'ad-1', title: 'Трактор', favorites: [] }])
+    })
+
+    it('телефон продавца не запрашивается из базы и не попадает в выдачу', async () => {
+      const result = await service.findAll({} as never)
+
+      expect(prisma.ad.findMany).toHaveBeenCalledWith(expect.objectContaining({ omit: { phone: true } }))
+      expect(result.items).toHaveLength(1)
+      expect(result.items[0]).not.toHaveProperty('phone')
+    })
+  })
+
   describe('findOne', () => {
     const now = Date.now()
 
