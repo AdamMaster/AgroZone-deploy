@@ -42,16 +42,12 @@ export const SettingsNav = () => {
                 className={cn(
                   'flex items-center gap-2 rounded-lg px-4 py-2 text-gray-900 hover:bg-gray-50',
                   isActive && 'bg-gray-100',
-                  item.id === 'premium' && 'text-orange-500 hover:text-orange-600'
+                  item.id === 'premium' && 'text-amber-500 hover:text-amber-600'
                 )}
               >
                 <Icon
                   size={18}
-                  className={cn(
-                    'text-gray-400',
-                    item.id === 'premium' && 'text-orange-500',
-                    isActive && 'text-inherit'
-                  )}
+                  className={cn('text-gray-400', item.id === 'premium' && 'text-amber-500', isActive && 'text-inherit')}
                 />
                 {item.label}
                 {item.id === 'messages' && unreadCount > 0 && (

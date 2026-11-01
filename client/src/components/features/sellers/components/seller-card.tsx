@@ -41,7 +41,7 @@ export function SellerCard({ seller }: SellerCardProps) {
             <span className='rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600'>{seller.businessName}</span>
           )}
           {isSellerPremium && (
-            <span className='flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs text-amber-700'>
+            <span className='flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs text-amber-500'>
               <Crown size={11} />
               Премиум
             </span>

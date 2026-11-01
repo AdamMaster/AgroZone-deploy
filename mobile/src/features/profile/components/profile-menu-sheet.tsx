@@ -118,7 +118,7 @@ export function ProfileMenuSheet({ visible, onClose }: ProfileMenuSheetProps) {
         className='flex-row items-center gap-3 rounded-lg px-4 py-3 active:bg-gray-50'
       >
         <Icon size={ICON_SIZE} color={isPremium ? PREMIUM_COLOR : iconColor} />
-        <Text className={`text-sm ${isPremium ? 'text-orange-500' : 'text-gray-900'}`}>{item.label}</Text>
+        <Text className={`text-sm ${isPremium ? 'text-amber-500' : 'text-gray-900'}`}>{item.label}</Text>
       </Pressable>
     )
   }

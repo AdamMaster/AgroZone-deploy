@@ -12,7 +12,7 @@ interface BannerContent {
 
 const TONE_CLASS_NAMES: Record<BannerContent['tone'], string> = {
   neutral: 'bg-gray-100 text-gray-700 dark:bg-neutral-800 dark:text-neutral-200',
-  warning: 'bg-orange-100 text-orange-900 dark:bg-orange-200 dark:text-neutral-900',
+  warning: 'bg-orange-100 text-amber-900 dark:bg-amber-200 dark:text-neutral-900',
   danger: 'bg-red-100 text-red-600'
 }
 

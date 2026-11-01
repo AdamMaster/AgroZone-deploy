@@ -68,10 +68,10 @@ export const ProfileMenuSheet = ({ open, onOpenChange }: ProfileMenuSheetProps) 
         onClick={close}
         className={cn(
           'flex items-center gap-3 rounded-lg px-4 py-3 text-gray-900 hover:bg-gray-50',
-          isPremium && 'text-orange-500 hover:text-orange-600'
+          isPremium && 'text-amber-500 hover:text-amber-600'
         )}
       >
-        <Icon size={20} className={cn('text-gray-400', isPremium && 'text-orange-500')} />
+        <Icon size={20} className={cn('text-gray-400', isPremium && 'text-amber-500')} />
         {item.label}
       </Link>
     )

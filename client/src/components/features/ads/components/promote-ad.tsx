@@ -170,7 +170,7 @@ export const PromoteAd = ({ id }: PromoteAdProps) => {
                       </span>
                       {disabled ? (
                         <Tooltip>
-                          <TooltipTrigger className='flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700'>
+                          <TooltipTrigger className='flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-500'>
                             <Crown className='size-3.5' />
                             Включено в премиум
                           </TooltipTrigger>
@@ -212,7 +212,13 @@ export const PromoteAd = ({ id }: PromoteAdProps) => {
               <p className='mb-3 text-xs font-medium text-gray-500'>Так будет выглядеть объявление</p>
               <div className='relative mb-3 overflow-hidden rounded-lg bg-gray-100 pt-[75%]'>
                 {ad.images.length > 0 ? (
-                  <AdPhoto src={ad.images[0]} alt={ad.title} className='h-full w-full object-cover' fill sizes='280px' />
+                  <AdPhoto
+                    src={ad.images[0]}
+                    alt={ad.title}
+                    className='h-full w-full object-cover'
+                    fill
+                    sizes='280px'
+                  />
                 ) : (
                   <ImageIcon size={40} className='absolute top-1/2 left-1/2 -translate-1/2 text-gray-400' />
                 )}

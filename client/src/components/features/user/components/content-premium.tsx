@@ -74,7 +74,7 @@ export const ContentPremium = () => {
             <Heading level={4} className='font-medium'>
               Премиум активен
             </Heading>
-            <Crown className='size-5 fill-orange-500 text-orange-500' />
+            <Crown className='size-5 fill-amber-500 text-amber-500' />
           </div>
           <p className='mb-7 text-sm'>Действует до {formatDate(user!.premiumUntil as string)}</p>
           <Button
