@@ -451,7 +451,7 @@ export const AdDetail = ({
               <div className='mb-3 flex flex-col gap-1'>
                 {ad.status === 'PUBLISHED' && (
                   <Button size='lg' className='w-full' onClick={() => router.push(`/ads/${ad.id}/promote`)}>
-                    Поднять объявление
+                    Поднять просмотры
                   </Button>
                 )}
                 {ad.status === 'PUBLISHED' && (

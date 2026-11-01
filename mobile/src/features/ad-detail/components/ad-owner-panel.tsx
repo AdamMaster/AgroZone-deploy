@@ -85,7 +85,7 @@ export function AdOwnerPanel({
   return (
     <View>
       <View className='mb-3 gap-1'>
-        <Button title='Поднять объявление' disabled={isBusy} onPress={onPromote} />
+        <Button title='Поднять просмотры' disabled={isBusy} onPress={onPromote} />
         <Button
           variant='secondary'
           title='Снять с публикации'
