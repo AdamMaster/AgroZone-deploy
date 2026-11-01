@@ -148,7 +148,7 @@ export const PromoteAd = ({ id }: PromoteAdProps) => {
 
               return (
                 <div key={service} className='custom-shadow rounded-xl p-4'>
-                  <div className='flex items-center justify-between gap-4'>
+                  <div className='flex flex-col flex-wrap items-center justify-between gap-4 sm:flex-row'>
                     <div>
                       <p className='font-medium'>{AD_SERVICE_LABELS[service]}</p>
                       <p className='text-sm text-gray-500'>{AD_SERVICE_DESCRIPTIONS[service]}</p>

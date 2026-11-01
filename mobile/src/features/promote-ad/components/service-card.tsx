@@ -49,7 +49,7 @@ export function ServiceCard({
 
   return (
     <View className='rounded-xl bg-white p-4 shadow-md dark:bg-neutral-800'>
-      <View className='flex-row items-center justify-between gap-4'>
+      <View className='flex-col flex-wrap items-center justify-between gap-4 sm:flex-row'>
         <View className='flex-1'>
           <Text className='text-base font-medium text-gray-900'>{AD_SERVICE_LABELS[service]}</Text>
           <Text className='text-sm text-gray-500'>{AD_SERVICE_DESCRIPTIONS[service]}</Text>
