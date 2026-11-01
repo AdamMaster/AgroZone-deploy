@@ -9,11 +9,17 @@ import {
 import { PrismaService } from '@/prisma/prisma.service'
 import { FileService } from '../file/file.service'
 import 'multer'
-import { AD_DRAFT_LIMIT, AD_LIMITS, AD_STATUSES_BLOCKING_OWNER_REMOVAL } from './constants/ads.constants'
+import {
+  AD_DRAFT_LIMIT,
+  AD_LIMITS,
+  AD_PENDING_PAYMENT_WINDOW_MS,
+  AD_STATUSES_BLOCKING_OWNER_REMOVAL
+} from './constants/ads.constants'
 import { isPremiumActive } from '@/premium/utils/is-premium-active.util'
 import { CreateAdDto } from './dto/create-ad.dto'
 import { SaveDraftDto } from './dto/save-draft.dto'
 import { AdStatus, FeatureType, PriceUnit, Prisma } from '@/generated/prisma/client'
+import { AdBumpStatus, AdServicePurchaseStatus } from '@/generated/prisma/enums'
 import { UpdateAdDto } from './dto/update-ad.dto'
 import { AdStateMachineService } from './ad-state-machine.service'
 import { AdsSortBy, FindAdsQueryDto } from './dto/find-ads-query.dto'
@@ -1344,9 +1350,34 @@ export class AdsService {
     })
   }
 
+  // Платёж за поднятие или пакет услуг, который пользователь ещё может
+  // оплатить (создан недавно, ЮKassa его не отменила и вебхук не пришёл).
+  // Платежи удаляются вместе с объявлением каскадом: оплата, прошедшая после
+  // удаления, не нашла бы свою запись, и деньги ушли бы без услуги и без следа.
+  // Новые платежи при этом появиться не могут: createCheckout принимает только
+  // опубликованные объявления, а удаление владельцем возможно лишь после снятия
+  // с публикации (админ может удалить и опубликованное, но это единичные случаи).
+  private async assertNoPendingPayments(adId: string) {
+    const unfinished = {
+      adId,
+      yookassaPaymentId: { not: null },
+      createdAt: { gt: new Date(Date.now() - AD_PENDING_PAYMENT_WINDOW_MS) }
+    }
+
+    const [bumps, purchases] = await Promise.all([
+      this.prisma.adBump.count({ where: { ...unfinished, status: AdBumpStatus.PENDING } }),
+      this.prisma.adServicePurchase.count({ where: { ...unfinished, status: AdServicePurchaseStatus.PENDING } })
+    ])
+
+    if (bumps + purchases > 0) {
+      throw new ConflictException('По объявлению идёт оплата услуги. Подождите завершения оплаты и повторите удаление.')
+    }
+  }
+
   // Общая часть remove() и removeByAdmin(): сначала удаляем запись (если БД
   // откажет — фото остаются на месте), потом файлы.
   private async deleteAdWithImages(ad: { id: string; images: string[] }) {
+    await this.assertNoPendingPayments(ad.id)
     await this.prisma.ad.delete({ where: { id: ad.id } })
     await this.deleteImagesQuietly(ad.images)
 

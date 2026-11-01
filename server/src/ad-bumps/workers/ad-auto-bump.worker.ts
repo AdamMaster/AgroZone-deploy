@@ -3,7 +3,6 @@ import { Cron } from '@nestjs/schedule'
 import { AdStatus } from '@/generated/prisma/client'
 
 import { PrismaService } from '@/prisma/prisma.service'
-import { isPremiumActive } from '@/premium/utils/is-premium-active.util'
 
 // Общий фоновый воркер для ДВУХ платных механик сразу — платной услуги
 // "Поднять объявление" (Ad.bumpServiceUntil, см. AdBumpsService) и
@@ -33,36 +32,22 @@ export class AdAutoBumpWorker {
     // получается "раз в районе суток".
     const staleThreshold = new Date(now.getTime() - 24 * 60 * 60 * 1000)
 
-    const candidates = await this.prisma.ad.findMany({
+    // Отбор целиком в SQL и одним UPDATE: объявления без платной услуги и без
+    // премиума (почти весь каталог) в приложение не попадают вовсе. Два условия
+    // OR (устарел И имеет право на поднятие) складываются через AND.
+    const result = await this.prisma.ad.updateMany({
       where: {
         status: AdStatus.PUBLISHED,
-        OR: [{ bumpedAt: null }, { bumpedAt: { lte: staleThreshold } }]
+        AND: [
+          { OR: [{ bumpedAt: null }, { bumpedAt: { lte: staleThreshold } }] },
+          { OR: [{ bumpServiceUntil: { gt: now } }, { user: { premiumUntil: { gt: now } } }] }
+        ]
       },
-      select: { id: true, bumpServiceUntil: true, user: { select: { premiumUntil: true } } }
-    })
-
-    // Prisma не даёт использовать один и тот же ключ OR дважды в одном
-    // where, поэтому фильтр по eligibility (bumpServiceUntil ИЛИ
-    // user.premiumUntil) делаем в приложении, а не в SQL — датасет
-    // "устаревших PUBLISHED объявлений" в реальности небольшой, полный
-    // прогон раз в час не проблема для текущих объёмов.
-    const eligibleIds = candidates
-      // ad.user типизирован как User | null (см. schema.prisma — на Ad
-      // связь "user User? @relation(...)" при том что сам userId
-      // обязателен, особенность схемы), поэтому ?. на всякий случай — по
-      // факту для PUBLISHED-объявления пользователь всегда есть.
-      .filter(ad => (ad.bumpServiceUntil && ad.bumpServiceUntil > now) || isPremiumActive(ad.user?.premiumUntil))
-      .map(ad => ad.id)
-
-    if (eligibleIds.length === 0) {
-      return
-    }
-
-    const result = await this.prisma.ad.updateMany({
-      where: { id: { in: eligibleIds } },
       data: { bumpedAt: now }
     })
 
-    this.logger.log(`AdAutoBumpWorker: автоматически поднято объявлений: ${result.count}`)
+    if (result.count > 0) {
+      this.logger.log(`AdAutoBumpWorker: автоматически поднято объявлений: ${result.count}`)
+    }
   }
 }

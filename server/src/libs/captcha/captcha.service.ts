@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { EXTERNAL_API_TIMEOUT_MS } from '@/libs/common/constants/http.constants'
 
 interface YandexCaptchaResponse {
   status: 'ok' | 'failed'
@@ -30,7 +31,8 @@ export class CaptchaService {
       const response = await fetch(this.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params.toString()
+        body: params.toString(),
+        signal: AbortSignal.timeout(EXTERNAL_API_TIMEOUT_MS)
       })
 
       const result = (await response.json()) as YandexCaptchaResponse

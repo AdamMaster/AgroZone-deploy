@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { EXTERNAL_API_TIMEOUT_MS } from '@/libs/common/constants/http.constants'
 
 // Серверное (прямое) геокодирование адреса дилера из фида — тот же DaData
 // suggest-эндпоинт, что и UserService.verifyBusiness (см. там же формат
@@ -58,7 +59,8 @@ export class DealerFeedGeocodingService {
           Accept: 'application/json',
           Authorization: `Token ${dadataKey}`
         },
-        body: JSON.stringify({ query: rawAddress, count: 1 })
+        body: JSON.stringify({ query: rawAddress, count: 1 }),
+        signal: AbortSignal.timeout(EXTERNAL_API_TIMEOUT_MS)
       })
     } catch (error) {
       this.logger.warn(`DaData недоступна при геокодировании "${rawAddress}": ${(error as Error).message}`)

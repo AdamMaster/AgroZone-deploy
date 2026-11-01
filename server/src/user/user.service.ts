@@ -20,6 +20,7 @@ import { isPremiumActive } from '@/premium/utils/is-premium-active.util'
 import { normalizePhone } from '@/libs/common/utils/phone.util'
 import { PhoneConfirmationService } from '@/libs/phone-confirmation/phone-confirmation.service'
 import { PERSONAL_DATA_CONSENT_DOCUMENT_VERSION } from '@/libs/common/constants/legal.constants'
+import { EXTERNAL_API_TIMEOUT_MS } from '@/libs/common/constants/http.constants'
 import { AdminCreateVerifiedUserDto } from './dto/admin-create-verified-user.dto'
 import { AdminSearchUsersQueryDto } from './dto/admin-search-users-query.dto'
 import { AdminSetPremiumDto } from './dto/admin-set-premium.dto'
@@ -602,7 +603,8 @@ export class UserService {
           Accept: 'application/json',
           Authorization: `Token ${dadataKey}`
         },
-        body: JSON.stringify({ query: inn })
+        body: JSON.stringify({ query: inn }),
+        signal: AbortSignal.timeout(EXTERNAL_API_TIMEOUT_MS)
       })
     } catch {
       throw new BadRequestException('Не удалось проверить ИНН — сервис проверки временно недоступен')

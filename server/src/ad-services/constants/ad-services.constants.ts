@@ -11,9 +11,12 @@ export const AD_SERVICE_DURATION_DAYS = 7
 // три на одной цене — плейсхолдер, поменять в любой момент, ничего в
 // логике/схеме менять не придётся.
 export const AD_SERVICE_PRICES_KOPECKS: Record<AdServiceType, number> = {
-  [AdServiceType.BUMP]: 14800,
-  [AdServiceType.PRICE_HIGHLIGHT]: 14800,
-  [AdServiceType.BADGE]: 14800
+  // [AdServiceType.BUMP]: 14800,
+  // [AdServiceType.PRICE_HIGHLIGHT]: 14800,
+  // [AdServiceType.BADGE]: 14800
+  [AdServiceType.BUMP]: 1000,
+  [AdServiceType.PRICE_HIGHLIGHT]: 1000,
+  [AdServiceType.BADGE]: 1000
 }
 
 // Человекочитаемые названия — переиспользуются и в description для ЮKassa,

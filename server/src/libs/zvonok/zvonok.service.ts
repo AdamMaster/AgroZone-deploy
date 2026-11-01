@@ -1,5 +1,6 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { EXTERNAL_API_TIMEOUT_MS } from '@/libs/common/constants/http.constants'
 
 interface ZvonokTellCodeResponse {
   status: string
@@ -117,7 +118,8 @@ export class ZvonokService {
       // именно такой кампании.
       response = await fetch('https://zvonok.com/manager/cabapi_external/api/v1/phones/tellcode/', {
         method: 'POST',
-        body: formData
+        body: formData,
+        signal: AbortSignal.timeout(EXTERNAL_API_TIMEOUT_MS)
       })
     } catch (error) {
       this.logger.error('Zvonok недоступен', error as Error)
@@ -180,7 +182,8 @@ export class ZvonokService {
     try {
       response = await fetch('https://zvonok.com/manager/cabapi_external/api/v1/phones/confirm/', {
         method: 'POST',
-        body: formData
+        body: formData,
+        signal: AbortSignal.timeout(EXTERNAL_API_TIMEOUT_MS)
       })
     } catch (error) {
       this.logger.error('Zvonok недоступен', error as Error)
@@ -236,7 +239,9 @@ export class ZvonokService {
     let response: globalThis.Response
 
     try {
-      response = await fetch(`https://zvonok.com/manager/cabapi_external/api/v1/phones/calls_by_phone/?${params}`)
+      response = await fetch(`https://zvonok.com/manager/cabapi_external/api/v1/phones/calls_by_phone/?${params}`, {
+        signal: AbortSignal.timeout(EXTERNAL_API_TIMEOUT_MS)
+      })
     } catch (error) {
       this.logger.error('Zvonok недоступен при проверке статуса', error as Error)
 

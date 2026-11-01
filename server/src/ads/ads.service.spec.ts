@@ -52,7 +52,9 @@ describe('AdsService', () => {
       },
       adPhoneReveal: {
         createMany: jest.fn().mockResolvedValue({ count: 1 })
-      }
+      },
+      adBump: { count: jest.fn().mockResolvedValue(0) },
+      adServicePurchase: { count: jest.fn().mockResolvedValue(0) }
     }
 
     fileService = {
@@ -835,6 +837,40 @@ describe('AdsService', () => {
 
         expect(prisma.ad.delete).toHaveBeenCalledWith({ where: { id: 'ad-1' } })
         expect(fileService.deleteFileByUrl).toHaveBeenCalledTimes(2)
+      })
+
+      it.each([['adBump'], ['adServicePurchase']])(
+        'remove: пока можно оплатить платёж (%s), объявление не удаляется и фото остаются',
+        async model => {
+          prisma[model].count.mockResolvedValue(1)
+
+          await expect(service.remove('ad-1', 'user-1')).rejects.toThrow(ConflictException)
+
+          expect(prisma.ad.delete).not.toHaveBeenCalled()
+          expect(fileService.deleteFileByUrl).not.toHaveBeenCalled()
+        }
+      )
+
+      it('removeByAdmin: незавершённая оплата блокирует и удаление админом', async () => {
+        prisma.ad.findUnique.mockResolvedValue({ ...existingAd, status: 'PUBLISHED' })
+        prisma.adBump.count.mockResolvedValue(1)
+
+        await expect(service.removeByAdmin('ad-1')).rejects.toThrow(ConflictException)
+
+        expect(prisma.ad.delete).not.toHaveBeenCalled()
+      })
+
+      it('remove: учитывает только недавние неоплаченные платежи с id в ЮKassa', async () => {
+        await service.remove('ad-1', 'user-1')
+
+        const expected = {
+          adId: 'ad-1',
+          status: 'PENDING',
+          yookassaPaymentId: { not: null },
+          createdAt: { gt: expect.any(Date) }
+        }
+        expect(prisma.adBump.count).toHaveBeenCalledWith({ where: expected })
+        expect(prisma.adServicePurchase.count).toHaveBeenCalledWith({ where: expected })
       })
 
       it('removeByAdmin: несуществующее объявление — 404 и никаких удалений', async () => {

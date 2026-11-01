@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common'
+import { BadRequestException, Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common'
 import { TypeBaseProviderOptions } from './types/base-provider.options.type'
 import { TypeUserInfo } from './types/user-info.types'
 import { TypeTokenResponse } from './types/oauth-responses.types'
+import { EXTERNAL_API_TIMEOUT_MS } from '@/libs/common/constants/http.constants'
 
 interface ITokenResponse {
   access_token: string
@@ -52,7 +53,7 @@ export class BaseOAuthService {
       grant_type: 'authorization_code'
     })
 
-    const tokensRequest = await fetch(this.options.access_url, {
+    const tokensRequest = await this.fetchProvider(this.options.access_url, {
       method: 'POST',
       body: tokenQuery,
       headers: {
@@ -77,10 +78,8 @@ export class BaseOAuthService {
 
     const authHeader = this.options.name === 'yandex' ? `OAuth ${tokens.access_token}` : `Bearer ${tokens.access_token}`
 
-    const userRequest = await fetch(this.options.profile_url, {
-      headers: {
-        Authorization: this.options.name === 'yandex' ? `OAuth ${tokens.access_token}` : `Bearer ${tokens.access_token}`
-      }
+    const userRequest = await this.fetchProvider(this.options.profile_url, {
+      headers: { Authorization: authHeader }
     })
 
     if (!userRequest.ok) {
@@ -98,6 +97,18 @@ export class BaseOAuthService {
       refresh_token: tokens.refresh_token,
       expires_at: tokens.expires_at || tokens.expires_in,
       provider: this.options.name
+    }
+  }
+
+  // Запрос к провайдеру с пределом ожидания: зависший провайдер не должен
+  // держать запрос входа бесконечно, а сетевой сбой — превращаться в 500.
+  private async fetchProvider(url: string, init: RequestInit): Promise<Response> {
+    try {
+      return await fetch(url, { ...init, signal: AbortSignal.timeout(EXTERNAL_API_TIMEOUT_MS) })
+    } catch (error) {
+      throw new ServiceUnavailableException('Сервис входа сейчас не отвечает. Попробуйте ещё раз чуть позже', {
+        cause: error
+      })
     }
   }
 
