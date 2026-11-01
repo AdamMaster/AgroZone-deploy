@@ -328,7 +328,7 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
         </div>
       </div>
       {statusItems.length > 0 && (
-        <div className='mt-2 flex flex-wrap items-center gap-x-2 gap-y-1'>
+        <div className='mt-2 flex flex-wrap items-center gap-x-2'>
           {statusItems.map((item, index) => (
             <Fragment key={item.key}>
               {index > 0 && (

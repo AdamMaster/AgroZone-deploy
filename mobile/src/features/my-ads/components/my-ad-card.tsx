@@ -113,7 +113,7 @@ export const MyAdCard = memo(function MyAdCard({ ad, isOwnerPremium, onOpen, onE
       )}
 
       {(isOwnerPremium || services.length > 0) && (
-        <View className='mt-2 flex-row flex-wrap items-center gap-x-2 gap-y-1'>
+        <View className='mt-2 flex-row flex-wrap items-center gap-x-2'>
           {isOwnerPremium && (
             <Pressable onPress={() => toggleHint('premium')} className='flex-row items-center gap-1'>
               <Crown size={12} color='#fe9a00' />
