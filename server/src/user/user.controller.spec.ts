@@ -25,7 +25,7 @@ describe('UserController: ответы ручек изменения профи�
     }
     fileService = {
       uploadAvatar: jest.fn().mockResolvedValue({ url: 'https://cdn/avatars/1.jpg', fileId: 'avatars/1.jpg' }),
-      uploadFile: jest.fn().mockResolvedValue({ url: 'https://cdn/presentations/1.pdf', fileId: 'presentations/1.pdf' })
+      uploadDocument: jest.fn().mockResolvedValue({ url: 'https://cdn/presentations/1.pdf', fileId: 'presentations/1.pdf' })
     }
     controller = new UserController(userService as never, fileService as never, {} as never, {} as never)
   })

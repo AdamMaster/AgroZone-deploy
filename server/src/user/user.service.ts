@@ -678,7 +678,7 @@ export class UserService {
 
   // Аналог updateAvatar выше, но для документа презентации компании (см.
   // UserController.updatePresentation) — тоже принимает уже загруженный в
-  // S3 файл (контроллер вызывает FileService.uploadFile сам, с папкой
+  // S3 файл (контроллер вызывает FileService.uploadDocument сам, с папкой
   // 'presentations', а не 'avatars'), тут только: удалить старый файл,
   // если был, и сохранить новые ссылку/имя/размер.
   async updatePresentation(

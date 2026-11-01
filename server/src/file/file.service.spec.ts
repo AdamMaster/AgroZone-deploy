@@ -1,6 +1,10 @@
 import { BadRequestException } from '@nestjs/common'
 import sharp from 'sharp'
 import { FileService } from './file.service'
+import { detectFileType } from './utils/detect-file-type.util'
+
+jest.mock('./utils/detect-file-type.util', () => ({ detectFileType: jest.fn() }))
+const mockedDetectFileType = detectFileType as jest.MockedFunction<typeof detectFileType>
 
 const mockSend = jest.fn()
 
@@ -76,22 +80,43 @@ describe('FileService', () => {
     })
   })
 
-  describe('uploadFile (документы)', () => {
-    it('сохраняет файл как есть, расширение берёт безопасное', async () => {
+  describe('uploadDocument (презентации)', () => {
+    const PDF = 'application/pdf'
+    const DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    const ALLOWED = [PDF]
+
+    it('тип и расширение — по содержимому, а не по имени и типу от клиента; PDF открывается просмотрщиком', async () => {
+      mockedDetectFileType.mockResolvedValue({ ext: 'pdf', mime: PDF })
       const buffer = Buffer.from('%PDF-1.4')
 
-      await service.uploadFile(multerFile(buffer, 'price.pdf', 'application/pdf'), 'presentations')
+      await service.uploadDocument(multerFile(buffer, 'Прайс "2026".html', 'text/html'), 'presentations', ALLOWED)
       const command = sentCommand()
 
       expect(command.Key).toMatch(/^presentations\/\d+-\d+\.pdf$/)
-      expect(command.ContentType).toBe('application/pdf')
+      expect(command.ContentType).toBe(PDF)
+      expect(command.ContentDisposition).toMatch(/^inline; /)
+      expect(command.ContentDisposition).toContain(`filename*=UTF-8''${encodeURIComponent('Прайс 2026.pdf')}`)
       expect(command.Body).toBe(buffer)
     })
 
-    it('подозрительное расширение из имени файла заменяется на bin', async () => {
-      await service.uploadFile(multerFile(Buffer.from('x'), 'a.b/../c', 'application/pdf'), 'presentations')
+    it('документ Office скачивается, а не открывается', async () => {
+      mockedDetectFileType.mockResolvedValue({ ext: 'docx', mime: DOCX })
 
-      expect(sentCommand().Key).toMatch(/^presentations\/\d+-\d+\.bin$/)
+      await service.uploadDocument(multerFile(Buffer.from('PK'), 'about.docx', DOCX), 'presentations', [DOCX])
+
+      expect(sentCommand().ContentDisposition).toMatch(/^attachment; /)
+    })
+
+    it.each([
+      ['тип не из списка', { ext: 'zip', mime: 'application/zip' }],
+      ['тип не распознан', undefined]
+    ])('%s — 400, в хранилище ничего не попадает', async (_name, detected) => {
+      mockedDetectFileType.mockResolvedValue(detected)
+
+      await expect(
+        service.uploadDocument(multerFile(Buffer.from('x'), 'a.pdf', PDF), 'presentations', ALLOWED)
+      ).rejects.toBeInstanceOf(BadRequestException)
+      expect(mockSend).not.toHaveBeenCalled()
     })
   })
 

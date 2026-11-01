@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common'
+import { BadRequestException, Injectable, InternalServerErrorException, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import {
   S3Client,
@@ -8,6 +8,8 @@ import {
   HeadObjectCommand
 } from '@aws-sdk/client-s3'
 import 'multer'
+import { contentDisposition } from './utils/content-disposition.util'
+import { detectFileType } from './utils/detect-file-type.util'
 import { extractS3Key } from './utils/s3-keys.util'
 import {
   AVATAR_IMAGE_OPTIONS,
@@ -51,7 +53,7 @@ export class FileService {
       // через виртуальный хост (bucket.endpoint), а не endpoint/bucket —
       // так исторически было нужно для Timeweb. Это только про адресацию
       // самих API-запросов (PutObject/DeleteObject) к S3_ENDPOINT — на
-      // публичную ссылку (S3_PUBLIC_URL, см. uploadFile) не влияет: тот
+      // публичную ссылку (S3_PUBLIC_URL, см. uploadDocument) не влияет: тот
       // домен отдельный, к нему AWS SDK вообще не обращается.
       forcePathStyle: true
     })
@@ -189,16 +191,27 @@ export class FileService {
     return this.uploadImage(file, 'avatars', AVATAR_IMAGE_OPTIONS)
   }
 
-  // Документы (презентации): тип файла к этому моменту уже проверен
-  // контроллером по содержимому (FileTypeValidator). Для картинок используй
-  // uploadImage — этот метод хранит файл как есть.
-  async uploadFile(file: Express.Multer.File, folder: string = 'ads') {
-    // Расширение приходит из имени файла клиента: оставляем только буквы и
-    // цифры, чтобы в ключ объекта не попало ничего лишнего (слэши, точки).
-    const rawExtension = file.originalname.split('.').pop() ?? ''
-    const extension = /^[a-z0-9]{1,8}$/i.test(rawExtension) ? rawExtension.toLowerCase() : 'bin'
+  // Документы (презентации) хранятся как есть, без перекодирования. Тип и
+  // расширение берутся из содержимого файла, а не из того, что прислал клиент:
+  // иначе валидный по сигнатуре файл можно было бы сохранить как .html с
+  // Content-Type: text/html, и публичный домен хранилища показал бы его как
+  // страницу (фишинг от имени площадки). PDF браузер открывает своим
+  // просмотрщиком (тип application/pdf определён по содержимому, HTML-страницей
+  // он не станет), документы Office скачиваются. Для картинок — uploadImage.
+  async uploadDocument(file: Express.Multer.File, folder: string, allowedMimeTypes: readonly string[]) {
+    const detected = await detectFileType(file.buffer)
 
-    return this.putObject(this.generateKey(folder, extension), file.buffer, file.mimetype)
+    if (!detected || !allowedMimeTypes.includes(detected.mime)) {
+      throw new BadRequestException('Недопустимый формат файла')
+    }
+
+    return this.putObject(this.generateKey(folder, detected.ext), file.buffer, detected.mime, {
+      contentDisposition: contentDisposition(
+        detected.mime === 'application/pdf' ? 'inline' : 'attachment',
+        file.originalname,
+        detected.ext
+      )
+    })
   }
 
   private get bucketName() {
@@ -229,7 +242,12 @@ export class FileService {
     })
   }
 
-  private async putObject(key: string, body: Buffer, contentType: string) {
+  private async putObject(
+    key: string,
+    body: Buffer,
+    contentType: string,
+    { contentDisposition }: { contentDisposition?: string } = {}
+  ) {
     try {
       await this.s3Client.send(
         new PutObjectCommand({
@@ -237,6 +255,7 @@ export class FileService {
           Key: key,
           Body: body,
           ContentType: contentType,
+          ContentDisposition: contentDisposition,
           // Ключ каждого файла уникален и не перезаписывается — браузер,
           // приложение и CDN могут хранить его сколько угодно.
           CacheControl: IMMUTABLE_CACHE_CONTROL

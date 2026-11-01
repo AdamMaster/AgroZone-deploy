@@ -44,7 +44,9 @@ import { SecurityEventsService } from '@/security-events/security-events.service
 import { FindSecurityEventsQueryDto } from '@/security-events/dto/find-security-events-query.dto'
 import { ConfigService } from '@nestjs/config'
 import {
+  AVATAR_MAX_FILE_SIZE,
   PRESENTATION_ALLOWED_EXTENSIONS,
+  PRESENTATION_ALLOWED_MIME_TYPES,
   PRESENTATION_FILE_TYPE_PATTERN,
   PRESENTATION_MAX_FILE_SIZE
 } from './constants/user.constants'
@@ -201,13 +203,18 @@ export class UserController {
   @Authorization()
   @HttpCode(HttpStatus.OK)
   @Patch('profile/avatar')
-  @UseInterceptors(FileInterceptor('file'))
+  // limits — жёсткий предел на уровне приёма: огромный файл обрывается ещё
+  // при загрузке, а не целиком попадает в память до проверки размера ниже.
+  // Предел вдвое выше допустимого размера: файл «чуть больше нормы» доходит до
+  // MaxFileSizeValidator и получает понятную ошибку на русском, а не «File too
+  // large» от multer.
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: AVATAR_MAX_FILE_SIZE * 2, files: 1 } }))
   async updateAvatar(
     @Authorized('id') userId: string,
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 5 }), // 5МБ
+          new MaxFileSizeValidator({ maxSize: AVATAR_MAX_FILE_SIZE }),
           new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp)' })
         ]
       })
@@ -231,7 +238,8 @@ export class UserController {
   @Authorization()
   @HttpCode(HttpStatus.OK)
   @Patch('profile/presentation')
-  @UseInterceptors(FileInterceptor('file'))
+  // Жёсткий предел приёма — как у аватара выше.
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: PRESENTATION_MAX_FILE_SIZE * 2, files: 1 } }))
   async updatePresentation(
     @Authorized('id') userId: string,
     @UploadedFile(
@@ -250,7 +258,7 @@ export class UserController {
     )
     file: Express.Multer.File
   ) {
-    const uploadResult = await this.fileService.uploadFile(file, 'presentations')
+    const uploadResult = await this.fileService.uploadDocument(file, 'presentations', PRESENTATION_ALLOWED_MIME_TYPES)
 
     await this.userService.updatePresentation(userId, uploadResult, file.originalname, file.size)
 

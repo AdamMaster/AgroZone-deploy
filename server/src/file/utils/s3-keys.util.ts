@@ -1,7 +1,7 @@
 import { photoVariantKeys } from './photo-variants.util'
 
 // Папки бакета, в которые приложение само загружает файлы (см. вызовы
-// FileService.uploadFile). Всё, что лежит вне этих папок, приложению не
+// FileService.uploadDocument). Всё, что лежит вне этих папок, приложению не
 // принадлежит — например, ручные загрузки через панель Selectel, — и
 // обслуживающие скрипты такие объекты не трогают.
 export const S3_UPLOAD_FOLDERS = ['ads', 'avatars', 'presentations', 'chat'] as const
@@ -23,7 +23,7 @@ export interface S3ObjectInfo {
 // (User.picture, Ad.images и т.д.). Возвращает null, если ссылка не наша —
 // например, аватар из Яндекс OAuth или ссылка на сторонний сайт.
 //
-// Текущий формат (см. FileService.uploadFile) — ссылка на публичный домен
+// Текущий формат (см. FileService.uploadDocument) — ссылка на публичный домен
 // бакета, имени бакета в пути нет. Старый формат (Timeweb, и первые
 // тестовые загрузки на Selectel) — путь вида endpoint/bucketName/fileId.
 export const extractS3Key = (url: string, { publicUrl, bucketName }: S3UrlContext): string | null => {

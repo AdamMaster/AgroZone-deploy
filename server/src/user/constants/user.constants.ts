@@ -35,3 +35,7 @@ export const PRESENTATION_ALLOWED_EXTENSIONS = ['pdf', 'docx', 'xlsx', 'pptx']
 // заметно меньше, чем есть смысл гонять через профиль продавца (AD_MAX_FILE_SIZE
 // у объявлений — 10 МБ per-файл на фото, но их до 15 штук; тут документ один).
 export const PRESENTATION_MAX_FILE_SIZE = 15 * 1024 * 1024
+
+// Аватар до 5 МБ: всё равно перекодируется в небольшую картинку (см.
+// FileService.uploadAvatar).
+export const AVATAR_MAX_FILE_SIZE = 5 * 1024 * 1024
