@@ -105,7 +105,7 @@ export const ContentPremium = () => {
           </ul>
           <Button
             size='lg'
-            className='bg-orange-400 px-5 hover:bg-orange-500'
+            className='bg-amber-500 px-5 hover:bg-amber-600'
             onClick={() => startPremiumCheckout()}
             disabled={isStartingPremiumCheckout}
           >

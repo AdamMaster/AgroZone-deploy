@@ -71,7 +71,7 @@ const INFO_ITEMS: readonly MenuItem[] = [
 ]
 
 const ICON_SIZE = 20
-const PREMIUM_COLOR = '#ff6900'
+const PREMIUM_COLOR = '#fe9a00'
 
 interface ProfileMenuSheetProps {
   visible: boolean
