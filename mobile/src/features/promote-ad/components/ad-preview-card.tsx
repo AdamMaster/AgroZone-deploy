@@ -41,8 +41,8 @@ export function AdPreviewCard({ photoUrl, badge, price, isPriceHighlighted, isBu
         )}
       </View>
 
-      <Skeleton className='mb-1.5 h-3.5 w-full rounded' />
-      <Skeleton className='mb-3 h-3.5 w-2/3 rounded' />
+      <Skeleton className='mb-1.5 h-3.5 w-full rounded dark:bg-neutral-50' />
+      <Skeleton className='mb-3 h-3.5 w-2/3 rounded dark:bg-neutral-50' />
 
       <View className='items-start'>
         <Text
@@ -56,8 +56,8 @@ export function AdPreviewCard({ photoUrl, badge, price, isPriceHighlighted, isBu
 
       {isBumped && (
         <View className='mt-2 flex-row items-center gap-1'>
-          <ArrowUp size={12} color='#d97706' />
-          <Text className='text-xs text-amber-600'>Будет выше в поиске</Text>
+          <ArrowUp size={12} color='#fe9a00' />
+          <Text className='text-xs text-amber-500'>Будет выше в поиске</Text>
         </View>
       )}
     </View>
