@@ -208,7 +208,7 @@ export const PromoteAd = ({ id }: PromoteAdProps) => {
           </div>
 
           <div className='flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start'>
-            <div className='custom-shadow rounded-xl p-4'>
+            <div className='custom-shadow rounded-xl p-4 dark:bg-neutral-700/80'>
               <p className='mb-3 text-xs font-medium text-gray-500'>Так будет выглядеть объявление</p>
               <div className='relative mb-3 overflow-hidden rounded-lg bg-gray-100 pt-[75%]'>
                 {ad.images.length > 0 ? (

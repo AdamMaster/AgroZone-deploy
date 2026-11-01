@@ -48,7 +48,7 @@ export function ServiceCard({
   const isActive = isFutureDate(activeUntil)
 
   return (
-    <View className='rounded-xl bg-white p-4 shadow-md dark:bg-neutral-800'>
+    <View className='rounded-xl bg-white p-4 shadow-md dark:bg-neutral-700/80'>
       <View className='flex-col flex-wrap justify-between gap-4 sm:flex-row sm:items-center'>
         <View className='flex-1'>
           <Text className='text-base font-medium text-gray-900'>{AD_SERVICE_LABELS[service]}</Text>
