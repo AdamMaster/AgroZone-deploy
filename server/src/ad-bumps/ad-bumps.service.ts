@@ -4,10 +4,9 @@ import { AdStatus } from '@/generated/prisma/client'
 import { AdBumpStatus } from '@/generated/prisma/enums'
 
 import { PrismaService } from '@/prisma/prisma.service'
+import { yookassaFetch } from '@/libs/yookassa/yookassa-fetch.util'
 
 import { AD_BUMP_PRICE_KOPECKS, BUMP_SERVICE_DURATION_DAYS } from './constants/ad-bumps.constants'
-
-const YOOKASSA_API_URL = 'https://api.yookassa.ru/v3'
 
 interface YookassaPayment {
   id: string
@@ -63,7 +62,7 @@ export class AdBumpsService {
     let payment: YookassaPayment
 
     try {
-      const response = await fetch(`${YOOKASSA_API_URL}/payments`, {
+      const response = await yookassaFetch('/payments', {
         method: 'POST',
         headers: {
           Authorization: this.authHeader,
@@ -163,7 +162,7 @@ export class AdBumpsService {
       return bump
     }
 
-    const response = await fetch(`${YOOKASSA_API_URL}/payments/${paymentId}`, {
+    const response = await yookassaFetch(`/payments/${paymentId}`, {
       headers: { Authorization: this.authHeader }
     })
 

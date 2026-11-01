@@ -2,11 +2,10 @@ import { Injectable, InternalServerErrorException, Logger, NotFoundException } f
 import { ConfigService } from '@nestjs/config'
 
 import { PrismaService } from '@/prisma/prisma.service'
+import { yookassaFetch } from '@/libs/yookassa/yookassa-fetch.util'
 import { DealerSubscriptionStatus, DealerTier } from '@/generated/prisma/client'
 
 import { DEALER_SUBSCRIPTION_DURATION_DAYS, DEALER_TIER_PRICE_KOPECKS } from '../constants/dealer-feeds.constants'
-
-const YOOKASSA_API_URL = 'https://api.yookassa.ru/v3'
 
 interface YookassaPayment {
   id: string
@@ -57,7 +56,7 @@ export class DealerSubscriptionsService {
     let payment: YookassaPayment
 
     try {
-      const response = await fetch(`${YOOKASSA_API_URL}/payments`, {
+      const response = await yookassaFetch('/payments', {
         method: 'POST',
         headers: {
           Authorization: this.authHeader,
@@ -128,7 +127,7 @@ export class DealerSubscriptionsService {
       return subscription
     }
 
-    const response = await fetch(`${YOOKASSA_API_URL}/payments/${paymentId}`, {
+    const response = await yookassaFetch(`/payments/${paymentId}`, {
       headers: { Authorization: this.authHeader }
     })
 

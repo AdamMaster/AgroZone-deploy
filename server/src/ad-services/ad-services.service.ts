@@ -11,14 +11,13 @@ import { AdStatus } from '@/generated/prisma/client'
 import { AdBadge, AdServicePurchaseStatus, AdServiceType } from '@/generated/prisma/enums'
 
 import { PrismaService } from '@/prisma/prisma.service'
+import { yookassaFetch } from '@/libs/yookassa/yookassa-fetch.util'
 
 import {
   AD_SERVICE_DURATION_DAYS,
   AD_SERVICE_LABELS,
   AD_SERVICE_PRICES_KOPECKS
 } from './constants/ad-services.constants'
-
-const YOOKASSA_API_URL = 'https://api.yookassa.ru/v3'
 
 interface YookassaPayment {
   id: string
@@ -81,7 +80,7 @@ export class AdServicesService {
     let payment: YookassaPayment
 
     try {
-      const response = await fetch(`${YOOKASSA_API_URL}/payments`, {
+      const response = await yookassaFetch('/payments', {
         method: 'POST',
         headers: {
           Authorization: this.authHeader,
@@ -155,7 +154,7 @@ export class AdServicesService {
       return purchase
     }
 
-    const response = await fetch(`${YOOKASSA_API_URL}/payments/${paymentId}`, {
+    const response = await yookassaFetch(`/payments/${paymentId}`, {
       headers: { Authorization: this.authHeader }
     })
 

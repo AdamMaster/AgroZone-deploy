@@ -4,10 +4,9 @@ import { AdStatus } from '@/generated/prisma/client'
 import { PremiumPurchaseStatus } from '@/generated/prisma/enums'
 
 import { PrismaService } from '@/prisma/prisma.service'
+import { yookassaFetch } from '@/libs/yookassa/yookassa-fetch.util'
 
 import { PREMIUM_DURATION_DAYS, PREMIUM_PRICE_KOPECKS } from './constants/premium.constants'
-
-const YOOKASSA_API_URL = 'https://api.yookassa.ru/v3'
 
 interface YookassaPayment {
   id: string
@@ -52,7 +51,7 @@ export class PremiumService {
     let payment: YookassaPayment
 
     try {
-      const response = await fetch(`${YOOKASSA_API_URL}/payments`, {
+      const response = await yookassaFetch('/payments', {
         method: 'POST',
         headers: {
           Authorization: this.authHeader,
@@ -147,7 +146,7 @@ export class PremiumService {
       return purchase
     }
 
-    const response = await fetch(`${YOOKASSA_API_URL}/payments/${paymentId}`, {
+    const response = await yookassaFetch(`/payments/${paymentId}`, {
       headers: { Authorization: this.authHeader }
     })
 
