@@ -1,5 +1,7 @@
 import { IsEmail } from 'class-validator'
 
+import { NormalizeEmail } from '@/libs/common/decorators/normalize-email.decorator'
+
 // Задать/сменить email пользователю из админки (/admin/users/:id, см.
 // UserController.setEmailByAdmin/UserService.setEmailByAdmin). Нужен
 // отдельно от auth/email-change (самостоятельная смена email пользователем)
@@ -10,6 +12,7 @@ import { IsEmail } from 'class-validator'
 // и со сменой пароля — админ действует без обычных проверок, это и есть
 // назначение функции.
 export class AdminSetEmailDto {
+  @NormalizeEmail()
   @IsEmail({}, { message: 'Введите корректный адрес электронной почты' })
   newEmail!: string
 }

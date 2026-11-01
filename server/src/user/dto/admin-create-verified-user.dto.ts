@@ -1,5 +1,7 @@
 import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator'
 
+import { NormalizeEmail } from '@/libs/common/decorators/normalize-email.decorator'
+
 // Создание аккаунта продавцу вручную администратором, минуя подтверждение
 // звонком — см. UserService.createVerifiedByAdmin. Реальный
 // сценарий: продавец согласился, что аккаунт заводит администратор
@@ -24,6 +26,7 @@ export class AdminCreateVerifiedUserDto {
   // сценарии, подтверждение владения тут не требуется, т.к. аккаунт
   // создаёт сам администратор.
   @IsOptional()
+  @NormalizeEmail()
   @IsEmail({}, { message: 'Некорректный email.' })
   email?: string
 }

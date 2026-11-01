@@ -15,10 +15,8 @@ import {
   RegistrationAttemptStep,
   RegistrationChannel,
   RegistrationFailureReason,
-  SecurityEventActor,
   SecurityEventType,
-  TokenType,
-  UserRole
+  TokenType
 } from '@/generated/prisma/enums'
 import { User } from '@/generated/prisma/client'
 import { Request, Response } from 'express'
@@ -184,35 +182,26 @@ export class AuthService {
     return this.saveSession(req, newUser, 'sms')
   }
 
+  // Регистрация по почте: аккаунт создаётся неподтверждённым, войти в него
+  // можно только после перехода по ссылке из письма (см. login). Телефон тут
+  // не принимается (RegisterDto) — регистрация по телефону идёт отдельно,
+  // через звонок (registerSmsStart/registerSmsComplete).
   async register(req: Request, dto: RegisterDto) {
-    if (!dto.email && !dto.phone) {
-      throw new BadRequestException('Укажите Email или номер телефона для регистрации')
-    }
+    const key = { channel: RegistrationChannel.EMAIL, contact: dto.email }
 
-    const phone = dto.phone ? normalizePhone(dto.phone) : null
-
-    // Попытка в журнале: по почте, если почта указана, иначе по телефону.
-    const key = dto.email
-      ? { channel: RegistrationChannel.EMAIL, contact: dto.email }
-      : { channel: RegistrationChannel.PHONE, contact: phone as string }
-
-    const emailExists = dto.email ? await this.userService.findByEmail(dto.email) : null
-
-    const phoneExists = phone ? await this.userService.findByPhone(phone) : null
-
-    if (emailExists || phoneExists) {
+    if (await this.userService.findByEmail(dto.email)) {
       await this.registrationAttempts.fail(key, RegistrationFailureReason.ALREADY_REGISTERED)
-      throw new ConflictException('Пользователь с таким email или номером телефона уже существует.')
+      throw new ConflictException('Пользователь с таким email уже существует.')
     }
 
     let newUser: Awaited<ReturnType<UserService['create']>>
 
     try {
       newUser = await this.userService.create(
-        dto.email ?? null,
+        dto.email,
         dto.password,
         dto.name,
-        phone,
+        null,
         '',
         AuthMethod.CREDENTIALS,
         false,
@@ -225,46 +214,21 @@ export class AuthService {
       throw error
     }
 
-    if (newUser.email) {
-      try {
-        await this.emailConfirmationService.sendVerificationToken(newUser.email)
-      } catch (error) {
-        await this.registrationAttempts.fail(
-          key,
-          RegistrationFailureReason.PROVIDER_ERROR,
-          describeRegistrationError(error)
-        )
+    try {
+      await this.emailConfirmationService.sendVerificationToken(newUser.email as string)
+    } catch (error) {
+      await this.registrationAttempts.fail(
+        key,
+        RegistrationFailureReason.PROVIDER_ERROR,
+        describeRegistrationError(error)
+      )
 
-        throw error
-      }
-
-      await this.registrationAttempts.progress(key, RegistrationAttemptStep.CONFIRMATION_SENT)
-
-      return { message: 'Пожалуйста, подтвердите ваш email.' }
+      throw error
     }
 
-    if (newUser.phones.length) {
-      try {
-        await this.sendSmsCode(newUser.phones[0].phone, TokenType.SMS_VERIFICATION, getClientIp(req))
-      } catch (error) {
-        await this.registrationAttempts.fail(
-          key,
-          RegistrationFailureReason.PROVIDER_ERROR,
-          describeRegistrationError(error)
-        )
+    await this.registrationAttempts.progress(key, RegistrationAttemptStep.CONFIRMATION_SENT)
 
-        throw error
-      }
-
-      await this.registrationAttempts.progress(key, RegistrationAttemptStep.CONFIRMATION_SENT)
-
-      return { message: 'Код подтверждения отправлен на ваш телефон.' }
-    }
-
-    return {
-      message:
-        'Вы успешно зарегистрировались. Пожалуйста, подтвердите ваш email. Сообщение было отправлено на ваш почтовый адрес.'
-    }
+    return { message: 'Пожалуйста, подтвердите ваш email.' }
   }
 
   async sendSmsCode(phone: string, type: TokenType = TokenType.SMS_VERIFICATION, ip?: string) {
@@ -669,13 +633,12 @@ export class AuthService {
   }
 
   // saveSession — единственная точка, через которую проходит вход/регистрация
-  // независимо от способа (пароль, SMS, Google, Yandex — см. все вызовы
-  // this.saveSession выше), поэтому это самое надёжное место для
-  // автоповышения роли: сработает при любом способе входа, без дублирования
-  // проверки в каждом методе отдельно.
+  // независимо от способа (пароль, звонок, Google, Яндекс). Роль берётся из
+  // базы как есть: вход её никогда не меняет. Администратора назначают
+  // вручную в базе (users.role) — раньше роль выдавалась автоматически по
+  // списку почт ADMIN_EMAILS, и через аккаунт с той же почтой в другом
+  // регистре можно было получить права администратора.
   async saveSession(req: Request, user: User, loginMethod: LoginMethod = 'password') {
-    const role = await this.ensureAdminRole(user)
-
     // "Долг" в ROADMAP.md — склейка гостя поддержки с аккаунтом. Если в
     // ЭТОЙ ЖЕ сессии до входа/регистрации посетитель уже писал в чат
     // поддержки (см. SupportGuestsService.getOrCreateForSession —
@@ -699,7 +662,7 @@ export class AuthService {
 
     await new Promise<void>((resolve, reject) => {
       req.session.userId = user.id
-      req.session.userRole = role
+      req.session.userRole = user.role
 
       req.session.save(err => {
         if (err) {
@@ -724,53 +687,11 @@ export class AuthService {
     // Профиль — в том же безопасном виде, что и GET /users/profile: без
     // хэша пароля и OAuth-токенов. Раньше сюда уходила сырая запись из базы
     // целиком (вместе с хэшем пароля) — сайт её не читал, но в ответ она
-    // попадала. Роль после ensureAdminRole уже записана в базу, поэтому
-    // профиль, прочитанный заново, её учитывает.
+    // попадала.
     const profile = await this.userService.getProfileForClient(user.id)
     // Ключ сессии — только для мобильного приложения (см. SessionTokenService).
     const sessionToken = this.sessionTokenService.issueFor(req)
 
     return sessionToken ? { user: profile, sessionToken } : { user: profile }
-  }
-
-  // Автоповышение до ADMIN по списку почт из переменной окружения
-  // ADMIN_EMAILS (через запятую) — решает проблему курицы и яйца: самого
-  // первого админа неоткуда назначить через интерфейс, потому что сам
-  // интерфейс администрирования будет защищён ролью ADMIN, которой ни у кого
-  // ещё нет. Достаточно один раз прописать свою почту в ADMIN_EMAILS на
-  // сервере — при следующем входе роль проставится сама, без ручных правок в
-  // БД. Дальше, когда в админке появится управление пользователями, НОВЫХ
-  // админов уже можно будет назначать через интерфейс, а не через .env.
-  private async ensureAdminRole(user: User): Promise<UserRole> {
-    if (user.role === UserRole.ADMIN || !user.email) {
-      return user.role
-    }
-
-    const adminEmails = (this.configService.get<string>('ADMIN_EMAILS') ?? '')
-      .split(',')
-      .map(email => email.trim().toLowerCase())
-      .filter(Boolean)
-
-    if (!adminEmails.includes(user.email.toLowerCase())) {
-      return user.role
-    }
-
-    const updated = await this.prismaService.user.update({
-      where: { id: user.id },
-      data: { role: UserRole.ADMIN }
-    })
-
-    // Повышение роли без участия человека (по ADMIN_EMAILS) — самое важное
-    // событие безопасности из возможных, поэтому актор SYSTEM явно (запрос
-    // в этот момент формально есть — это вход самого пользователя, но
-    // роль выдал не он).
-    await this.securityEventsService.record({
-      userId: user.id,
-      type: SecurityEventType.ROLE_CHANGED,
-      actor: SecurityEventActor.SYSTEM,
-      metadata: { from: user.role, to: updated.role }
-    })
-
-    return updated.role
   }
 }

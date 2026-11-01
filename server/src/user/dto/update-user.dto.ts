@@ -1,5 +1,6 @@
 import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString, Matches } from 'class-validator'
 import { UserType } from '@/generated/prisma/enums'
+import { NormalizeEmail } from '@/libs/common/decorators/normalize-email.decorator'
 
 export class UpdateUserDto {
   @IsOptional()
@@ -8,6 +9,7 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString({ message: 'Email должен быть строкой.' })
+  @NormalizeEmail()
   @IsEmail({}, { message: 'Некорректный формат email.' })
   email?: string
 

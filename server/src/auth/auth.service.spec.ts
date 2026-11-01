@@ -19,7 +19,6 @@ import {
   RegistrationAttemptStep,
   RegistrationChannel,
   RegistrationFailureReason,
-  SecurityEventActor,
   SecurityEventType,
   TokenType,
   UserRole
@@ -105,8 +104,6 @@ describe('AuthService', () => {
       record: jest.fn().mockResolvedValue(undefined),
       recordLoginIfNew: jest.fn().mockResolvedValue(undefined)
     }
-    // ADMIN_EMAILS пуст по умолчанию — ensureAdminRole() внутри saveSession()
-    // не должен трогать prisma.user.update ни в одном из "обычных" тестов.
     configService = { get: jest.fn().mockReturnValue(''), getOrThrow: jest.fn() }
     // По умолчанию запрос — с сайта: ключ сессии не выдаётся.
     sessionTokenService = { issueFor: jest.fn().mockReturnValue(undefined) }
@@ -142,6 +139,38 @@ describe('AuthService', () => {
   // Регистрация по телефону (звонок для подтверждения) — единственный
   // реально используемый способ регистрации на сайте.
   // ---------------------------------------------------------------------
+  describe('register (по почте)', () => {
+    const dto = {
+      name: 'Иван',
+      email: 'ivan@example.com',
+      password: 'secret1',
+      passwordRepeat: 'secret1',
+      personalDataConsent: true
+    }
+
+    it('создаёт неподтверждённый аккаунт без телефона и отправляет письмо, сессию не открывает', async () => {
+      userService.findByEmail.mockResolvedValue(null)
+      userService.create.mockResolvedValue({ id: 'user-1', email: dto.email, phones: [] })
+      const req = createReq()
+
+      await expect(service.register(req, dto as any)).resolves.toEqual({
+        message: 'Пожалуйста, подтвердите ваш email.'
+      })
+
+      const [email, , , phone, , , isVerified] = userService.create.mock.calls[0]
+      expect({ email, phone, isVerified }).toEqual({ email: dto.email, phone: null, isVerified: false })
+      expect(emailConfirmationService.sendVerificationToken).toHaveBeenCalledWith(dto.email)
+      expect(req.session.userId).toBeUndefined()
+    })
+
+    it('занятая почта — 409, аккаунт не создаётся', async () => {
+      userService.findByEmail.mockResolvedValue({ id: 'other' })
+
+      await expect(service.register(createReq(), dto as any)).rejects.toThrow('уже существует')
+      expect(userService.create).not.toHaveBeenCalled()
+    })
+  })
+
   describe('registerSmsStart', () => {
     it('отклоняет регистрацию, если номер уже занят', async () => {
       userService.findByPhone.mockResolvedValue(baseUser())
@@ -590,46 +619,18 @@ describe('AuthService', () => {
       expect(req.session.userId).toBe(user.id)
     })
 
-    it('повышает роль до ADMIN, если email пользователя указан в ADMIN_EMAILS', async () => {
-      const user = baseUser({ email: 'boss@example.com', role: UserRole.USER })
+    it('вход никогда не меняет роль: роль в сессии — из базы, без записей ROLE_CHANGED', async () => {
+      const user = baseUser({ email: 'boss@example.com', role: UserRole.REGULAR })
       userService.findByEmail.mockResolvedValue(user)
       mockedVerify.mockResolvedValue(true)
+      // Даже если на сервере осталась старая переменная ADMIN_EMAILS.
       configService.get.mockImplementation((key: string) => (key === 'ADMIN_EMAILS' ? 'boss@example.com' : ''))
-      prisma.user.update.mockResolvedValue({ ...user, role: UserRole.ADMIN })
 
       const req = createReq()
       await service.login(req, { login: 'boss@example.com', password: 'secret1' } as any)
 
-      expect(prisma.user.update).toHaveBeenCalledWith({
-        where: { id: user.id },
-        data: { role: UserRole.ADMIN }
-      })
-      expect(req.session.userRole).toBe(UserRole.ADMIN)
-    })
-
-    it('автоповышение до ADMIN фиксируется в журнале как действие SYSTEM (роль выдал не пользователь)', async () => {
-      const user = baseUser({ email: 'boss@example.com', role: UserRole.REGULAR })
-      userService.findByEmail.mockResolvedValue(user)
-      mockedVerify.mockResolvedValue(true)
-      configService.get.mockImplementation((key: string) => (key === 'ADMIN_EMAILS' ? 'boss@example.com' : ''))
-      prisma.user.update.mockResolvedValue({ ...user, role: UserRole.ADMIN })
-
-      await service.login(createReq(), { login: 'boss@example.com', password: 'secret1' } as any)
-
-      expect(securityEventsService.record).toHaveBeenCalledWith({
-        userId: user.id,
-        type: SecurityEventType.ROLE_CHANGED,
-        actor: SecurityEventActor.SYSTEM,
-        metadata: { from: UserRole.REGULAR, to: UserRole.ADMIN }
-      })
-    })
-
-    it('без повышения роли событие ROLE_CHANGED не пишется', async () => {
-      userService.findByPhone.mockResolvedValue(baseUser())
-      mockedVerify.mockResolvedValue(true)
-
-      await service.login(createReq(), { login: '+79991234567', password: 'secret1' } as any)
-
+      expect(prisma.user.update).not.toHaveBeenCalled()
+      expect(req.session.userRole).toBe(UserRole.REGULAR)
       expect(securityEventsService.record).not.toHaveBeenCalled()
     })
   })

@@ -1,28 +1,22 @@
-import { IsPasswordsMatchingConstraint } from 'src/libs/common/decorators/is-passwords-matching-constraint.decorator'
+import { IsPasswordsMatchingConstraint } from '@/libs/common/decorators/is-passwords-matching-constraint.decorator'
 
-import {
-  Equals,
-  IsBoolean,
-  IsEmail,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  Matches,
-  MinLength,
-  Validate
-} from 'class-validator'
+import { Equals, IsBoolean, IsEmail, IsNotEmpty, IsString, Matches, MinLength, Validate } from 'class-validator'
+
+import { NormalizeEmail } from '@/libs/common/decorators/normalize-email.decorator'
 
 export class RegisterDto {
   @IsString({ message: 'Имя должно быть строкой.' })
   @IsNotEmpty({ message: 'Имя обязательно для заполнения.' })
   name!: string
 
-  @IsOptional()
-  @IsString({ message: 'Телефон должен быть строкой.' })
-  phone?: string
-
-  @IsOptional()
+  // Регистрация здесь — только по почте: войти можно лишь после подтверждения
+  // письмом. Телефон в этом запросе не принимается (forbidNonWhitelisted
+  // ответит 400): раньше аккаунт с чужой почтой и своим телефоном можно было
+  // «подтвердить» звонком, и чужая почта считалась подтверждённой. Регистрация
+  // по телефону — отдельный путь (auth/register/sms/*).
   @IsString({ message: 'Email должен быть строкой.' })
+  @IsNotEmpty({ message: 'Email обязателен для заполнения.' })
+  @NormalizeEmail()
   @IsEmail({}, { message: 'Некорректный формат email.' })
   email!: string
 

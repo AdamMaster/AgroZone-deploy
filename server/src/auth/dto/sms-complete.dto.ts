@@ -1,6 +1,6 @@
 import { Equals, IsBoolean, IsNotEmpty, IsString, Length, MinLength, Validate } from 'class-validator'
 import { SmsRegisterDto } from './sms-register.dto'
-import { IsPasswordsMatchingConstraint } from 'src/libs/common/decorators/is-passwords-matching-constraint.decorator'
+import { IsPasswordsMatchingConstraint } from '@/libs/common/decorators/is-passwords-matching-constraint.decorator'
 
 export class SmsCompleteDto extends SmsRegisterDto {
   // Раньше тут был четырёхзначный код, который пользователь вводил сам

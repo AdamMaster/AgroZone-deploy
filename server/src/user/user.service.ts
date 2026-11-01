@@ -17,6 +17,7 @@ import { ConfigService } from '@nestjs/config'
 import { FileService } from '../file/file.service'
 import { AD_LIMITS } from '@/ads/constants/ads.constants'
 import { isPremiumActive } from '@/premium/utils/is-premium-active.util'
+import { normalizeEmail } from '@/libs/common/utils/email.util'
 import { normalizePhone } from '@/libs/common/utils/phone.util'
 import { PhoneConfirmationService } from '@/libs/phone-confirmation/phone-confirmation.service'
 import { PERSONAL_DATA_CONSENT_DOCUMENT_VERSION } from '@/libs/common/constants/legal.constants'
@@ -179,7 +180,7 @@ export class UserService {
   async findByEmail(email: string) {
     const user = await this.prismaService.user.findUnique({
       where: {
-        email
+        email: normalizeEmail(email)
       },
       include: {
         accounts: true,
@@ -214,7 +215,7 @@ export class UserService {
 
     const user = await this.prismaService.user.create({
       data: {
-        email,
+        email: email ? normalizeEmail(email) : null,
         password: password ? await hash(password) : null,
         displayName,
         picture,

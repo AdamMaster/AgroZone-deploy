@@ -1,8 +1,11 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, Matches, MinLength } from 'class-validator'
+import { IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator'
+
+import { NormalizeLoginIdentifier } from '@/libs/common/decorators/normalize-email.decorator'
 
 export class LoginDto {
   @IsNotEmpty({ message: 'Поле Email или Телефон обязательно для заполнения.' })
   @IsString({ message: 'Логин должен быть строкой.' })
+  @NormalizeLoginIdentifier()
   login!: string
 
   @IsString({ message: 'Пароль должен быть строкой.' })
