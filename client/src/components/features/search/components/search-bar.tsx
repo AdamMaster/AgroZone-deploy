@@ -153,7 +153,7 @@ export const SearchBar = ({ className }: SearchBarProps) => {
         </Button>
 
         {isHistoryShown && (
-          <div className='custom-shadow absolute top-[calc(100%+4px)] left-0 z-100 max-h-80 w-full overflow-hidden overflow-y-auto rounded-lg bg-white dark:bg-neutral-700'>
+          <div className='custom-shadow absolute top-[calc(100%+4px)] left-0 z-100 max-h-80 w-full overflow-hidden overflow-y-auto rounded-lg bg-white dark:bg-gray-100'>
             <div className='flex items-center justify-between px-4 pt-3 pb-1'>
               <span className='text-sm font-medium text-gray-500'>Вы искали</span>
               <button type='button' onClick={clearHistory} className='text-sm text-gray-500 hover:text-gray-900'>
@@ -168,7 +168,7 @@ export const SearchBar = ({ className }: SearchBarProps) => {
                     setQuery(item)
                     runSearch(item)
                   }}
-                  className='flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50'
+                  className='flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-100'
                 >
                   <History className='size-4 shrink-0 text-gray-500' />
                   <span className='min-w-0 flex-1 truncate'>{item}</span>

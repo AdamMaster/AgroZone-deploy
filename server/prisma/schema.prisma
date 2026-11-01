@@ -937,6 +937,14 @@ model Ad {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  // Ключ сортировки ленты «сначала свежие»: COALESCE(bumped_at, created_at),
+  // то есть поднятое объявление встаёт наверх как новое. Заполняет база —
+  // триггер ads_set_sort_at (миграция 20261101180000_ads_sort_at) при любой
+  // записи bumped_at/created_at, поэтому приложение это поле не пишет.
+  // Отдельная колонка, а не индекс по выражению: такой индекс в schema.prisma
+  // не описать, и Prisma удалила бы его при генерации следующей миграции.
+  sortAt DateTime @default(now()) @map("sort_at")
+
   @@unique([dealerFeedId, externalId])
   @@index([status])
   @@index([status, expiresAt])
@@ -951,6 +959,15 @@ model Ad {
   @@index([regionIsoCode])
   @@index([localityFiasId])
   @@index([dealerFeedId])
+  // Лента каталога по умолчанию (AdsService.findAll, DATE_DESC): опубликованные,
+  // свежие с учётом поднятий сверху; id — для стабильного порядка, когда у
+  // нескольких объявлений одинаковое время (воркер поднимает их разом).
+  @@index([status, sortAt(sort: Desc), id(sort: Desc)])
+  // Поиск по словам (ILIKE и pg_trgm в AdsService.findAll). Описаны здесь,
+  // чтобы Prisma не удаляла их при генерации миграций: так в июне 2026 пропал
+  // ads_title_trgm (миграция 20260628183128_add_ad_slug).
+  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin, map: "ads_title_trgm")
+  @@index([description(ops: raw("gin_trgm_ops"))], type: Gin, map: "ads_description_trgm")
   @@map("ads")
 }
 

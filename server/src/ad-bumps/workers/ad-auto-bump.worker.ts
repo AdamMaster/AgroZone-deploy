@@ -9,7 +9,7 @@ import { PrismaService } from '@/prisma/prisma.service'
 // премиум-аккаунта (User.premiumUntil, см. PremiumService). Обе дают один
 // и тот же эффект — раз в сутки объявление снова становится "свежим"
 // (bumpedAt = now), что двигает его в топ обычной сортировки
-// (COALESCE(bumped_at, created_at) DESC в AdsService.findAll). Ничего
+// (ads.sort_at = COALESCE(bumped_at, created_at), DESC в AdsService.findAll). Ничего
 // больше не нужно: премиум автоматически будет обгонять разовую услугу,
 // как только у той закончится bumpServiceUntil, — это уже гарантируется
 // самой сортировкой, без отдельной "тиражной" логики.

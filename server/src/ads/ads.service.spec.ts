@@ -893,6 +893,13 @@ describe('AdsService', () => {
       prisma.ad.findMany.mockResolvedValue([{ id: 'ad-1', title: 'Трактор', favorites: [] }])
     })
 
+    it('лента по умолчанию сортируется по индексируемой колонке sort_at, при равенстве — по id', async () => {
+      await service.findAll({} as never)
+
+      const idsQuery = prisma.$queryRaw.mock.calls[1][0] as { sql: string }
+      expect(idsQuery.sql).toContain('ORDER BY ads.sort_at DESC, ads.id DESC')
+    })
+
     it('телефон продавца не запрашивается из базы и не попадает в выдачу', async () => {
       const result = await service.findAll({} as never)
 

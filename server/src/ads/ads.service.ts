@@ -368,7 +368,9 @@ export class AdsService {
 
     conditions.push(...featureConditions)
 
-    // DATE_DESC (сортировка по умолчанию) — COALESCE(bumped_at, created_at):
+    // DATE_DESC (сортировка по умолчанию) — ads.sort_at, то есть
+    // COALESCE(bumped_at, created_at) (колонку поддерживает триггер в базе,
+    // под неё есть индекс — см. Ad.sortAt в schema.prisma):
     // платно поднятое объявление (см. AdBumpsService) всплывает в топ ленты
     // ровно как только что созданное и естественно "тонет" по мере
     // появления более новых/свежеподнятых объявлений. Явная сортировка по
@@ -403,8 +405,8 @@ export class AdsService {
 
     const sortMap: Record<AdsSortBy, Prisma.Sql> = {
       [AdsSortBy.DATE_DESC]: useRelevanceSort
-        ? Prisma.sql`${searchScoreExpr} DESC, COALESCE(ads.bumped_at, ads.created_at) DESC`
-        : Prisma.sql`COALESCE(ads.bumped_at, ads.created_at) DESC`,
+        ? Prisma.sql`${searchScoreExpr} DESC, ads.sort_at DESC, ads.id DESC`
+        : Prisma.sql`ads.sort_at DESC, ads.id DESC`,
       [AdsSortBy.DATE_ASC]: Prisma.sql`ads.created_at ASC`,
       [AdsSortBy.PRICE_ASC]: Prisma.sql`ads.price ASC NULLS LAST`,
       [AdsSortBy.PRICE_DESC]: Prisma.sql`ads.price DESC NULLS LAST`,
@@ -413,9 +415,7 @@ export class AdsService {
       // на каждый ключ enum'а, поэтому безопасный фолбэк на дефолтную
       // сортировку, а не Prisma.sql`0 ASC` (тот сделал бы порядок
       // непредсказуемым, если сюда всё-таки когда-нибудь дойдёт).
-      [AdsSortBy.DISTANCE_ASC]: hasOrigin
-        ? Prisma.sql`${distanceExpr} ASC`
-        : Prisma.sql`COALESCE(ads.bumped_at, ads.created_at) DESC`
+      [AdsSortBy.DISTANCE_ASC]: hasOrigin ? Prisma.sql`${distanceExpr} ASC` : Prisma.sql`ads.sort_at DESC, ads.id DESC`
     }
     const orderBy = sortMap[query.sortBy ?? AdsSortBy.DATE_DESC]
 
@@ -492,9 +492,9 @@ export class AdsService {
           : false
       }
       // Без orderBy — порядок строк из findMany({ where: { id: { in } } })
-      // не гарантирован и не обязан совпадать с ORDER BY выше (особенно
-      // для COALESCE(bumped_at, created_at), для которого нет прямого
-      // аналога в декларативном orderBy Prisma). Правильный порядок уже
+      // не гарантирован и не обязан совпадать с ORDER BY выше (сортировка
+      // по релевантности поиска и по расстоянию считается прямо в SQL).
+      // Правильный порядок уже
       // есть в ids — просто раскладываем найденные записи по нему ниже.
     })
 
