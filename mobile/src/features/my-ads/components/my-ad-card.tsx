@@ -116,8 +116,8 @@ export const MyAdCard = memo(function MyAdCard({ ad, isOwnerPremium, onOpen, onE
         <View className='mt-2 flex-row flex-wrap items-center gap-x-2 gap-y-1'>
           {isOwnerPremium && (
             <Pressable onPress={() => toggleHint('premium')} className='flex-row items-center gap-1'>
-              <Crown size={12} color='#ea580c' />
-              <Text className='text-[11px] font-medium text-orange-600'>
+              <Crown size={12} color='#fe9a00' />
+              <Text className='text-[11px] font-medium text-amber-500'>
                 Поднятие и выделение цены уже включены премиумом
               </Text>
             </Pressable>

@@ -137,7 +137,7 @@ export const AdShortCard = ({ ad }: { ad: IAd }) => {
       key: 'premium',
       content: (
         <Tooltip>
-          <TooltipTrigger className='flex items-center gap-1 text-[11px] font-medium text-orange-600'>
+          <TooltipTrigger className='flex items-center gap-1 text-[11px] font-medium text-amber-500'>
             <Crown className='size-3' />
             Поднятие и выделение цены уже включены премиумом
           </TooltipTrigger>
