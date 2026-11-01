@@ -168,7 +168,7 @@ export const SearchBar = ({ className }: SearchBarProps) => {
                     setQuery(item)
                     runSearch(item)
                   }}
-                  className='flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-100'
+                  className='flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-200'
                 >
                   <History className='size-4 shrink-0 text-gray-500' />
                   <span className='min-w-0 flex-1 truncate'>{item}</span>
