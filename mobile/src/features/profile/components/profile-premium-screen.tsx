@@ -13,7 +13,7 @@ import { usePremiumCheckout } from '../hooks/use-premium-checkout'
 import { ProfileSectionScreen } from './profile-section-screen'
 
 const PREMIUM_PRICE_LABEL = '1499 ₽ за 30 дней'
-const PREMIUM_COLOR = '#ff6900'
+const PREMIUM_COLOR = '#fe9a00'
 
 // Те же пункты, что ContentPremium сайта.
 const BENEFITS = [
