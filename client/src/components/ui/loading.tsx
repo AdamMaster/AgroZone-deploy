@@ -12,7 +12,7 @@ export function Loading({ className, withText = false }: LoadingProps) {
   return (
     <div
       className={cn(
-        'absolute inset-0 flex h-full w-full flex-col items-center justify-center gap-1.5 bg-white/70 text-sm',
+        'absolute inset-0 flex h-full w-full flex-col items-center justify-center gap-1.5 bg-white/70 text-sm dark:bg-neutral-900/70',
         className
       )}
     >
