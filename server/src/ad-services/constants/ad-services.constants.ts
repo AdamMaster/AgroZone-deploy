@@ -14,9 +14,9 @@ export const AD_SERVICE_PRICES_KOPECKS: Record<AdServiceType, number> = {
   // [AdServiceType.BUMP]: 14800,
   // [AdServiceType.PRICE_HIGHLIGHT]: 14800,
   // [AdServiceType.BADGE]: 14800
-  [AdServiceType.BUMP]: 20,
-  [AdServiceType.PRICE_HIGHLIGHT]: 20,
-  [AdServiceType.BADGE]: 20
+  [AdServiceType.BUMP]: 200,
+  [AdServiceType.PRICE_HIGHLIGHT]: 200,
+  [AdServiceType.BADGE]: 200
 }
 
 // Человекочитаемые названия — переиспользуются и в description для ЮKassa,
